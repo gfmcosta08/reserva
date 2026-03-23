@@ -67,26 +67,20 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const handlePhoto = async (file: File, side: "front" | "back") => {
-    // Comprimir antes de tudo
     setLoading(true)
-    setOcrStatus("Comprimindo imagem...")
-    try {
-      const compressed = await compressImage(file)
-      const previewUrl = URL.createObjectURL(compressed)
-      
-      if (side === "front") {
-        setFrontFile(compressed)
-        setFrontPreview(previewUrl)
-      } else {
-        setBackFile(compressed)
-        setBackPreview(previewUrl)
-      }
+    setOcrProgress(0)
 
-      // OCR apenas na frente
+    try {
+      // ======= 1. PREVIEW IMEDIATO (imagem original) =======
+      const previewUrl = URL.createObjectURL(file)
+      if (side === "front") setFrontPreview(previewUrl)
+      else setBackPreview(previewUrl)
+
+      // ======= 2. OCR NA IMAGEM ORIGINAL (alta qualidade) =======
       if (side === "front") {
-        setOcrStatus("Lendo documento...")
+        setOcrStatus("Lendo documento (pode levar alguns segundos)...")
         try {
-          const { data: { text } } = await Tesseract.recognize(compressed, 'por', {
+          const { data: { text } } = await Tesseract.recognize(file, 'por', {
             logger: m => {
               if (m.status === 'recognizing text') {
                 setOcrProgress(Math.floor(m.progress * 100))
@@ -94,33 +88,73 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
             }
           })
 
-          console.log("OCR:", text)
+          console.log("===== OCR TEXTO COMPLETO =====")
+          console.log(text)
+          console.log("==============================")
 
-          // Extrair RG
-          const rgPatterns = [
-            /Registro\s*Geral[:\s]*([0-9.,/\-]+)/i,
-            /R\.?\s*G\.?[:\s]*([0-9.,/\-]+)/i,
-            /(\d{2}[.\s]?\d{3})[\/\-]?\d*/,
-          ]
-          let extractedRg = ""
-          for (const p of rgPatterns) {
-            const m = text.match(p)
-            if (m) { extractedRg = m[1].replace(/[^0-9]/g, "").slice(0, 5); break }
-          }
-
-          // Extrair Nome
-          const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 4)
+          // ---- Extrair NOME ----
+          // Padrões para documentos militares e civis
           let extractedName = ""
-          for (const line of lines) {
-            const cl = line.replace(/[^A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]/g, "").trim()
-            if (cl.length > 8 && cl === cl.toUpperCase() && cl.split(/\s+/).length >= 2) {
-              extractedName = cl; break
+          const namePatterns = [
+            /Nome[:\s]+([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/i,
+            /NOME[:\s]*\n?\s*([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/,
+          ]
+          for (const p of namePatterns) {
+            const m = text.match(p)
+            if (m) {
+              extractedName = m[1].trim().replace(/\s+/g, " ")
+              break
+            }
+          }
+          // Fallback: procurar linha longa em maiúsculas com pelo menos 2 palavras
+          if (!extractedName) {
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 6)
+            for (const line of lines) {
+              const cleaned = line.replace(/[^A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]/g, "").trim()
+              const words = cleaned.split(/\s+/).filter(w => w.length > 1)
+              if (cleaned.length > 10 && words.length >= 3 && cleaned === cleaned.toUpperCase()) {
+                extractedName = cleaned
+                break
+              }
             }
           }
 
-          // Extrair Matrícula
-          const matMatch = text.match(/Matr[ií]cula[:\s]*(\d{6,12})/i) || text.match(/(\d{7,12})/)
-          const extractedMat = matMatch ? matMatch[1] : ""
+          // ---- Extrair RG ----
+          let extractedRg = ""
+          const rgPatterns = [
+            /Registro\s*Geral[:\s.,]*(\d[\d.,\/\-\s]*\d)/i,
+            /R[\.\s]*G[\.\s]*[:\s]*(\d[\d.,\/\-\s]*)/i,
+            /(\d{2}[\.\s]?\d{3})\s*[\/\-]?\s*\d*/,
+          ]
+          for (const p of rgPatterns) {
+            const m = text.match(p)
+            if (m) {
+              // Limpar: apenas dígitos base, sem barra e sufixo
+              const raw = m[1].replace(/[\/\-].*/g, "") // Remove tudo após barra
+              extractedRg = raw.replace(/\D/g, "").slice(0, 5)
+              if (extractedRg.length >= 4) break
+              else extractedRg = ""
+            }
+          }
+
+          // ---- Extrair MATRÍCULA ----
+          let extractedMat = ""
+          const matPatterns = [
+            /Matr[ií]cula[:\s]*(\d{5,12})/i,
+            /MAT[:\s]*(\d{5,12})/i,
+          ]
+          for (const p of matPatterns) {
+            const m = text.match(p)
+            if (m) { extractedMat = m[1]; break }
+          }
+          // Fallback: número longo (7+ dígitos) que não é o RG
+          if (!extractedMat) {
+            const allNums = text.match(/\d{7,12}/g) || []
+            const rgDigits = extractedRg
+            extractedMat = allNums.find(n => !n.startsWith(rgDigits)) || allNums[0] || ""
+          }
+
+          console.log("Extraído => Nome:", extractedName, "| RG:", extractedRg, "| Mat:", extractedMat)
 
           setFormData(prev => ({
             ...prev,
@@ -128,13 +162,26 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
             rg: extractedRg || prev.rg,
             registration_number: extractedMat || prev.registration_number,
           }))
-          setOcrStatus("Documento processado!")
-        } catch {
-          setOcrStatus("OCR falhou. Preencha manualmente.")
+
+          setOcrStatus(
+            extractedName || extractedRg
+              ? `✅ Encontrado: ${[extractedName && "Nome", extractedRg && "RG", extractedMat && "Matrícula"].filter(Boolean).join(", ")}`
+              : "⚠️ Não conseguiu ler. Tente com mais luz ou preencha manualmente."
+          )
+        } catch (err) {
+          console.error("Erro OCR:", err)
+          setOcrStatus("⚠️ OCR falhou. Preencha manualmente.")
         }
       } else {
-        setOcrStatus("Verso anexado!")
+        setOcrStatus("✅ Verso anexado!")
       }
+
+      // ======= 3. COMPRIMIR PARA STORAGE (após OCR) =======
+      setOcrStatus(prev => prev + " Comprimindo...")
+      const compressed = await compressImage(file)
+      if (side === "front") setFrontFile(compressed)
+      else setBackFile(compressed)
+
     } catch (err) {
       console.error(err)
       setOcrStatus("Erro ao processar imagem.")
@@ -142,6 +189,7 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
       setLoading(false)
     }
   }
+
 
   const validateData = () => {
     const errs: Record<string, string> = {}
