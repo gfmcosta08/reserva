@@ -29,10 +29,13 @@ CREATE TABLE public.profiles (
 CREATE TABLE public.persons (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name TEXT NOT NULL,
-  registration_number TEXT UNIQUE NOT NULL,
+  rg TEXT UNIQUE NOT NULL, -- Registro Geral (apenas números)
+  registration_number TEXT UNIQUE NOT NULL, -- Matrícula
   function TEXT,
   status TEXT CHECK (status IN ('active', 'inactive')) DEFAULT 'active',
   pin_hash TEXT NOT NULL,
+  photo_url TEXT, -- URL da foto do RG no Storage
+  face_descriptor JSONB, -- Vetor numérico do reconhecimento facial
   failed_pin_attempts INT DEFAULT 0,
   pin_locked_until TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),

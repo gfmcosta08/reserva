@@ -11,14 +11,22 @@
   "dependencies": {
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "^4.22.0",
+    "@tensorflow/tfjs-converter": "^4.22.0",
+    "@tensorflow/tfjs-core": "^4.22.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
     "clsx": "latest",
     "date-fns": "^4.1.0",
+    "face-api.js": "^0.22.2",
     "lucide-react": "latest",
     "next": "latest",
     "next-themes": "^0.4.6",
     "react": "latest",
     "react-dom": "latest",
     "tailwind-merge": "latest",
+    "tesseract.js": "^7.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -26,9 +34,9 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "autoprefixer": "latest",
-    "postcss": "latest",
-    "tailwindcss": "latest",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.1",
     "typescript": "latest"
   }
 }
