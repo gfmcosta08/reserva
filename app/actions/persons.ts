@@ -62,8 +62,8 @@ export async function uploadRgPhoto(formData: FormData): Promise<{ url?: string;
 }
 
 export async function createPerson(data: z.infer<typeof personSchema> & {
-  rg_front_url: string
-  rg_back_url: string
+  rg_front_url?: string
+  rg_back_url?: string
 }) {
   const supabase = await createClient()
 
@@ -71,11 +71,6 @@ export async function createPerson(data: z.infer<typeof personSchema> & {
   const result = personSchema.safeParse(data)
   if (!result.success) {
     return { error: result.error.issues[0].message }
-  }
-
-  // Validar fotos obrigatórias
-  if (!data.rg_front_url || !data.rg_back_url) {
-    return { error: "As duas fotos do RG (frente e verso) são obrigatórias" }
   }
 
   // Hash do PIN
@@ -91,8 +86,8 @@ export async function createPerson(data: z.infer<typeof personSchema> & {
     registration_number: result.data.registration_number,
     function: result.data.function,
     pin_hash,
-    rg_front_url: data.rg_front_url,
-    rg_back_url: data.rg_back_url,
+    rg_front_url: data.rg_front_url || null,
+    rg_back_url: data.rg_back_url || null,
     face_descriptor: result.data.face_descriptor,
   })
 
@@ -135,6 +130,40 @@ export async function updatePerson(id: string, data: Record<string, any>) {
 export async function deletePerson(id: string) {
   const supabase = await createClient()
   const { error } = await supabase.from("persons").delete().eq("id", id)
+  if (error) return { error: error.message }
+
+  revalidatePath("/persons")
+  return { success: true }
+}
+
+// Verificar se a pessoa tem as fotos pendentes
+export async function checkPhotosPending(personId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("persons").select("rg_front_url, rg_back_url").eq("id", personId).single()
+  if (error) return { pending: true, missing: ["front", "back"] }
+
+  const missing: string[] = []
+  if (!data.rg_front_url) missing.push("front")
+  if (!data.rg_back_url) missing.push("back")
+
+  return { pending: missing.length > 0, missing }
+}
+
+// Anexar fotos pendentes a uma pessoa já cadastrada
+export async function attachPhotos(personId: string, frontUrl?: string, backUrl?: string) {
+  const supabase = await createClient()
+
+  // Só pode anexar se o campo estiver vazio (imutável)
+  const { data: person } = await supabase.from("persons").select("rg_front_url, rg_back_url").eq("id", personId).single()
+  if (!person) return { error: "Pessoa não encontrada" }
+
+  const update: any = {}
+  if (frontUrl && !person.rg_front_url) update.rg_front_url = frontUrl
+  if (backUrl && !person.rg_back_url) update.rg_back_url = backUrl
+
+  if (Object.keys(update).length === 0) return { error: "Nenhuma foto nova para anexar" }
+
+  const { error } = await supabase.from("persons").update(update).eq("id", personId)
   if (error) return { error: error.message }
 
   revalidatePath("/persons")

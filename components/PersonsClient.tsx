@@ -86,8 +86,8 @@ export default function PersonsClient() {
               <tr className="border-b border-slate-800 bg-slate-950/30">
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Identificação</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">RG / Matrícula</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Posto/Graduação</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status PIN</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest hidden md:table-cell">Posto</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Docs</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Ações</th>
               </tr>
             </thead>
@@ -133,17 +133,17 @@ export default function PersonsClient() {
                         <p className="text-xs text-slate-500">Matrícula: {person.registration_number}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 hidden md:table-cell">
                       <span className="text-sm text-slate-400 font-medium">{person.function || "-"}</span>
                     </td>
                     <td className="px-6 py-4">
-                      {person.failed_pin_attempts >= 5 ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold text-red-500 border border-red-500/20">
-                          <ShieldAlert className="h-3 w-3" /> Bloqueado
+                      {person.rg_front_url && person.rg_back_url ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-500 border border-green-500/20">
+                          <ShieldCheck className="h-3 w-3" /> Completo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold text-green-500 border border-green-500/20">
-                          <ShieldCheck className="h-3 w-3" /> Ativo
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-500 border border-yellow-500/20">
+                          <ShieldAlert className="h-3 w-3" /> Pendente
                         </span>
                       )}
                     </td>

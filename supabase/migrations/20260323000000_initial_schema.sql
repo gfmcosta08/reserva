@@ -35,8 +35,8 @@ CREATE TABLE public.persons (
   function TEXT,
   status TEXT CHECK (status IN ('active', 'inactive')) DEFAULT 'active',
   pin_hash TEXT NOT NULL,
-  rg_front_url TEXT NOT NULL, -- Foto frente do RG (imutável)
-  rg_back_url TEXT NOT NULL,  -- Foto verso do RG (imutável)
+  rg_front_url TEXT, -- Foto frente do RG (imutável após upload)
+  rg_back_url TEXT,  -- Foto verso do RG (imutável após upload)
   face_descriptor JSONB, -- Vetor numérico do reconhecimento facial
   failed_pin_attempts INT DEFAULT 0,
   pin_locked_until TIMESTAMP WITH TIME ZONE,
