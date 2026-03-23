@@ -121,7 +121,10 @@ export default function PersonsClient() {
                         <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-slate-400">
                           {person.full_name[0].toUpperCase()}
                         </div>
-                        <span className="font-semibold text-white">{person.full_name}</span>
+                        <div>
+                          <span className="font-semibold text-white block">{person.full_name}</span>
+                          <span className="text-xs text-slate-500">{person.email}</span>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
