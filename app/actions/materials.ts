@@ -41,7 +41,7 @@ export async function createMaterial(data: z.infer<typeof materialSchema>) {
   const result = materialSchema.safeParse(data)
   
   if (!result.success) {
-    return { error: result.error.errors[0].message }
+    return { error: result.error.issues[0].message }
   }
 
   const { error } = await supabase
