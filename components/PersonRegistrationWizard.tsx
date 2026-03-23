@@ -3,14 +3,12 @@
 import { useState } from "react"
 import { createPerson, uploadRgPhoto } from "@/app/actions/persons"
 import imageCompression from "browser-image-compression"
-import Tesseract from "tesseract.js"
 import { 
-  Camera, Check, X, UserPlus, Fingerprint, Loader2,
+  Check, X, UserPlus, Fingerprint, Loader2,
   FileText, ScanFace, CheckCircle, ChevronRight, ImagePlus,
   Mail, AlertTriangle
 } from "lucide-react"
 import FaceRegistration from "./FaceRegistration"
-import { preprocessImageForOCR } from "@/lib/image-preprocess"
 
 interface PersonWizardProps {
   onSuccess: () => void
@@ -54,6 +52,16 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // ===== OCR VIA API SERVER-SIDE =====
+  const runServerOCR = async (file: File) => {
+    const fd = new FormData()
+    fd.append("file", file)
+    const res = await fetch("/api/ocr", { method: "POST", body: fd })
+    const data = await res.json()
+    if (!res.ok || data.error) throw new Error(data.error || "Erro no OCR")
+    return data
+  }
+
   // ===== HANDLER PRINCIPAL: FOTO + OCR =====
   const handlePhoto = async (file: File, side: "front" | "back") => {
     setLoading(true)
@@ -64,104 +72,43 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
       if (side === "front") setFrontPreview(previewUrl)
       else setBackPreview(previewUrl)
 
-      // 2. OCR apenas na frente
+      // 2. OCR apenas na frente (via API server-side)
       if (side === "front") {
-        // PRÉ-PROCESSAR: preto e branco com alto contraste
-        setOcrStatus("Preparando imagem para leitura...")
-        let processedBlob: Blob
+        setOcrStatus("Enviando para leitura OCR...")
+        setOcrProgress(30)
+
         try {
-          processedBlob = await preprocessImageForOCR(file)
-        } catch {
-          processedBlob = file // fallback para original se preprocessamento falhar
+          const ocrResult = await runServerOCR(file)
+          setOcrProgress(90)
+
+          const { name, rg, registration } = ocrResult.extracted
+          console.log("OCR Resultado =>", ocrResult.extracted)
+          console.log("Texto completo:", ocrResult.fullText)
+
+          setFormData(prev => ({
+            ...prev,
+            full_name: name || prev.full_name,
+            rg: rg || prev.rg,
+            registration_number: registration || prev.registration_number,
+          }))
+
+          const found = [name && "Nome", rg && "RG", registration && "Matrícula"].filter(Boolean)
+          setOcrStatus(
+            found.length > 0
+              ? `✅ Encontrado: ${found.join(", ")}`
+              : "⚠️ Não conseguiu ler. Preencha manualmente."
+          )
+        } catch (err: any) {
+          console.error("Erro OCR:", err)
+          setOcrStatus("⚠️ " + (err.message || "OCR falhou. Preencha manualmente."))
         }
 
-        setOcrStatus("Lendo documento (pode levar alguns segundos)...")
-        const { data: { text } } = await Tesseract.recognize(processedBlob, 'por', {
-          logger: m => {
-            if (m.status === 'recognizing text') {
-              setOcrProgress(Math.floor(m.progress * 100))
-            }
-          }
-        })
-
-        console.log("===== OCR TEXTO COMPLETO =====")
-        console.log(text)
-        console.log("==============================")
-
-        // ---- EXTRAIR NOME ----
-        let extractedName = ""
-        const namePatterns = [
-          /Nome[:\s]+([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/i,
-          /NOME[:\s]*\n?\s*([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/,
-        ]
-        for (const p of namePatterns) {
-          const m = text.match(p)
-          if (m) { extractedName = m[1].trim().replace(/\s+/g, " "); break }
-        }
-        if (!extractedName) {
-          const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 6)
-          for (const line of lines) {
-            const cleaned = line.replace(/[^A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]/g, "").trim()
-            const words = cleaned.split(/\s+/).filter(w => w.length > 1)
-            if (cleaned.length > 10 && words.length >= 3 && cleaned === cleaned.toUpperCase()) {
-              extractedName = cleaned
-              break
-            }
-          }
-        }
-
-        // ---- EXTRAIR RG ----
-        let extractedRg = ""
-        const rgPatterns = [
-          /Registro\s*Geral[:\s.,]*(\d[\d.,\/\-\s]*\d)/i,
-          /R[\.\s]*G[\.\s]*[:\s]*(\d[\d.,\/\-\s]*)/i,
-          /(\d{2}[\.\s]?\d{3})\s*[\/\-]?\s*\d*/,
-        ]
-        for (const p of rgPatterns) {
-          const m = text.match(p)
-          if (m) {
-            const raw = m[1].replace(/[\/\-].*/g, "")
-            extractedRg = raw.replace(/\D/g, "").slice(0, 5)
-            if (extractedRg.length >= 4) break
-            else extractedRg = ""
-          }
-        }
-
-        // ---- EXTRAIR MATRÍCULA ----
-        let extractedMat = ""
-        const matPatterns = [
-          /Matr[ií]cula[:\s]*(\d{5,12})/i,
-          /MAT[:\s]*(\d{5,12})/i,
-        ]
-        for (const p of matPatterns) {
-          const m = text.match(p)
-          if (m) { extractedMat = m[1]; break }
-        }
-        if (!extractedMat) {
-          const allNums = text.match(/\d{7,12}/g) || []
-          extractedMat = allNums.find(n => !n.startsWith(extractedRg)) || allNums[0] || ""
-        }
-
-        console.log("Extraído => Nome:", extractedName, "| RG:", extractedRg, "| Mat:", extractedMat)
-
-        setFormData(prev => ({
-          ...prev,
-          full_name: extractedName || prev.full_name,
-          rg: extractedRg || prev.rg,
-          registration_number: extractedMat || prev.registration_number,
-        }))
-
-        const found = [extractedName && "Nome", extractedRg && "RG", extractedMat && "Matrícula"].filter(Boolean)
-        setOcrStatus(
-          found.length > 0
-            ? `✅ Encontrado: ${found.join(", ")}`
-            : "⚠️ Não conseguiu ler. Tente com mais luz ou preencha manualmente."
-        )
+        setOcrProgress(100)
       } else {
         setOcrStatus("✅ Verso anexado!")
       }
 
-      // 3. Comprimir para storage (APÓS OCR)
+      // 3. Comprimir para storage
       const compressed = await compressImage(file)
       if (side === "front") setFrontFile(compressed)
       else setBackFile(compressed)
