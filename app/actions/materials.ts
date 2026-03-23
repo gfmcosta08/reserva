@@ -14,7 +14,7 @@ const materialSchema = z.object({
 })
 
 export async function getMaterials(filters?: { status?: string; category_id?: string; search?: string }) {
-  const supabase = createClient()
+  const supabase = await createClient()
   let query = supabase
     .from("materials")
     .select("*, categories(name)")
@@ -37,7 +37,7 @@ export async function getMaterials(filters?: { status?: string; category_id?: st
 }
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const result = materialSchema.safeParse(data)
   
   if (!result.success) {
@@ -55,7 +55,7 @@ export async function createMaterial(data: z.infer<typeof materialSchema>) {
 }
 
 export async function updateMaterial(id: string, data: Partial<z.infer<typeof materialSchema>>) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase
     .from("materials")
     .update(data)
@@ -68,7 +68,7 @@ export async function updateMaterial(id: string, data: Partial<z.infer<typeof ma
 }
 
 export async function updateMaterialStatus(id: string, status: string, notes?: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase
     .from("materials")
     .update({ status, notes })

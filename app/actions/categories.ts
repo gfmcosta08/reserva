@@ -9,7 +9,7 @@ const categorySchema = z.object({
 })
 
 export async function getCategories() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from("categories")
     .select("*")
@@ -20,7 +20,7 @@ export async function getCategories() {
 }
 
 export async function createCategory(formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const name = formData.get("name") as string
 
   const result = categorySchema.safeParse({ name })
@@ -39,7 +39,7 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, name: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   
   const result = categorySchema.safeParse({ name })
   if (!result.success) {
@@ -58,7 +58,7 @@ export async function updateCategory(id: string, name: string) {
 }
 
 export async function deleteCategory(id: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase
     .from("categories")
     .delete()
