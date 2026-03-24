@@ -17,10 +17,8 @@ const req = https.request(options, res => {
   });
   res.on('end', () => {
     const json = JSON.parse(data);
-    const cautelasSchema = json.definitions.cautelas;
-    console.log("Cautelas columns:", Object.keys(cautelasSchema.properties));
-    const itemsSchema = json.definitions.cautela_items;
-    console.log("Cautela Items columns:", Object.keys(itemsSchema.properties));
+    const materialsSchema = json.definitions.materials;
+    console.log("Materials properties:", materialsSchema.properties);
   });
 });
 

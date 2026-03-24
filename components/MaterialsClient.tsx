@@ -85,7 +85,7 @@ export default function MaterialsClient({
 
     initialMaterials.forEach(m => {
       const catName = m.categories?.name || "";
-      const statusMap: any = { available: "Disponivel", in_use: "Em Uso", maintenance: "Manutencao", blocked: "Bloqueado" };
+      const statusMap: any = { available: "Disponivel", cautelado: "Em Uso", maintenance: "Manutencao", unavailable: "Bloqueado/Indisponível" };
       const statusLabel = statusMap[m.status] || m.status;
 
       csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${statusLabel}","${m.notes || ''}"\n`;
@@ -232,9 +232,9 @@ export default function MaterialsClient({
           >
             <option value="">Status</option>
             <option value="available">Disponível</option>
-            <option value="in_use">Em Uso</option>
+            <option value="cautelado">Em Uso</option>
             <option value="maintenance">Manutenção</option>
-            <option value="blocked">Bloqueado</option>
+            <option value="unavailable">Indisponível</option>
           </select>
         </div>
       </div>
@@ -335,9 +335,9 @@ export default function MaterialsClient({
 function StatusBadge({ status }: { status: string }) {
   const configs: any = {
     available: { color: "bg-green-500/10 text-green-500", label: "Disponível" },
-    in_use: { color: "bg-blue-500/10 text-blue-500", label: "Em Uso" },
+    cautelado: { color: "bg-blue-500/10 text-blue-500", label: "Em Uso" },
     maintenance: { color: "bg-amber-500/10 text-amber-500", label: "Manutenção" },
-    blocked: { color: "bg-red-500/10 text-red-500", label: "Bloqueado" },
+    unavailable: { color: "bg-red-500/10 text-red-500", label: "Indisponível" },
   };
 
   const config = configs[status] || configs.available;
