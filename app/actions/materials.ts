@@ -14,7 +14,13 @@ const materialSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function getMaterials(filters?: { status?: string; category_id?: string; search?: string }) {
+export async function getMaterials(filters?: { 
+  status?: string; 
+  category_id?: string; 
+  search?: string;
+  name?: string;
+  reservation_id?: string;
+}) {
   const supabase = await createClient()
   let query = supabase
     .from("materials")
@@ -26,6 +32,12 @@ export async function getMaterials(filters?: { status?: string; category_id?: st
   }
   if (filters?.category_id) {
     query = query.eq("category_id", filters.category_id)
+  }
+  if (filters?.name) {
+    query = query.eq("name", filters.name)
+  }
+  if (filters?.reservation_id) {
+    query = query.eq("reservation_id", filters.reservation_id)
   }
   if (filters?.search) {
     query = query.or(`name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%`)

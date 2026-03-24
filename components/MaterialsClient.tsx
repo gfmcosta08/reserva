@@ -21,11 +21,15 @@ import { importMaterialsCsv } from "@/app/actions/materials";
 export default function MaterialsClient({ 
   initialMaterials, 
   categories,
-  userRole = "operator"
+  userRole = "operator",
+  materialNames = [],
+  locations = []
 }: { 
   initialMaterials: any[]; 
   categories: any[];
   userRole?: string;
+  materialNames?: string[];
+  locations?: string[];
 }) {
   const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -174,8 +178,8 @@ export default function MaterialsClient({
       </div>
 
       {/* Filters Bar */}
-      <div className="flex h-14 items-center gap-4 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm">
-        <div className="flex-1 relative flex items-center">
+      <div className="flex min-h-14 py-2 items-center flex-wrap gap-4 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm">
+        <div className="flex-1 relative flex items-center min-w-[200px]">
           <Search className="absolute left-3 h-4 w-4 text-slate-500" />
           <input 
             type="text" 
@@ -185,18 +189,38 @@ export default function MaterialsClient({
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
-        <div className="h-6 w-px bg-slate-800" />
-        <div className="flex items-center gap-4">
+        <div className="hidden md:block h-6 w-px bg-slate-800" />
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs font-semibold text-slate-400">
             <Filter className="h-3 w-3" />
             Filtrar
           </div>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
+            defaultValue={searchParams.get("name") || ""}
+            onChange={(e) => handleFilter("name", e.target.value)}
+          >
+            <option value="">Por Material</option>
+            {materialNames.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <select 
+            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
+            defaultValue={searchParams.get("reservation_id") || ""}
+            onChange={(e) => handleFilter("reservation_id", e.target.value)}
+          >
+            <option value="">Por Localização</option>
+            {locations.map((loc) => (
+              <option key={loc} value={loc}>{loc}</option>
+            ))}
+          </select>
+          <select 
+            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
             defaultValue={searchParams.get("category_id") || ""}
             onChange={(e) => handleFilter("category_id", e.target.value)}
           >
-            <option value="">Todas Categorias</option>
+            <option value="">Por Categoria</option>
             {categories.map((cat: any) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
