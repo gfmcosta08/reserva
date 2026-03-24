@@ -15,7 +15,7 @@ import {
   ShieldAlert
 } from "lucide-react"
 
-export default function PersonsClient() {
+export default function PersonsClient({ userRole = "operator" }: { userRole?: string }) {
   const [persons, setPersons] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -149,12 +149,14 @@ export default function PersonsClient() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleDelete(person.id)}
-                          className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {userRole === "supervisor" && (
+                          <button 
+                            onClick={() => handleDelete(person.id)}
+                            className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

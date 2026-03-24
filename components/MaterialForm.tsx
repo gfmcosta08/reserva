@@ -34,6 +34,7 @@ export default function MaterialForm({
       patrimony_number: formData.get("patrimony_number") as string,
       serial_number: formData.get("serial_number") as string,
       internal_code: formData.get("internal_code") as string,
+      reservation_id: formData.get("reservation_id") as string,
       notes: formData.get("notes") as string,
     };
 
@@ -126,12 +127,22 @@ export default function MaterialForm({
               />
             </div>
 
-            <div className="md:col-span-2 space-y-2">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Identificação da Reserva</label>
+              <input 
+                name="reservation_id"
+                defaultValue={material?.reservation_id}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: ARMARIO-A-01 ou Numeração antiga"
+              />
+            </div>
+
+            <div className="md:col-span-1 space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Observações</label>
               <textarea 
                 name="notes"
                 defaultValue={material?.notes}
-                rows={3}
+                rows={2}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all resize-none"
                 placeholder="Detalhes técnicos, estado de conservação, etc."
               />

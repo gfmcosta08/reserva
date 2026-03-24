@@ -14,8 +14,15 @@ export default async function DashboardLayout({
     redirect("/auth/login");
   }
 
+  // Buscar role do perfil
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single()
+
   return (
-    <DashboardShell user={{ email: user.email }}>
+    <DashboardShell user={{ email: user.email, role: profile?.role || "operator" }}>
       {children}
     </DashboardShell>
   );

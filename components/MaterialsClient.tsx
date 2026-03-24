@@ -9,24 +9,92 @@ import {
   MoreVertical,
   Edit2,
   Trash2,
-  Tag
+  Tag,
+  Download,
+  Upload
 } from "lucide-react";
 import CategoryManager from "./CategoryManager";
 import MaterialForm from "./MaterialForm";
 import { useRouter, useSearchParams } from "next/navigation";
+import { importMaterialsCsv } from "@/app/actions/materials";
 
 export default function MaterialsClient({ 
   initialMaterials, 
-  categories 
+  categories,
+  userRole = "operator"
 }: { 
   initialMaterials: any[]; 
-  categories: any[] 
+  categories: any[];
+  userRole?: string;
 }) {
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const handleDownloadTemplate = () => {
+    const headers = ["Nome", "Patrimonio", "CodigoInterno", "NumeroSerie", "IdentificacaoReserva", "Categoria", "Observacoes"];
+    const csv = headers.join(",") + "\n" + 
+                "Algema Tática,PAT-001,ALG-01,12345,RESERVA-01,Armamento Menos Letal,Opcional\n" +
+                "Colete Balístico,PAT-002,COL-01,,RESERVA-02,Proteção Balística,Opcional";
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "modelo_importacao_materiais.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(`Deseja importar os materiais do arquivo ${file.name}?`)) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const text = await file.text();
+      // O backend vai dar parse do CSV
+      const result = await importMaterialsCsv(text);
+      if (result.error) {
+        alert("Erro na importação: " + result.error);
+      } else {
+        alert(`Sucesso! ${result.count} materiais importados/atualizados.`);
+      }
+    } catch (err: any) {
+      alert("Erro ao ler arquivo: " + err.message);
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+    }
+  };
+
+  const exportFilteredCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Status,Observacoes\n";
+
+    initialMaterials.forEach(m => {
+      const catName = m.categories?.name || "";
+      const statusMap: any = { available: "Disponivel", in_use: "Em Uso", maintenance: "Manutencao", blocked: "Bloqueado" };
+      const statusLabel = statusMap[m.status] || m.status;
+
+      csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${statusLabel}","${m.notes || ''}"\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `materiais_exportados_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   function handleSearch(term: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -55,13 +123,42 @@ export default function MaterialsClient({
           <h1 className="text-3xl font-bold text-white tracking-tight">Materiais</h1>
           <p className="text-slate-400 mt-1">Gerencie o inventário de armas e equipamentos.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <input 
+            type="file" 
+            accept=".csv" 
+            id="csvUpload" 
+            className="hidden" 
+            onChange={handleFileUpload} 
+            disabled={isImporting}
+          />
           <button 
-            onClick={() => setShowCategoryManager(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-200 rounded-xl font-medium border border-slate-700 hover:bg-slate-700 transition-all"
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium border border-slate-700 hover:text-white transition-all text-xs"
+          >
+            <Download className="h-4 w-4" />
+            Modelo CSV
+          </button>
+          <label 
+            htmlFor="csvUpload"
+            className={`flex items-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium border border-slate-700 hover:text-white transition-all text-xs cursor-pointer ${isImporting ? "opacity-50 pointer-events-none" : ""}`}
+          >
+            <Upload className="h-4 w-4" />
+            {isImporting ? "Importando..." : "Importar CSV"}
+          </label>
+          <button 
+            onClick={() => setShowCategories(true)}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 text-slate-300 rounded-xl font-medium border border-slate-700 hover:text-white transition-all text-xs"
           >
             <Tag className="h-4 w-4" />
             Categorias
+          </button>
+          <button 
+            onClick={exportFilteredCSV}
+            className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 text-emerald-500 rounded-xl font-medium border border-emerald-500/30 hover:bg-emerald-600/30 transition-all text-xs"
+          >
+            <Download className="h-4 w-4" />
+            Exportar Filtrados
           </button>
           <button 
             onClick={() => {
@@ -149,7 +246,9 @@ export default function MaterialsClient({
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-200">{m.name}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">{m.serial_number || 'S/N'}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                          ID Reserva: <span className="text-blue-400 font-bold">{m.reservation_id || 'Não definido'}</span>
+                        </p>
                       </div>
                     </div>
                   </td>
@@ -187,10 +286,11 @@ export default function MaterialsClient({
         </table>
       </div>
 
-      {showCategoryManager && (
+      {showCategories && (
         <CategoryManager 
           categories={categories} 
-          onClose={() => setShowCategoryManager(false)} 
+          onClose={() => setShowCategories(false)} 
+          userRole={userRole}
         />
       )}
 

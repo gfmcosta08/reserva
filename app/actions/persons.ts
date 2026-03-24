@@ -129,6 +129,15 @@ export async function updatePerson(id: string, data: Record<string, any>) {
 
 export async function deletePerson(id: string) {
   const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Usuário não autenticado" }
+  
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  if (profile?.role !== "supervisor") {
+    return { error: "Ação não permitida. Apenas supervisores podem excluir cadastros." }
+  }
+
   const { error } = await supabase.from("persons").delete().eq("id", id)
   if (error) return { error: error.message }
 

@@ -61,21 +61,35 @@ export async function POST(req: NextRequest) {
     // 1. NOME
     let name = ""
     const namePatterns = [
-      /Nome[:\s]+([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/i,
-      /NOME[:\s]*\n?\s*([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]{5,})/,
+      /Nome[:\s]+([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][a-zA-ZÁÀÃÂÉÈÊÍÓÔÕÚÇç\s]{5,})/i,
+      /NOME[:\s]*\n?\s*([A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ][a-zA-ZÁÀÃÂÉÈÊÍÓÔÕÚÇç\s]{5,})/i,
     ]
     for (const p of namePatterns) {
       const m = fullText.match(p)
       if (m) { name = m[1].trim().replace(/\s+/g, " "); break }
     }
-    // Fallback: linha longa em maiúsculas
+    // Fallback: heurística para encontrar nome completo (linha longa com várias palavras)
     if (!name) {
       const lines = fullText.split(/[\n\r]+/).map((l: string) => l.trim()).filter((l: string) => l.length > 6)
       for (const line of lines) {
-        const cleaned = line.replace(/[^A-ZÁÀÃÂÉÈÊÍÓÔÕÚÇ\s]/g, "").trim()
-        const words = cleaned.split(/\s+/).filter((w: string) => w.length > 1)
-        if (cleaned.length > 10 && words.length >= 3 && cleaned === cleaned.toUpperCase()) {
-          name = cleaned
+        const words = line.split(/\s+/).filter((w: string) => w.length > 2)
+        const lowerCleaned = line.toLowerCase()
+        if (line.length > 10 && words.length >= 2 && 
+            !lowerCleaned.includes("estado") && 
+            !lowerCleaned.includes("secretaria") &&
+            !lowerCleaned.includes("naturalidade") &&
+            !lowerCleaned.includes("nascimento") &&
+            !lowerCleaned.includes("republica") &&
+            !lowerCleaned.includes("identidade") &&
+            !lowerCleaned.includes("registro") &&
+            !lowerCleaned.includes("expedidor") &&
+            !lowerCleaned.includes("cpf") &&
+            !lowerCleaned.includes("pis") &&
+            !lowerCleaned.includes("pasep") &&
+            !lowerCleaned.includes("data") &&
+            !lowerCleaned.includes("validade") &&
+            !/\d/.test(line)) {
+          name = line
           break
         }
       }
@@ -87,15 +101,29 @@ export async function POST(req: NextRequest) {
       /Registro\s*Geral[:\s.,]*(\d[\d.,\/\-\s]*\d)/i,
       /R[\.\s]*G[\.\s]*[:\s]*(\d[\d.,\/\-\s]*)/i,
       /IDENTIDADE[:\s]*(\d[\d.,\/\-\s]*\d)/i,
-      /(\d{2}[\.\s]?\d{3})\s*[\/\-]?\s*\d*/,
+      /RG\s*\/?[a-zA-Z\s]*\n*(\d[\d.,\/\-\s]*\d)/i, 
     ]
     for (const p of rgPatterns) {
       const m = fullText.match(p)
       if (m) {
         const raw = m[1].replace(/[\/\-].*/g, "") // Remove tudo após barra
-        rg = raw.replace(/\D/g, "").slice(0, 5)
+        rg = raw.replace(/\D/g, "").slice(0, 9)
         if (rg.length >= 4) break
         else rg = ""
+      }
+    }
+    if (!rg) {
+      // Procura sequências de 5 a 9 dígitos isoladas
+      const numMatches = fullText.match(/\b\d{5,9}\b/g) || []
+      if (numMatches.length > 0) {
+        // Assume o primeiro número que pareça RG e não CPF
+        rg = numMatches.find((n: string) => n !== "000000000") || numMatches[0]
+      } else {
+        // Tentativa de achar números com ponto e traço e filtrar dígitos
+        const withDots = fullText.match(/(?:\d\.?){5,10}/g) || []
+        if (withDots.length > 0) {
+          rg = withDots[0].replace(/\D/g, "")
+        }
       }
     }
 
@@ -112,7 +140,8 @@ export async function POST(req: NextRequest) {
     }
     if (!registration) {
       const allNums = fullText.match(/\d{7,12}/g) || []
-      registration = allNums.find((n: string) => !n.startsWith(rg)) || allNums[0] || ""
+      // Evitar que a matrícula seja o mesmo que o RG ou CPF.
+      registration = allNums.find((n: string) => !n.includes(rg) && n.length >= 7) || ""
     }
 
     return NextResponse.json({

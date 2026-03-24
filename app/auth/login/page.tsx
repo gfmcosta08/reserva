@@ -32,40 +32,47 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-950 px-4 overflow-hidden">
+      {/* Background Orbs for Ambient Glow */}
+      <div className="absolute top-[-10%] left-[-10%] h-[50vw] w-[50vw] rounded-full bg-blue-600/20 blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] h-[50vw] w-[50vw] rounded-full bg-indigo-600/20 blur-[120px]" />
+
+      <div className="relative w-full max-w-md space-y-8 rounded-3xl border border-white/5 bg-slate-900/40 p-10 shadow-2xl backdrop-blur-2xl">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white">Acesso ao Sistema</h2>
-          <p className="mt-2 text-sm text-slate-400">Reserva de Armas e Controle de Material</p>
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl shadow-blue-900/50">
+            <span className="text-3xl font-black text-white">R</span>
+          </div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white">RESERVA</h2>
+          <p className="mt-2 text-sm font-medium text-slate-400">Sistema de Controle de Material</p>
         </div>
         
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+        <form className="mt-10 space-y-6" onSubmit={handleLogin}>
           {error && (
-            <div className="rounded-md bg-red-900/50 p-3 text-sm text-red-200">
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-medium text-red-400 backdrop-blur-sm animate-in fade-in slide-in-from-top-4">
               {error}
             </div>
           )}
           
-          <div className="space-y-4 rounded-md shadow-sm">
+          <div className="space-y-5">
             <div>
-              <label className="text-sm font-medium text-slate-300">E-mail</label>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">E-mail Operacional</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
-                placeholder="admin@reserva.local"
+                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 shadow-inner transition-all hover:border-slate-600 focus:border-blue-500 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                placeholder="operador@reserva.gov"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-slate-300">Senha</label>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-400">Senha de Acesso</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:text-sm"
+                className="block w-full rounded-xl border border-slate-700/50 bg-slate-800/50 px-4 py-3 text-white placeholder-slate-500 shadow-inner transition-all hover:border-slate-600 focus:border-blue-500 focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 placeholder="••••••••"
               />
             </div>
@@ -74,9 +81,12 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
+            className="group relative flex w-full justify-center overflow-hidden rounded-xl bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-900/40 transition-all hover:scale-[1.02] hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:pointer-events-none disabled:opacity-50"
           >
-            {loading ? "Entrando..." : "Entrar"}
+            <div className="absolute inset-0 flex h-full w-full justify-center [transform:skew(-12deg)_translateX(-100%)] group-hover:duration-1000 group-hover:[transform:skew(-12deg)_translateX(100%)]">
+              <div className="relative h-full w-8 bg-white/20" />
+            </div>
+            <span className="relative">{loading ? "Autenticando..." : "Acessar Sistema"}</span>
           </button>
         </form>
       </div>

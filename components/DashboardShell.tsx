@@ -20,6 +20,7 @@ interface DashboardShellProps {
   children: React.ReactNode
   user: {
     email?: string
+    role?: string
   }
 }
 
@@ -121,7 +122,9 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="text-sm font-bold text-white truncate">{user.email?.split('@')[0]}</p>
-              <p className="text-[10px] uppercase font-bold text-blue-500 tracking-widest opacity-80">Operador</p>
+              <p className="text-[10px] uppercase font-bold tracking-widest opacity-80" style={{ color: user.role === 'supervisor' ? '#f59e0b' : '#3b82f6' }}>
+                {user.role === 'supervisor' ? 'Supervisor' : 'Operador'}
+              </p>
             </div>
           </div>
           <form action="/auth/logout" method="POST">

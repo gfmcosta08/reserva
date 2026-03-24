@@ -72,41 +72,37 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
       if (side === "front") setFrontPreview(previewUrl)
       else setBackPreview(previewUrl)
 
-      // 2. OCR apenas na frente (via API server-side)
-      if (side === "front") {
-        setOcrStatus("Enviando para leitura OCR...")
-        setOcrProgress(30)
+      // 2. OCR em qualquer imagem anexada
+      setOcrStatus("Lendo dados da imagem (OCR)...")
+      setOcrProgress(30)
 
-        try {
-          const ocrResult = await runServerOCR(file)
-          setOcrProgress(90)
+      try {
+        // Envia o arquivo original (ou já comprimido conforme preferência)
+        const ocrResult = await runServerOCR(file)
+        setOcrProgress(90)
 
-          const { name, rg, registration } = ocrResult.extracted
-          console.log("OCR Resultado =>", ocrResult.extracted)
-          console.log("Texto completo:", ocrResult.fullText)
+        const { name, rg, registration } = ocrResult.extracted
+        console.log(`OCR Resultado (${side}) =>`, ocrResult.extracted)
 
-          setFormData(prev => ({
-            ...prev,
-            full_name: name || prev.full_name,
-            rg: rg || prev.rg,
-            registration_number: registration || prev.registration_number,
-          }))
+        setFormData(prev => ({
+          ...prev,
+          full_name: name || prev.full_name,
+          rg: rg || prev.rg,
+          registration_number: registration || prev.registration_number,
+        }))
 
-          const found = [name && "Nome", rg && "RG", registration && "Matrícula"].filter(Boolean)
-          setOcrStatus(
-            found.length > 0
-              ? `✅ Encontrado: ${found.join(", ")}`
-              : "⚠️ Não conseguiu ler. Preencha manualmente."
-          )
-        } catch (err: any) {
-          console.error("Erro OCR:", err)
-          setOcrStatus("⚠️ " + (err.message || "OCR falhou. Preencha manualmente."))
-        }
-
-        setOcrProgress(100)
-      } else {
-        setOcrStatus("✅ Verso anexado!")
+        const found = [name && "Nome", rg && "RG", registration && "Matrícula"].filter(Boolean)
+        setOcrStatus(
+          found.length > 0
+            ? `✅ Encontrado: ${found.join(", ")}`
+            : "⚠️ Nenhum dado legível nesta imagem."
+        )
+      } catch (err: any) {
+        console.error("Erro OCR:", err)
+        setOcrStatus("⚠️ Falha na leitura OCR desta imagem.")
       }
+
+      setOcrProgress(100)
 
       // 3. Comprimir para storage
       const compressed = await compressImage(file)
@@ -217,12 +213,12 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
         {step === 1 && (
           <div className="space-y-5">
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-white">Documentos do RG</h3>
-              <p className="text-slate-400 text-sm">Tire fotos da frente e verso. <span className="text-yellow-500 font-medium">Opcional agora, cobrado na cautela.</span></p>
+              <h3 className="text-lg font-semibold text-white">Documento de Identificação</h3>
+              <p className="text-slate-400 text-sm">Fotografe frente e verso do documento em qualquer ordem. <span className="text-yellow-500 font-medium">Opcional agora, alertado na cautela.</span></p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <PhotoUploadBox side="front" preview={frontPreview} label="📄 Frente do RG" />
-              <PhotoUploadBox side="back" preview={backPreview} label="📄 Verso do RG" />
+              <PhotoUploadBox side="front" preview={frontPreview} label="📄 Imagem 1 do Documento" />
+              <PhotoUploadBox side="back" preview={backPreview} label="📄 Imagem 2 do Documento" />
             </div>
             {!photosAttached && (
               <div className="flex items-start gap-2 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
@@ -328,20 +324,28 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
           <div className="space-y-5">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-white">Biometria Facial</h3>
-              <p className="text-slate-400 text-sm">Opcional. Pode pular e cadastrar apenas com PIN.</p>
+              <p className="text-slate-400 text-sm">Capture o rosto para usar como <span className="text-blue-400 font-medium">assinatura nas cautelas</span>.</p>
             </div>
             <FaceRegistration onCapture={d => setFormData({...formData, face_descriptor: d})} />
             <div className="flex gap-3">
               <button onClick={() => setStep(3)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
               <button onClick={handleSubmit} disabled={loading}
                 className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />} Concluir
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />} Concluir Cadastro
               </button>
             </div>
-            <button onClick={handleSubmit} disabled={loading}
-              className="w-full text-xs font-bold text-slate-500 hover:text-slate-400 uppercase tracking-widest">
-              Pular biometria
-            </button>
+            {formData.face_descriptor.length === 0 && (
+              <div className="text-center space-y-2">
+                <div className="flex items-center justify-center gap-2 text-[10px] text-yellow-500 font-bold uppercase tracking-wider">
+                  <AlertTriangle className="h-3 w-3" />
+                  Sem biometria, a cautela usará PIN como assinatura
+                </div>
+                <button onClick={handleSubmit} disabled={loading}
+                  className="text-[10px] font-medium text-slate-600 hover:text-slate-400 underline underline-offset-2">
+                  Pular e usar apenas PIN
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

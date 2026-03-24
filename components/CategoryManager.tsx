@@ -13,10 +13,12 @@ import { createCategory, deleteCategory } from "@/app/actions/categories";
 
 export default function CategoryManager({ 
   categories, 
-  onClose 
+  onClose,
+  userRole = "operator"
 }: { 
   categories: any[]; 
-  onClose: () => void 
+  onClose: () => void;
+  userRole?: string;
 }) {
   const [newCategory, setNewCategory] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -95,12 +97,14 @@ export default function CategoryManager({
               categories.map((cat) => (
                 <div key={cat.id} className="flex items-center justify-between p-3 bg-slate-800/30 rounded-xl border border-slate-800/50 group hover:border-slate-700 transition-all">
                   <span className="text-sm font-medium text-slate-300">{cat.name}</span>
-                  <button 
-                    onClick={() => handleDelete(cat.id)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {userRole === "supervisor" && (
+                    <button 
+                      onClick={() => handleDelete(cat.id)}
+                      className="p-1.5 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))
             )}

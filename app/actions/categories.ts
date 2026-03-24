@@ -59,6 +59,15 @@ export async function updateCategory(id: string, name: string) {
 
 export async function deleteCategory(id: string) {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Usuário não autenticado" }
+  
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+  if (profile?.role !== "supervisor") {
+    return { error: "Ação não permitida. Apenas supervisores podem excluir." }
+  }
+
   const { error } = await supabase
     .from("categories")
     .delete()
