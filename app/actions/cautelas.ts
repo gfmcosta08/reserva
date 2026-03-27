@@ -307,6 +307,31 @@ export async function getAvailableMaterials(categoryId?: string) {
   return data
 }
 
+// ===== VERIFICAR CAUTELAS PENDENTES DE UMA PESSOA =====
+export async function getPendingCautelasForPerson(personId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("cautelas")
+    .select(`
+      id, type, status, created_at, notes,
+      profiles(name)
+    `)
+    .eq("person_id", personId)
+    .in("status", ["open", "partial"])
+    .order("created_at", { ascending: false })
+
+  if (error) return []
+
+  // Verificar se há cautelas diárias vencidas (mais de 24h)
+  const now = new Date()
+  const vinteQuatroHorasAtras = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+  return data?.map(cautela => ({
+    ...cautela,
+    is_overdue: cautela.type === "daily" && new Date(cautela.created_at) < vinteQuatroHorasAtras
+  })) || []
+}
+
 // ===== CRIAR CAUTELA COM VERIFICAÇÃO FACIAL (sem PIN) =====
 export async function createCautelaFaceAuth(data: {
   person_id: string

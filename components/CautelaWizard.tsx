@@ -1,13 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { searchPersons, getAvailableMaterials, createCautela, createCautelaFaceAuth } from "@/app/actions/cautelas"
+import { useState, useEffect, useCallback } from "react"
+import { searchPersons, getAvailableMaterials, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
 import { getCategories } from "@/app/actions/categories"
 import FaceVerification from "./FaceVerification"
 import {
   X, Search, ChevronRight, Check, ClipboardList, Users, Package,
-  ScanFace, Loader2, AlertTriangle, Trash2, Plus, CheckCircle, Fingerprint
+  ScanFace, Loader2, AlertTriangle, Trash2, Plus, CheckCircle, Fingerprint,
+  AlertCircle, Info, Clock, Image as ImageIcon, UserCheck, Calendar
 } from "lucide-react"
+import Link from "next/link"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 interface CautelaWizardProps {
   onSuccess: () => void
@@ -52,6 +56,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [searching, setSearching] = useState(false)
   const [photoWarning, setPhotoWarning] = useState(false)
+  const [pendingCautelas, setPendingCautelas] = useState<any[]>([])
+  const [loadingPending, setLoadingPending] = useState(false)
 
   // Step 2: Materiais
   const [categories, setCategories] = useState<any[]>([])
@@ -60,6 +66,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
   const [materialSearch, setMaterialSearch] = useState("")
   const [loadingMaterials, setLoadingMaterials] = useState(false)
+  const [otherMaterial, setOtherMaterial] = useState("")
 
   // Step 3: Resumo
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
@@ -104,10 +111,24 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     return () => clearTimeout(timer)
   }, [searchQuery])
 
+  // Buscar cautelas pendentes ao selecionar pessoa
+  useEffect(() => {
+    if (selectedPerson) {
+      setLoadingPending(true)
+      getPendingCautelasForPerson(selectedPerson.id)
+        .then(setPendingCautelas)
+        .catch(() => setPendingCautelas([]))
+        .finally(() => setLoadingPending(false))
+    } else {
+      setPendingCautelas([])
+    }
+  }, [selectedPerson])
+
   const selectPerson = (person: Person) => {
     setSelectedPerson(person)
     setSearchResults([])
     setSearchQuery("")
+    setPendingCautelas([])
     // Verificar fotos
     if (!person.rg_front_url || !person.rg_back_url) {
       setPhotoWarning(true)
