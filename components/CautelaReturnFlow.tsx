@@ -6,6 +6,7 @@ import {
   RotateCcw, Ban, Clock, CheckCircle, User,
   AlertCircle, MessageSquare, CheckSquare, Square
 } from "lucide-react"
+import { processBulkDevolution } from "@/app/actions/cautelas"
 
 interface CautelaReturnFlowProps {
   cautelaId: string
@@ -167,7 +168,7 @@ export default function CautelaReturnFlow({
     return null
   }
 
-  // Submeter devolução
+  // Submeter devolução (usando processBulkDevolution para 1 única chamada)
   const handleSubmit = async () => {
     // Validar
     const validation = validateReturn()
@@ -180,31 +181,24 @@ export default function CautelaReturnFlow({
     setValidationError(null)
 
     try {
-      // Enviar cada item processado
-      for (const item of itemStates) {
-        if (!item.is_confirmed && item.quantity_returned === 0) {
-          // Item não processado, pular
-          continue
-        }
+      // Preparar dados para devolução em lote
+      const itemsToProcess = itemStates
+        .filter(item => item.is_confirmed || item.quantity_returned > 0)
+        .map(item => ({
+          cautelaItemId: item.id,
+          confirmed: item.is_confirmed,
+          quantityReturned: item.quantity_returned > 0 ? item.quantity_returned : undefined,
+          notes: item.notes || undefined
+        }))
 
-        const response = await fetch("/api/cautela-return", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            cautela_item_id: item.id,
-            status: item.status,
-            quantity_returned: item.quantity_returned,
-            notes: item.notes || undefined
-          })
-        })
+      // Usar função de devolução em lote (1 chamada em vez de N)
+      const result = await processBulkDevolution(cautelaId, itemsToProcess)
 
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.message || "Erro ao processar devolução")
-        }
+      if (!result.success) {
+        throw new Error(result.error || "Erro ao processar devolução")
       }
 
-      setSuccessMessage("Devolução processada com sucesso!")
+      setSuccessMessage(`Devolução processada com sucesso! (${result.processedCount} item(ns))`)
       setTimeout(() => {
         onUpdate()
         onClose()
