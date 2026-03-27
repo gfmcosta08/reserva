@@ -230,10 +230,11 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [loadingMaterials, setLoadingMaterials] = useState(false)
   const [otherMaterial, setOtherMaterial] = useState("")
 
-  // Validação de calibre (INCOMPATIBILIDADES NÃO SÃO BLOQUEANTES)
+  // Validação de calibre (INCOMPATIBILIDADES SÃO BLOQUEANTES)
   const [caliberIncompatibilities, setCaliberIncompatibilities] = useState<CaliberMismatch[]>([])
   const [caliberWarnings, setCaliberWarnings] = useState<string[]>([])
   const [selectedWeaponForCaliber, setSelectedWeaponForCaliber] = useState<Material | null>(null)
+  const [caliberOverrideConfirmed, setCaliberOverrideConfirmed] = useState(false)
 
   // Step 3: Resumo
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
@@ -350,8 +351,18 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
 
   const handleNextStep = () => {
     if (step === 1 && selectedPerson) setStep(2)
-    else if (step === 2 && selectedMaterials.length > 0) setStep(3)
-    else if (step === 3) setStep(4)
+    else if (step === 2 && selectedMaterials.length > 0) {
+      // BLOQUEANTE: Não avança se houver incompatibilidade de calibre sem confirmação
+      if (caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed) {
+        alert("Existe incompatibilidade de calibre que precisa ser confirmada antes de prosseguir.")
+        return
+      }
+      setStep(3)
+    }
+    else if (step === 3) {
+      // Validação final no resumo
+      setStep(4)
+    }
   }
 
   // Submeter cautela com PIN (fallback)
@@ -697,6 +708,47 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     <p className="text-xs text-green-400">Munições compatíveis com a arma selecionada</p>
                   </div>
                 )}
+
+                {/* BLOQUEANTE: Confirmação de incompatibilidade */}
+                {caliberIncompatibilities.length > 0 && (
+                  <div className="p-4 bg-red-500/10 border-2 border-red-500/40 rounded-lg space-y-3">
+                    <div className="flex items-start gap-3">
+                      <ShieldAlert className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-red-400">
+                          Atenção: Incompatibilidade de calibre detectada
+                        </p>
+                        <p className="text-xs text-red-300/80 mt-1">
+                          Para prosseguir, você deve confirmar que está ciente do risco.
+                        </p>
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={caliberOverrideConfirmed}
+                        onChange={(e) => setCaliberOverrideConfirmed(e.target.checked)}
+                        className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500 focus:ring-offset-slate-900"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-white">
+                          Declaro que estou ciente da incompatibilidade de calibre
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          Munições incompatíveis: {caliberIncompatibilities.map(i => i.materialName).join(", ")}
+                        </p>
+                      </div>
+                    </label>
+
+                    {caliberOverrideConfirmed && (
+                      <div className="flex items-center gap-2 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
+                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <p className="text-xs text-green-400">Incompatibilidade confirmada. Agora você pode prosseguir.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -851,9 +903,23 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
 
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
-              <button onClick={handleNextStep} disabled={selectedMaterials.length === 0}
-                className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50"
-              >Próximo: Resumo <ChevronRight className="h-4 w-4" /></button>
+              <button onClick={handleNextStep}
+                disabled={
+                  selectedMaterials.length === 0 ||
+                  (caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed)
+                }
+                className={`flex-[2] flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold shadow-lg transition-all ${
+                  caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed
+                    ? "bg-red-600/50 text-white/50 cursor-not-allowed"
+                    : "bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500"
+                }`}
+              >
+                {caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed ? (
+                  <><ShieldAlert className="h-4 w-4" /> Resolver incompatibilidade <ChevronRight className="h-4 w-4" /></>
+                ) : (
+                  <>Próximo: Resumo <ChevronRight className="h-4 w-4" /></>
+                )}
+              </button>
             </div>
           </div>
         )}
