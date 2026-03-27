@@ -307,9 +307,13 @@ export async function getAvailableMaterials(categoryId?: string) {
   return data
 }
 
-// ===== VERIFICAR CAUTELAS PENDENTES DE UMA PESSOA =====
+// ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
+// Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
+// Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)
 export async function getPendingCautelasForPerson(personId: string) {
   const supabase = await createClient()
+
+  // Buscar apenas cautelas DIÁRIAS pendentes
   const { data, error } = await supabase
     .from("cautelas")
     .select(`
@@ -317,19 +321,39 @@ export async function getPendingCautelasForPerson(personId: string) {
       profiles(name)
     `)
     .eq("person_id", personId)
+    .eq("type", "daily") // FILTRO: Apenas cautelas DIÁRIAS
     .in("status", ["open", "partial"])
     .order("created_at", { ascending: false })
 
   if (error) return []
 
+  // Se não há cautelas diárias pendentes, retornar vazio
+  if (!data || data.length === 0) return []
+
+  // Buscar os itens de cada cautela diária para mostrar detalhes
+  const cautelaIds = data.map(c => c.id)
+  const { data: items } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, cautela_id, status,
+      materials(name, patrimony_number)
+    `)
+    .in("cautela_id", cautelaIds)
+    .eq("status", "pending")
+
   // Verificar se há cautelas diárias vencidas (mais de 24h)
   const now = new Date()
   const vinteQuatroHorasAtras = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
-  return data?.map(cautela => ({
-    ...cautela,
-    is_overdue: cautela.type === "daily" && new Date(cautela.created_at) < vinteQuatroHorasAtras
-  })) || []
+  return data?.map(cautela => {
+    const cautelaItems = items?.filter(i => i.cautela_id === cautela.id) || []
+    return {
+      ...cautela,
+      is_overdue: new Date(cautela.created_at) < vinteQuatroHorasAtras,
+      items: cautelaItems,
+      items_count: cautelaItems.length
+    }
+  }) || []
 }
 
 // ===== CRIAR CAUTELA COM VERIFICAÇÃO FACIAL (sem PIN) =====

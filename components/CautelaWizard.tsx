@@ -305,7 +305,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
 
                 {/* ===== ALERTAS NÃO BLOQUEANTES ===== */}
 
-                {/* Cautelas Pendentes */}
+                {/* Cautelas Pendentes (apenas DIÁRIAS) */}
                 {loadingPending ? (
                   <div className="flex items-center gap-2 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
                     <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
@@ -331,15 +331,30 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           <p className={`text-xs font-medium ${
                             cautela.is_overdue ? "text-red-400" : "text-yellow-400"
                           }`}>
-                            Cautela {cautela.type === "daily" ? "Diária" : "Permanente"} {cautela.is_overdue ? "VENCIDA" : "em aberto"}
+                            Cautela Diária {cautela.is_overdue ? "VENCIDA" : "em aberto"}
+                            {cautela.items_count > 0 && ` (${cautela.items_count} item(ns))`}
                           </p>
                           <p className="text-[10px] text-slate-400 mt-0.5">
                             Criada em {format(new Date(cautela.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
                             {cautela.profiles?.name && ` • Operador: ${cautela.profiles.name}`}
                           </p>
+                          {/* Lista de itens pendentes */}
+                          {cautela.items && cautela.items.length > 0 && (
+                            <div className="mt-2 space-y-1 pl-1">
+                              {cautela.items.map((item: any) => (
+                                <div key={item.id} className="flex items-center gap-1.5 text-[10px] text-slate-300">
+                                  <Package className="h-3 w-3 text-slate-500" />
+                                  <span>{item.materials?.name || "Material"}</span>
+                                  {item.materials?.patrimony_number && (
+                                    <span className="text-slate-500">Pat: {item.materials.patrimony_number}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <Link
                             href={`/cautelas?id=${cautela.id}`}
-                            className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-1"
+                            className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-2"
                           >
                             Ver detalhes <ChevronRight className="h-2.5 w-2.5" />
                           </Link>
@@ -350,7 +365,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                 ) : (
                   <div className="flex items-center gap-2 p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-green-400">Nenhuma cautela pendente encontrada</p>
+                    <p className="text-xs text-green-400">Nenhuma cautela diária pendente</p>
                   </div>
                 )}
 
