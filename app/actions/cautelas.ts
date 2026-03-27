@@ -206,30 +206,63 @@ export async function createCautela(data: {
   return { success: true, cautelaId: cautela.id }
 }
 
-// ===== DEVOLVER ITEM =====
-export async function returnItem(cautelaItemId: string, status: "returned" | "damaged" | "missing", notes?: string) {
+// ===== DEVOLVER ITEM (com suporte a quantidade) =====
+export async function returnItem(
+  cautelaItemId: string,
+  status: "returned" | "damaged" | "missing",
+  notes?: string,
+  quantityReturned?: number
+) {
   const supabase = await createClient()
 
   // 1. Buscar item e material_id
   const { data: item, error: itemError } = await supabase
     .from("cautela_items")
-    .select("id, material_id, cautela_id, status")
+    .select("id, material_id, cautela_id, status, quantity_delivered")
     .eq("id", cautelaItemId)
     .single()
 
   if (itemError || !item) return { error: "Item não encontrado" }
   if (item.status !== "pending") return { error: "Este item já foi processado" }
 
+  // Determinar quantidade devolvida
+  const qtyDelivered = item.quantity_delivered || 1
+  const qtyReturn = (status === "damaged" || status === "missing")
+    ? 0
+    : (quantityReturned ?? qtyDelivered)
+
+  // Validar quantidade
+  if (qtyReturn < 0 || qtyReturn > qtyDelivered) {
+    return { error: `Quantidade inválida. Deve estar entre 0 e ${qtyDelivered}` }
+  }
+
+  // Obter operador logado
+  const { data: { user } } = await supabase.auth.getUser()
+
   // 2. Atualizar status do item
   const { error: updateItemError } = await supabase
     .from("cautela_items")
-    .update({ status, notes: notes || null })
+    .update({
+      status,
+      notes: notes || null,
+      quantity_returned: qtyReturn,
+      returned_at: new Date().toISOString(),
+      returned_by: user?.id || null
+    })
     .eq("id", cautelaItemId)
 
   if (updateItemError) return { error: updateItemError.message }
 
   // 3. Atualizar status do material
-  const materialStatus = status === "returned" ? "available" : status === "damaged" ? "maintenance" : "unavailable"
+  let materialStatus: string
+  if (status === "returned") {
+    materialStatus = qtyReturn === qtyDelivered ? "available" : "pending_return"
+  } else if (status === "damaged") {
+    materialStatus = "maintenance"
+  } else {
+    materialStatus = "unavailable"
+  }
+
   await supabase
     .from("materials")
     .update({ status: materialStatus })
@@ -238,11 +271,15 @@ export async function returnItem(cautelaItemId: string, status: "returned" | "da
   // 4. Verificar se todos os itens da cautela foram processados
   const { data: allItems } = await supabase
     .from("cautela_items")
-    .select("status")
+    .select("status, quantity_delivered, quantity_returned")
     .eq("cautela_id", item.cautela_id)
 
   const allDone = allItems?.every(i => i.status !== "pending")
-  const hasDivergence = allItems?.some(i => i.status === "damaged" || i.status === "missing")
+  const hasDivergence = allItems?.some(i =>
+    i.status === "damaged" ||
+    i.status === "missing" ||
+    (i.quantity_returned !== undefined && i.quantity_returned < (i.quantity_delivered || 1))
+  )
 
   if (allDone) {
     const cautelaStatus = hasDivergence ? "divergent" : "closed"
@@ -267,7 +304,14 @@ export async function returnItem(cautelaItemId: string, status: "returned" | "da
     action: auditAction,
     entity: "cautela_items",
     entity_id: cautelaItemId,
-    after_state: { status, material_id: item.material_id, cautela_id: item.cautela_id },
+    after_state: {
+      status,
+      quantity_returned: qtyReturn,
+      quantity_delivered: qtyDelivered,
+      material_id: item.material_id,
+      cautela_id: item.cautela_id
+    },
+    user_id: user?.id
   })
 
   revalidatePath("/cautelas")

@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import { getCautelaById, returnItem } from "@/app/actions/cautelas"
+import CautelaReturnFlow from "./CautelaReturnFlow"
 import {
   X, Package, Check, AlertTriangle, Loader2,
-  RotateCcw, Ban, Clock, CheckCircle, User
+  RotateCcw, Ban, Clock, CheckCircle, User, ArrowRight
 } from "lucide-react"
 
 interface CautelaDetailProps {
@@ -17,6 +18,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   const [cautela, setCautela] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showReturnFlow, setShowReturnFlow] = useState(false)
   const [returning, setReturning] = useState<string | null>(null)
   const [error, setError] = useState("")
 
@@ -48,6 +50,12 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     setReturning(null)
   }
 
+  const handleReturnFlowComplete = () => {
+    setShowReturnFlow(false)
+    loadData()
+    onUpdate()
+  }
+
   const statusMap: Record<string, { label: string; color: string; icon: any }> = {
     pending: { label: "Pendente", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20", icon: Clock },
     returned: { label: "Devolvido", color: "text-green-400 bg-green-500/10 border-green-500/20", icon: CheckCircle },
@@ -61,6 +69,10 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     closed: { label: "Fechada", color: "text-green-400 bg-green-500/10" },
     divergent: { label: "Divergente", color: "text-red-400 bg-red-500/10" },
   }
+
+  // Contadores
+  const pendingItems = items.filter(i => i.status === "pending")
+  const processedItems = items.filter(i => i.status !== "pending")
 
   if (loading) {
     return (
@@ -76,6 +88,18 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
         <p className="text-red-400">{error || "Cautela não encontrada"}</p>
         <button onClick={onClose} className="mt-4 text-sm text-slate-400 hover:text-white">Fechar</button>
       </div>
+    )
+  }
+
+  // Se estiver no fluxo de devolução, mostrar componente de retorno
+  if (showReturnFlow && pendingItems.length > 0) {
+    return (
+      <CautelaReturnFlow
+        cautelaId={cautelaId}
+        items={items}
+        onClose={() => setShowReturnFlow(false)}
+        onUpdate={handleReturnFlowComplete}
+      />
     )
   }
 
@@ -119,15 +143,33 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
 
         {/* Itens */}
         <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">
-            Itens ({items.length})
-          </p>
+          <div className="flex justify-between items-center mb-3">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Itens ({items.length})
+            </p>
+            {pendingItems.length > 0 && (
+              <button
+                onClick={() => setShowReturnFlow(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Devolver ({pendingItems.length})
+                <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
           <div className="space-y-2">
             {items.map((item: any) => {
               const s = statusMap[item.status] || statusMap.pending
               const Icon = s.icon
               const isPending = item.status === "pending"
               const isReturning = returning === item.id
+
+              // Calcular pendência se houver
+              const qtyDelivered = item.quantity_delivered || 1
+              const qtyReturned = item.quantity_returned || 0
+              const hasPartialReturn = qtyReturned > 0 && qtyReturned < qtyDelivered
 
               return (
                 <div key={item.id} className={`p-3 rounded-xl border transition-all ${
@@ -144,12 +186,22 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                         </p>
                       </div>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border flex items-center gap-1 ${s.color}`}>
-                      <Icon className="h-3 w-3" />
-                      {s.label}
-                    </span>
+                    <div className="text-right">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border flex items-center gap-1 ${s.color}`}>
+                        <Icon className="h-3 w-3" />
+                        {s.label}
+                      </span>
+                      {/* Mostrar quantidade se > 1 */}
+                      {(qtyDelivered > 1 || qtyReturned > 0) && (
+                        <p className="text-[9px] text-slate-500 mt-1">
+                          {qtyReturned}/{qtyDelivered} devolvidos
+                          {hasPartialReturn && <span className="text-yellow-400"> (pendência: {qtyDelivered - qtyReturned})</span>}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
+                  {/* Ações rápidas para item pendente (via velho fluxo) */}
                   {isPending && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-slate-800/50">
                       <button
@@ -157,8 +209,8 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                         disabled={isReturning}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold border border-green-500/20 hover:bg-green-500/20 disabled:opacity-50"
                       >
-                        {isReturning ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                        Devolver
+                        {isReturning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                        OK
                       </button>
                       <button
                         onClick={() => handleReturn(item.id, "damaged")}
@@ -166,7 +218,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-bold border border-yellow-500/20 hover:bg-yellow-500/20 disabled:opacity-50"
                       >
                         <AlertTriangle className="h-3 w-3" />
-                        Danificado
+                        Danif.
                       </button>
                       <button
                         onClick={() => handleReturn(item.id, "missing")}
@@ -174,7 +226,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-bold border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50"
                       >
                         <Ban className="h-3 w-3" />
-                        Extraviado
+                        Extra.
                       </button>
                     </div>
                   )}
