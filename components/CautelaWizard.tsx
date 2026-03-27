@@ -207,27 +207,6 @@ function validateAmmunitionCaliber(
   return { incompatibilities, warnings, selectedWeapon: primaryWeapon }
 }
 
-type Person = {
-  id: string
-  full_name: string
-  rg: string
-  registration_number: string
-  function?: string
-  status: string
-  rg_front_url?: string
-  rg_back_url?: string
-  face_descriptor?: number[]
-}
-
-type Material = {
-  id: string
-  name: string
-  patrimony_number: string
-  serial_number?: string
-  internal_code: string
-  categories?: any
-}
-
 export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
