@@ -310,8 +310,7 @@ export async function returnItem(
       quantity_delivered: qtyDelivered,
       material_id: item.material_id,
       cautela_id: item.cautela_id
-    },
-    user_id: user?.id
+    }
   })
 
   revalidatePath("/cautelas")
