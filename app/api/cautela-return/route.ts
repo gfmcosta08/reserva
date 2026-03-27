@@ -147,8 +147,7 @@ export async function POST(request: NextRequest) {
         quantity_delivered: qtyDelivered,
         material_id: item.material_id,
         cautela_id: item.cautela_id
-      },
-      user_id: user.id
+      }
     })
 
     return NextResponse.json({
