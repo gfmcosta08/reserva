@@ -365,7 +365,7 @@ export async function processBulkDevolution(
   if (unprocessedItems.length > 0) {
     const unprocessedNames = cautelaItems
       .filter(i => unprocessedItems.includes(i.id))
-      .map(i => i.materials?.name || i.materials?.patrimony_number || "Item")
+      .map(i => i.materials?.[0]?.name || i.materials?.[0]?.patrimony_number || "Item")
     return {
       success: false,
       error: `Existem itens que não foram conferidos: ${unprocessedNames.join(", ")}`,
@@ -386,7 +386,7 @@ export async function processBulkDevolution(
     if (!item.confirmed && (item.quantityReturned === undefined || item.quantityReturned === null)) {
       return {
         success: false,
-        error: `Item "${cautelaItem.materials?.name || cautelaItem.materials?.patrimony_number}" não possui confirmação nem quantidade preenchida`
+        error: `Item "${cautelaItem.materials?.[0]?.name || cautelaItem.materials?.[0]?.patrimony_number}" não possui confirmação nem quantidade preenchida`
       }
     }
 
@@ -394,7 +394,7 @@ export async function processBulkDevolution(
     if (item.quantityReturned !== undefined && item.quantityReturned < 0) {
       return {
         success: false,
-        error: `Quantidade não pode ser negativa para "${cautelaItem.materials?.name}"`
+        error: `Quantidade não pode ser negativa para "${cautelaItem.materials?.[0]?.name}"`
       }
     }
 
@@ -402,7 +402,7 @@ export async function processBulkDevolution(
     if (item.quantityReturned !== undefined && item.quantityReturned > quantityDelivered) {
       return {
         success: false,
-        error: `Quantidade devolvida não pode ser maior que a entregue para "${cautelaItem.materials?.name}"`
+        error: `Quantidade devolvida não pode ser maior que a entregue para "${cautelaItem.materials?.[0]?.name}"`
       }
     }
   }
