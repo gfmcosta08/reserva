@@ -2,7 +2,17 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase-server"
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resendApiKey = process.env.RESEND_API_KEY
+let resendClient: Resend | null = null
+
+// Lazy initialization of Resend client
+function getResendClient(): Resend | null {
+  if (!resendApiKey) return null
+  if (!resendClient) {
+    resendClient = new Resend(resendApiKey)
+  }
+  return resendClient
+}
 
 export async function POST(request: Request) {
   try {
@@ -38,14 +48,15 @@ export async function POST(request: Request) {
       `)
       .eq("cautela_id", cautelaId)
 
-    // 3. Send Email via Resend
-    // Enviando para o e-mail do Operador/Supervisor que realizou a cautela
-    const emailTo = cautela.profiles?.email
-    if (!emailTo) {
-      console.warn("Operator has no email configured, falling back to default.")
+    // 3. Check if Resend is configured
+    const resend = getResendClient()
+    if (!resend) {
+      console.log("Resend not configured, skipping email. Configure RESEND_API_KEY to enable.")
+      return NextResponse.json({ success: true, skipped: true, message: "Email not configured" })
     }
-    
-    // Define the recipient
+
+    // Send Email via Resend
+    const emailTo = cautela.profiles?.email
     const recipient = emailTo || process.env.DEFAULT_NOTIFICATION_EMAIL || "suporte@bpm.com.br"
 
     const itemsList = items?.map((i: any) => `- ${i.materials?.name} (Patrimônio: ${i.materials?.patrimony_number})`).join("\n")
