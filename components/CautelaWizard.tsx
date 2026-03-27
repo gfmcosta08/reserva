@@ -298,25 +298,97 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                       </p>
                       {selectedPerson.function && <p className="text-xs text-blue-400 mt-0.5">{selectedPerson.function}</p>}
                     </div>
-                    <button onClick={() => { setSelectedPerson(null); setPhotoWarning(false) }}
+                    <button onClick={() => { setSelectedPerson(null); setPhotoWarning(false); setPendingCautelas([]) }}
                       className="text-xs text-slate-500 hover:text-red-400 font-bold">Trocar</button>
                   </div>
                 </div>
 
-                {(photoWarning || !useFace) && (
-                  <div className="flex items-start gap-2 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
-                    <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-yellow-400">
-                      Atenção: Esta pessoa possui pendências no cadastro. {photoWarning && "Faltam as fotos do RG. "} {!useFace && "Falta a biometria facial."}
-                    </p>
+                {/* ===== ALERTAS NÃO BLOQUEANTES ===== */}
+
+                {/* Cautelas Pendentes */}
+                {loadingPending ? (
+                  <div className="flex items-center gap-2 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                    <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+                    <p className="text-xs text-slate-400">Verificando cautelas pendentes...</p>
+                  </div>
+                ) : pendingCautelas.length > 0 ? (
+                  <div className="space-y-2">
+                    {pendingCautelas.map(cautela => (
+                      <div
+                        key={cautela.id}
+                        className={`flex items-start gap-2 p-3 rounded-lg border ${
+                          cautela.is_overdue
+                            ? "bg-red-500/5 border-red-500/20"
+                            : "bg-yellow-500/5 border-yellow-500/20"
+                        }`}
+                      >
+                        {cautela.is_overdue ? (
+                          <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                        )}
+                        <div className="flex-1">
+                          <p className={`text-xs font-medium ${
+                            cautela.is_overdue ? "text-red-400" : "text-yellow-400"
+                          }`}>
+                            Cautela {cautela.type === "daily" ? "Diária" : "Permanente"} {cautela.is_overdue ? "VENCIDA" : "em aberto"}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Criada em {format(new Date(cautela.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                            {cautela.profiles?.name && ` • Operador: ${cautela.profiles.name}`}
+                          </p>
+                          <Link
+                            href={`/cautelas?id=${cautela.id}`}
+                            className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-1"
+                          >
+                            Ver detalhes <ChevronRight className="h-2.5 w-2.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-green-400">Nenhuma cautela pendente encontrada</p>
                   </div>
                 )}
 
-                {!useFace && (
+                {/* Pendências Cadastrais */}
+                {(photoWarning || !useFace) && (
+                  <div className="flex items-start gap-2 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs text-yellow-400">
+                        Pendências cadastrais detectadas:
+                      </p>
+                      <ul className="text-[10px] text-yellow-300/80 mt-1 space-y-0.5">
+                        {photoWarning && <li>• Fotos do RG incompletas</li>}
+                        {!useFace && <li>• Biometria facial não cadastrada</li>}
+                      </ul>
+                      <Link
+                        href={`/persons?edit=${selectedPerson.id}`}
+                        className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-2"
+                      >
+                        Regularizar cadastro <ChevronRight className="h-2.5 w-2.5" />
+                      </Link>
+                    </div>
+                  </div>
+                )}
+
+                {/* Info sobre método de assinatura */}
+                {!useFace ? (
                   <div className="flex items-start gap-2 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
                     <Fingerprint className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-slate-400">
-                      Biometria facial não cadastrada. A assinatura será feita com <strong>PIN</strong>.
+                      Biometria facial não cadastrada. A assinatura será feita com <strong className="text-slate-300">PIN</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                    <UserCheck className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-blue-400">
+                      Biometria facial disponível. Assinatura será feita com <strong>reconhecimento facial</strong>.
                     </p>
                   </div>
                 )}
