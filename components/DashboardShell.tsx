@@ -3,18 +3,18 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { 
-  LayoutDashboard, 
-  Package, 
-  Users, 
-  History, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  Package,
+  Users,
+  History,
+  LogOut,
   ShieldAlert,
   ClipboardList,
   Menu,
-  X,
-  Bell
+  X
 } from "lucide-react"
+import NotificationsDropdown from "./NotificationsDropdown"
 
 interface DashboardShellProps {
   children: React.ReactNode
@@ -152,10 +152,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
           </div>
           
           <div className="flex items-center gap-4">
-             <button className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-white transition-colors relative">
-               <Bell className="h-5 w-5" />
-               <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-blue-500 shadow-lg shadow-blue-900" />
-             </button>
+             <NotificationsDropdown />
              <div className="h-8 w-[1px] bg-slate-800 mx-2 hidden sm:block" />
              <div className="flex items-center gap-2">
                <span className="relative flex h-2 w-2">
