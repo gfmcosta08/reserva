@@ -7,7 +7,8 @@ import FaceVerification from "./FaceVerification"
 import {
   X, Search, ChevronRight, Check, ClipboardList, Users, Package,
   ScanFace, Loader2, AlertTriangle, Trash2, Plus, CheckCircle, Fingerprint,
-  AlertCircle, Info, Clock, Image as ImageIcon, UserCheck, Calendar
+  AlertCircle, Info, Clock, Image as ImageIcon, UserCheck, Calendar,
+  MessageSquare, Hash, Building, AlertOctagon
 } from "lucide-react"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -72,6 +73,18 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   // Step 3: Resumo
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
   const [notes, setNotes] = useState("")
+
+  // Sugestões de observações comuns
+  const observationSuggestions = [
+    { label: "Operação", icon: AlertOctagon, text: "Operação no Setor Norte" },
+    { label: "Treinamento", icon: Building, text: "Treinamento/Ginástica" },
+    { label: "Escala", icon: Hash, text: "Escala de serviço plantão" },
+    { label: "Diligência", icon: MessageSquare, text: "Diligência judicial" },
+  ]
+
+  const addObservation = (text: string) => {
+    setNotes(prev => prev ? `${prev}\n${text}` : text)
+  }
 
   // Step 4: Assinatura
   const [pin, setPin] = useState("")
@@ -604,16 +617,48 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                 </div>
               </div>
 
-              {/* Notas */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Observações (opcional)</label>
+              {/* Observações */}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <MessageSquare className="h-3 w-3" />
+                    Observações
+                  </label>
+                  <p className="text-[9px] text-slate-600 mt-0.5">Adicione informações relevantes para rastreabilidade</p>
+                </div>
+
+                {/* Sugestões rápidas */}
+                <div className="flex flex-wrap gap-1.5">
+                  {observationSuggestions.map((suggestion, index) => {
+                    const Icon = suggestion.icon
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => addObservation(suggestion.text)}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 hover:border-slate-600 rounded-md text-[10px] text-slate-400 hover:text-slate-300 transition-all"
+                      >
+                        <Icon className="h-2.5 w-2.5" />
+                        {suggestion.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Campo de observação */}
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  placeholder="Ex: Material para operação no Setor Norte"
-                  className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:border-blue-500 resize-none"
-                  rows={2}
+                  placeholder="Ex: Material para operação no Setor Norte, em horário noturno..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                  rows={3}
                 />
+
+                {/* Contador de caracteres */}
+                <div className="flex justify-end">
+                  <span className="text-[9px] text-slate-600">
+                    {notes.length} / 500 caracteres
+                  </span>
+                </div>
               </div>
             </div>
 
