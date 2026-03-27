@@ -2,9 +2,10 @@
 
 import { createClient } from "@/lib/supabase-server"
 
-type AuditAction = 
+type AuditAction =
   | "cautela_created"
   | "cautela_closed"
+  | "cautela_renewed"
   | "item_returned"
   | "item_damaged"
   | "item_missing"

@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { getCautelaById, returnItem } from "@/app/actions/cautelas"
 import CautelaReturnFlow from "./CautelaReturnFlow"
+import RenewalModal from "./RenewalModal"
 import {
   X, Package, Check, AlertTriangle, Loader2,
-  RotateCcw, Ban, Clock, CheckCircle, User, ArrowRight
+  RotateCcw, Ban, Clock, CheckCircle, User, ArrowRight, RefreshCw
 } from "lucide-react"
 
 interface CautelaDetailProps {
@@ -19,6 +20,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showReturnFlow, setShowReturnFlow] = useState(false)
+  const [showRenewal, setShowRenewal] = useState(false)
   const [returning, setReturning] = useState<string | null>(null)
   const [error, setError] = useState("")
 
@@ -141,6 +143,17 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
           {cautela.notes && <p className="mt-2 text-xs text-slate-400 italic">"{cautela.notes}"</p>}
         </div>
 
+        {/* Actions */}
+        {(cautela.status === "open" || cautela.status === "partial") && (
+          <button
+            onClick={() => setShowRenewal(true)}
+            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-500 rounded-xl font-bold transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Renovar Cautela
+          </button>
+        )}
+
         {/* Itens */}
         <div>
           <div className="flex justify-between items-center mb-3">
@@ -238,6 +251,18 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
           </div>
         </div>
       </div>
+
+      {/* Modal de Renovação */}
+      {showRenewal && cautela && (
+        <RenewalModal
+          cautela={cautela}
+          onClose={() => setShowRenewal(false)}
+          onSuccess={() => {
+            loadData()
+            onUpdate()
+          }}
+        />
+      )}
     </div>
   )
 }

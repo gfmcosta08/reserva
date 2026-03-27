@@ -699,3 +699,150 @@ export async function createCautelaFaceAuth(data: {
   revalidatePath("/materials")
   return { success: true, cautelaId: cautela.id }
 }
+
+// ===== RENOVAR CAUTELA =====
+export async function renewCautela(
+  cautelaId: string,
+  newExpirationDate?: string,
+  notes?: string
+) {
+  const supabase = await createClient()
+
+  // 1. Verificar se a cautela existe e está aberta
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select("id, status, type, person_id")
+    .eq("id", cautelaId)
+    .single()
+
+  if (cautelaError || !cautela) {
+    return { error: "Cautela não encontrada" }
+  }
+
+  if (cautela.status !== "open" && cautela.status !== "partial") {
+    return { error: "Apenas cautelas abertas ou parciais podem ser renovadas" }
+  }
+
+  // 2. Obter operador logado
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Operador não autenticado" }
+
+  // 3. Calcular nova data de expiração (padrão: +30 dias)
+  let expiresAt = newExpirationDate
+  if (!expiresAt) {
+    const newDate = new Date()
+    newDate.setDate(newDate.getDate() + 30)
+    expiresAt = newDate.toISOString()
+  }
+
+  // 4. Atualizar a cautela com nova expiração
+  const { error: updateError } = await supabase
+    .from("cautelas")
+    .update({
+      expires_at: expiresAt,
+      renewed_at: new Date().toISOString(),
+      renewed_by: user.id,
+    })
+    .eq("id", cautelaId)
+
+  if (updateError) {
+    return { error: "Erro ao renovar cautela: " + updateError.message }
+  }
+
+  // 5. Audit log
+  await logAudit({
+    action: "cautela_renewed",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      expires_at: expiresAt,
+      renewed_by: user.id,
+      notes: notes || null
+    },
+  })
+
+  revalidatePath("/cautelas")
+  return { success: true, expiresAt }
+}
+
+// ===== CRIAR RENOVAÇÃO SIMPLES (com validação PIN) =====
+export async function createSimpleCautelaRenewal(
+  cautelaId: string,
+  pin: string
+) {
+  const supabase = await createClient()
+
+  // 1. Buscar cautela original
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select("id, status, type, person_id, expires_at")
+    .eq("id", cautelaId)
+    .single()
+
+  if (cautelaError || !cautela) {
+    return { error: "Cautela não encontrada" }
+  }
+
+  if (cautela.status !== "open" && cautela.status !== "partial") {
+    return { error: "Apenas cautelas abertas ou parciais podem ser renovadas" }
+  }
+
+  // 2. Validar PIN da pessoa
+  const pinResult = await validatePin(cautela.person_id, pin)
+  if (!pinResult.valid) {
+    return { error: pinResult.error }
+  }
+
+  // 3. Obter operador logado
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Operador não autenticado" }
+
+  // 4. Calcular nova expiração
+  const newExpiresAt = new Date()
+  newExpiresAt.setDate(newExpiresAt.getDate() + 30)
+
+  // 5. Atualizar cautela com nova expiração
+  const { error: updateError } = await supabase
+    .from("cautelas")
+    .update({
+      expires_at: newExpiresAt.toISOString(),
+      renewed_at: new Date().toISOString(),
+      renewed_by: user.id,
+    })
+    .eq("id", cautelaId)
+
+  if (updateError) {
+    return { error: "Erro ao renovar cautela: " + updateError.message }
+  }
+
+  // 6. Audit log
+  await logAudit({
+    action: "cautela_renewed",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      expires_at: newExpiresAt.toISOString(),
+      renewed_by: user.id,
+    },
+  })
+
+  revalidatePath("/cautelas")
+  return { success: true, expiresAt: newExpiresAt.toISOString() }
+}
+
+// ===== BUSCAR HISTÓRICO DE RENOVAÇÕES =====
+export async function getCautelaRenewals(cautelaId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("cautela_renewals")
+    .select(`
+      *,
+      profiles(name, email)
+    `)
+    .eq("cautela_id", cautelaId)
+    .order("created_at", { ascending: false })
+
+  if (error) return { error: error.message }
+  return { renewals: data || [] }
+}
