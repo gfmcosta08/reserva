@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   ClipboardList,
   Menu,
-  X
+  X,
+  AlertTriangle
 } from "lucide-react"
 import NotificationsDropdown from "./NotificationsDropdown"
 
@@ -39,6 +40,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     { href: "/persons", label: "Pessoas", icon: Users },
     { href: "/cautelas", label: "Cautelas", icon: ClipboardList },
     { href: "/history", label: "Histórico", icon: History },
+    { href: "/reports/divergencias", label: "Divergências", icon: AlertTriangle },
   ]
 
   const adminItems = [
