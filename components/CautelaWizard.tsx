@@ -36,9 +36,9 @@ type Material = {
   internal_code: string
   category_id?: string
   categories?: {
-    id: string
+    id?: string
     name: string
-  }
+  }[]
 }
 
 type CategoryGroup = {
@@ -154,12 +154,12 @@ function validateAmmunitionCaliber(
 
   // Separar armas e munições selecionadas
   const selectedWeapons = selectedItems.filter(item => {
-    const categoryName = item.categories?.name || ""
+    const categoryName = item.categories?.[0]?.name || ""
     return isWeaponCategory(categoryName) || isWeaponCategory(item.name)
   })
 
   const selectedAmmunition = selectedItems.filter(item => {
-    const categoryName = item.categories?.name || ""
+    const categoryName = item.categories?.[0]?.name || ""
     return isAmmunitionCategory(categoryName) || isAmmunitionCategory(item.name)
   })
 
@@ -170,7 +170,7 @@ function validateAmmunitionCaliber(
 
   // Pegar a primeira arma selecionada como referência
   const primaryWeapon = selectedWeapons[0]
-  const weaponName = primaryWeapon.categories?.name || primaryWeapon.name
+  const weaponName = primaryWeapon.categories?.[0]?.name || primaryWeapon.name
 
   // Extrair calibre da arma
   const weaponCaliber = extractCaliber(weaponName) || extractCaliber(primaryWeapon.name)
@@ -182,7 +182,7 @@ function validateAmmunitionCaliber(
 
   // Verificar cada munição selecionada
   for (const ammo of selectedAmmunition) {
-    const ammoName = ammo.categories?.name || ammo.name
+    const ammoName = ammo.categories?.[0]?.name || ammo.name
     const ammoCaliber = extractCaliber(ammoName) || extractCaliber(ammo.name)
 
     if (!ammoCaliber) {
@@ -641,8 +641,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
                   <p className="text-xs text-blue-400">
                     Arma selecionada: <strong className="text-white">{selectedWeaponForCaliber.name}</strong>
-                    {extractCaliber(selectedWeaponForCaliber.categories?.name || selectedWeaponForCaliber.name) && (
-                      <span className="ml-1 text-blue-300">— Calibre: {extractCaliber(selectedWeaponForCaliber.categories?.name || selectedWeaponForCaliber.name)}</span>
+                    {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name) && (
+                      <span className="ml-1 text-blue-300">— Calibre: {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)}</span>
                     )}
                   </p>
                 </div>
@@ -659,7 +659,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                         <p className="text-[10px] text-red-300/80 mt-1 space-y-1">
                           {caliberIncompatibilities.map((inc, idx) => (
                             <span key={idx} className="block">
-                              • <strong>{inc.materialName}</strong> (calibre {inc.ammoCaliber}) incompatível com {selectedWeaponForCaliber.name} (calibre {extractCaliber(selectedWeaponForCaliber.categories?.name || selectedWeaponForCaliber.name)})
+                              • <strong>{inc.materialName}</strong> (calibre {inc.ammoCaliber}) incompatível com {selectedWeaponForCaliber.name} (calibre {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)})
                             </span>
                           ))}
                         </p>
@@ -689,7 +689,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
 
                 {/* Status: compatível */}
                 {caliberIncompatibilities.length === 0 && caliberWarnings.length === 0 && selectedMaterials.some(m => {
-                  const catName = m.categories?.name || m.name
+                  const catName = m.categories?.[0]?.name || m.name
                   return isAmmunitionCategory(catName)
                 }) && (
                   <div className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-lg">
@@ -750,7 +750,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                         <div className="space-y-1">
                           {filteredMaterialsInGroup.map((mat: any) => {
                             const isSelected = selectedMaterials.some(m => m.id === mat.id)
-                            const categoryName = mat.categories?.name || ""
+                            const categoryName = mat.categories?.[0]?.name || ""
                             const materialName = mat.name
                             const isAmmunition = isAmmunitionCategory(categoryName) || isAmmunitionCategory(materialName)
                             const isWeapon = isWeaponCategory(categoryName) || isWeaponCategory(materialName)
@@ -758,7 +758,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                             // Extrair calibre
                             const caliber = extractCaliber(categoryName) || extractCaliber(materialName)
                             const weaponCaliber = selectedWeaponForCaliber
-                              ? extractCaliber(selectedWeaponForCaliber.categories?.name || selectedWeaponForCaliber.name)
+                              ? extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)
                               : null
 
                             // Verificar compatibilidade (para munição)
@@ -883,7 +883,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   {selectedMaterials.map(m => {
                     // Verificar se este material tem incompatibilidade de calibre
                     const hasIncompatibility = caliberIncompatibilities.some(inc => inc.materialId === m.id)
-                    const caliber = extractCaliber(m.categories?.name || m.name)
+                    const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
                     return (
                       <div key={m.id} className="flex items-center gap-2 text-xs">
                         <Package className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : "text-blue-500"}`} />
