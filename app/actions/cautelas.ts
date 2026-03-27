@@ -307,6 +307,34 @@ export async function getAvailableMaterials(categoryId?: string) {
   return data
 }
 
+// ===== BUSCAR MATERIAIS AGRUPADOS POR CATEGORIA =====
+export async function getAvailableMaterialsGrouped() {
+  const supabase = await createClient()
+
+  // Buscar todas as categorias ordenadas
+  const { data: categories } = await supabase
+    .from("categories")
+    .select("id, name")
+    .order("name")
+
+  if (!categories) return []
+
+  // Buscar materiais disponíveis
+  const { data: materials } = await supabase
+    .from("materials")
+    .select("id, name, patrimony_number, serial_number, internal_code, category_id")
+    .eq("status", "available")
+    .order("name")
+
+  if (!materials) return categories.map(c => ({ ...c, materials: [] }))
+
+  // Agrupar materiais por categoria
+  return categories.map(category => ({
+    ...category,
+    materials: materials.filter(m => m.category_id === category.id)
+  }))
+}
+
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
 // Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
 // Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)

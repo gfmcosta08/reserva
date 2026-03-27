@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { searchPersons, getAvailableMaterials, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
+import { searchPersons, getAvailableMaterials, getAvailableMaterialsGrouped, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
 import { getCategories } from "@/app/actions/categories"
 import FaceVerification from "./FaceVerification"
 import {
@@ -63,6 +63,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [categories, setCategories] = useState<any[]>([])
   const [selectedCategory, setSelectedCategory] = useState("")
   const [availableMaterials, setAvailableMaterials] = useState<Material[]>([])
+  const [groupedMaterials, setGroupedMaterials] = useState<any[]>([])
   const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
   const [materialSearch, setMaterialSearch] = useState("")
   const [loadingMaterials, setLoadingMaterials] = useState(false)
@@ -77,18 +78,28 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [pinError, setPinError] = useState("")
   const [useFace, setUseFace] = useState(true)
 
-  // Buscar categorias ao abrir Step 2
-  useEffect(() => {
-    if (step === 2 && categories.length === 0) {
-      getCategories().then(setCategories).catch(console.error)
-    }
-  }, [step])
-
-  // Buscar materiais quando muda categoria
+  // Buscar categorias e materiais agrupados ao abrir Step 2
   useEffect(() => {
     if (step === 2) {
       setLoadingMaterials(true)
-      getAvailableMaterials(selectedCategory || undefined)
+      Promise.all([
+        getCategories(),
+        getAvailableMaterialsGrouped()
+      ])
+        .then(([cats, grouped]) => {
+          setCategories(cats)
+          setGroupedMaterials(grouped)
+        })
+        .catch(console.error)
+        .finally(() => setLoadingMaterials(false))
+    }
+  }, [step])
+
+  // Buscar materiais quando muda categoria (para filtro)
+  useEffect(() => {
+    if (step === 2 && selectedCategory) {
+      setLoadingMaterials(true)
+      getAvailableMaterials(selectedCategory)
         .then(setAvailableMaterials)
         .catch(console.error)
         .finally(() => setLoadingMaterials(false))
@@ -424,62 +435,96 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               <p className="text-slate-400 text-sm">Escolha os materiais a serem cautelados.</p>
             </div>
 
-            {/* Filtros */}
-            <div className="flex gap-2">
-              <select
-                value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:border-blue-500"
-              >
-                <option value="">Todas as Categorias</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <div className="relative flex-[2]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
-                <input
-                  type="text"
-                  value={materialSearch}
-                  onChange={e => setMaterialSearch(e.target.value)}
-                  placeholder="Filtrar..."
-                  className="w-full pl-8 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-600 focus:border-blue-500"
-                />
-              </div>
+            {/* Busca por material */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+              <input
+                type="text"
+                value={materialSearch}
+                onChange={e => setMaterialSearch(e.target.value)}
+                placeholder="Buscar material por nome, patrimônio ou código..."
+                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
             </div>
 
-            {/* Lista de materiais */}
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            {/* Lista de materiais por categoria */}
+            <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
               {loadingMaterials ? (
                 <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 text-blue-500 animate-spin" /></div>
-              ) : filteredMaterials.length === 0 ? (
-                <p className="text-center text-sm text-slate-500 py-4">Nenhum material disponível.</p>
+              ) : groupedMaterials.length === 0 ? (
+                <p className="text-center text-sm text-slate-500 py-4">Nenhuma categoria encontrada.</p>
               ) : (
-                filteredMaterials.map(mat => {
-                  const isSelected = selectedMaterials.some(m => m.id === mat.id)
-                  return (
-                    <button
-                      key={mat.id}
-                      onClick={() => toggleMaterial(mat)}
-                      className={`w-full text-left p-3 rounded-lg border transition-all flex justify-between items-center ${
-                        isSelected
-                          ? "bg-blue-500/10 border-blue-500/30 text-white"
-                          : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
-                      }`}
-                    >
-                      <div>
-                        <p className="text-sm font-semibold">{mat.name}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Pat: {mat.patrimony_number} • Cód: {mat.internal_code}
-                          {mat.categories?.name && <span> • {mat.categories.name}</span>}
-                        </p>
+                groupedMaterials
+                  .filter(group => {
+                    // Se há busca, filtrar grupos que têm materiais correspondentes
+                    if (!materialSearch) return group.materials.length > 0
+                    return group.materials.some((m: any) =>
+                      m.name.toLowerCase().includes(materialSearch.toLowerCase()) ||
+                      m.patrimony_number.toLowerCase().includes(materialSearch.toLowerCase()) ||
+                      m.internal_code.toLowerCase().includes(materialSearch.toLowerCase())
+                    )
+                  })
+                  .map(group => {
+                    const filteredMaterialsInGroup = materialSearch
+                      ? group.materials.filter((m: any) =>
+                          m.name.toLowerCase().includes(materialSearch.toLowerCase()) ||
+                          m.patrimony_number.toLowerCase().includes(materialSearch.toLowerCase()) ||
+                          m.internal_code.toLowerCase().includes(materialSearch.toLowerCase())
+                        )
+                      : group.materials
+
+                    if (filteredMaterialsInGroup.length === 0) return null
+
+                    const selectedInGroup = filteredMaterialsInGroup.filter((m: any) =>
+                      selectedMaterials.some(sm => sm.id === m.id)
+                    ).length
+
+                    return (
+                      <div key={group.id} className="space-y-2">
+                        {/* Header da categoria */}
+                        <div className="flex items-center justify-between px-1">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                            {group.name}
+                          </h4>
+                          {selectedInGroup > 0 && (
+                            <span className="text-[10px] text-blue-400 font-medium">
+                              {selectedInGroup} selecionado(s)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Materiais da categoria */}
+                        <div className="space-y-1">
+                          {filteredMaterialsInGroup.map((mat: any) => {
+                            const isSelected = selectedMaterials.some(m => m.id === mat.id)
+                            return (
+                              <button
+                                key={mat.id}
+                                onClick={() => toggleMaterial(mat)}
+                                className={`w-full text-left p-2.5 rounded-lg border transition-all flex justify-between items-center ${
+                                  isSelected
+                                    ? "bg-blue-500/10 border-blue-500/30 text-white"
+                                    : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{mat.name}</p>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                    Pat: {mat.patrimony_number} • Cód: {mat.internal_code}
+                                  </p>
+                                </div>
+                                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ml-2 ${
+                                  isSelected ? "bg-blue-600 border-blue-600" : "border-slate-700"
+                                }`}>
+                                  {isSelected && <Check className="h-3 w-3 text-white" />}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center ${
-                        isSelected ? "bg-blue-600 border-blue-600" : "border-slate-700"
-                      }`}>
-                        {isSelected && <Check className="h-3 w-3 text-white" />}
-                      </div>
-                    </button>
-                  )
-                })
+                    )
+                  })
               )}
             </div>
 
