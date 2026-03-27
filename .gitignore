@@ -230,8 +230,7 @@
 
 # Gatsby files
 **/.cache/
-# Next.js public folder (PWA files tracked separately)
-**/public/
+**/public
 
 # Vue.js
 **/dist/
