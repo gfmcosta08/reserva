@@ -18,6 +18,26 @@ export default function BarcodeScanner({
 }: BarcodeScannerProps) {
   const [isScanning, setIsScanning] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
+
+  // Inject scanline animation CSS
+  useEffect(() => {
+    const styleId = "barcode-scanner-styles"
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style")
+      style.id = styleId
+      style.textContent = `
+        @keyframes scanline {
+          0%, 100% { transform: translateY(-120px); opacity: 0; }
+          50% { transform: translateY(120px); opacity: 1; }
+        }
+      `
+      document.head.appendChild(style)
+    }
+    return () => {
+      const style = document.getElementById(styleId)
+      if (style) style.remove()
+    }
+  }, [])
   const [error, setError] = useState<string | null>(null)
   const [scannedCode, setScannedCode] = useState<string | null>(null)
   const [torchOn, setTorchOn] = useState(false)
@@ -148,7 +168,7 @@ export default function BarcodeScanner({
     try {
       // @ts-ignore - torch é uma propriedade experimental
       await track.applyConstraints({
-        advanced: [{ torch: !torchOn }]
+        advanced: [{ torch: !torchOn }] as any
       })
       setTorchOn(!torchOn)
     } catch (err) {
@@ -191,7 +211,7 @@ export default function BarcodeScanner({
       <div className="flex items-center justify-between p-4 bg-black/50">
         <h2 className="text-white font-bold">{title}</h2>
         <div className="flex items-center gap-2">
-          {streamRef.current?.getVideoTracks()[0]?.getCapabilities()?.torch && (
+          {(streamRef.current?.getVideoTracks()[0]?.getCapabilities() as any)?.torch && (
             <button
               onClick={toggleTorch}
               className={`p-2 rounded-full ${torchOn ? "bg-yellow-500" : "bg-slate-700"} text-white`}
@@ -261,13 +281,7 @@ export default function BarcodeScanner({
         </p>
       </div>
 
-      {/* CSS para animação */}
-      <style jsx>{`
-        @keyframes scanline {
-          0%, 100% { transform: translateY(-120px); opacity: 0; }
-          50% { transform: translateY(120px); opacity: 1; }
-        }
-      `}</style>
+      {/* CSS para animação via useEffect */}
     </div>
   )
 }

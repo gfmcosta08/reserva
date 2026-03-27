@@ -121,7 +121,7 @@ export async function getDivergenceReport(
       damaged_items: damagedItems.length,
       missing_items: missingItems.length,
       partial_items: partialItems.length,
-    } as DivergenceReport
+    } as unknown as DivergenceReport
   })
 }
 

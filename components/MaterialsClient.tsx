@@ -1,20 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  Package, 
-  Plus, 
-  Search, 
+import {
+  Package,
+  Plus,
+  Search,
   Filter,
   MoreVertical,
   Edit2,
   Trash2,
   Tag,
   Download,
-  Upload
+  Upload,
+  QrCode
 } from "lucide-react";
 import CategoryManager from "./CategoryManager";
 import MaterialForm from "./MaterialForm";
+import QRCodeModal from "./QRCodeModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { importMaterialsCsv } from "@/app/actions/materials";
 
@@ -34,6 +36,7 @@ export default function MaterialsClient({
   const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  const [qrModalMaterial, setQrModalMaterial] = useState<any>(null);
   const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -292,7 +295,14 @@ export default function MaterialsClient({
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
+                      <button
+                        onClick={() => setQrModalMaterial(m)}
+                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
+                        title="Gerar QR Code"
+                      >
+                        <QrCode className="h-4 w-4" />
+                      </button>
+                      <button
                         onClick={() => {
                           setEditingMaterial(m);
                           setShowMaterialForm(true);
@@ -319,13 +329,20 @@ export default function MaterialsClient({
       )}
 
       {showMaterialForm && (
-        <MaterialForm 
-          categories={categories} 
+        <MaterialForm
+          categories={categories}
           material={editingMaterial}
           onClose={() => {
             setShowMaterialForm(false);
             setEditingMaterial(null);
-          }} 
+          }}
+        />
+      )}
+
+      {qrModalMaterial && (
+        <QRCodeModal
+          material={qrModalMaterial}
+          onClose={() => setQrModalMaterial(null)}
         />
       )}
     </div>

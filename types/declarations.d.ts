@@ -34,3 +34,26 @@ declare module '*.webp' {
   const content: string
   export default content
 }
+
+// BarcodeDetector API types (native browser API)
+interface DetectedBarcode {
+  boundingBox: DOMRectReadOnly;
+  cornerPoints: { x: number; y: number }[];
+  format: string;
+  rawValue: string;
+}
+
+interface BarcodeDetectorOptions {
+  formats?: string[];
+}
+
+declare class BarcodeDetector {
+  constructor(options?: BarcodeDetectorOptions);
+  static getSupportedFormats(): Promise<string[]>;
+  detect(image: ImageBitmapSource): Promise<DetectedBarcode[]>;
+}
+
+// Extend Window interface
+interface Window {
+  BarcodeDetector: typeof BarcodeDetector;
+}
