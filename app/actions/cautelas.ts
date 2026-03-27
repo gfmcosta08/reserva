@@ -420,7 +420,7 @@ export async function processBulkDevolution(
     if (!cautelaItem) continue
 
     const quantityDelivered = cautelaItem.quantity_delivered || 1
-    let finalStatus: "returned" | "partial" | "damaged" | "missing" = "returned"
+    let finalStatus: "returned" | "partial" = "returned"
     let quantityReturned = quantityDelivered
 
     if (item.confirmed) {
@@ -439,9 +439,8 @@ export async function processBulkDevolution(
 
     // Determinar status do material
     let materialStatus = "available"
-    if (finalStatus === "damaged") {
-      materialStatus = "maintenance"
-    } else if (finalStatus === "missing" || quantityReturned === 0) {
+    if (quantityReturned === 0) {
+      // Extravio: material fica indisponível
       materialStatus = "unavailable"
     } else if (quantityReturned < quantityDelivered) {
       // Devolução parcial: material fica em manutenção até devolução completa
