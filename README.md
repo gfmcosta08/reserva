@@ -6,4 +6,4 @@ Sistema SaaS para controle de custódia de armas e materiais.
 https://controle-material.vercel.app
 
 ---
-*Last update: trigger deploy*
+*Last update: trigger deploy - 28/03/2026 11:00 BRT*
