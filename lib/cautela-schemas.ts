@@ -2,11 +2,16 @@ import { z } from "zod"
 
 export const uuidSchema = z.string().uuid({ message: "Formato de ID inválido" })
 
+const cautelaItemRowSchema = z.object({
+  material_id: uuidSchema,
+  quantity: z.number().int().min(1).max(99999).optional().default(1),
+})
+
 export const createCautelaInputSchema = z.object({
   person_id: uuidSchema,
   type: z.enum(["daily", "permanent"]),
-  material_ids: z
-    .array(uuidSchema)
+  items: z
+    .array(cautelaItemRowSchema)
     .min(1, "Selecione pelo menos um material"),
   notes: z.string().optional(),
   pin: z.string().regex(/^\d{4}$/, "PIN deve ter 4 dígitos numéricos"),
@@ -15,7 +20,7 @@ export const createCautelaInputSchema = z.object({
 export const createCautelaFaceAuthInputSchema = z.object({
   person_id: uuidSchema,
   type: z.enum(["daily", "permanent"]),
-  material_ids: z.array(uuidSchema).min(1, "Selecione pelo menos um material"),
+  items: z.array(cautelaItemRowSchema).min(1, "Selecione pelo menos um material"),
   notes: z.string().optional(),
 })
 

@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { searchPersons, getAvailableMaterials, getAvailableMaterialsGrouped, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
-import { getCategories } from "@/app/actions/categories"
+import { useState, useEffect, useMemo } from "react"
+import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
 import FaceVerification from "./FaceVerification"
+import { CautelaMaterialsStep, type MaterialLine } from "./cautela/CautelaMaterialsStep"
+import { extractCaliber, validateAmmunitionCaliber } from "@/lib/cautela-caliber"
 import {
   X, Search, ChevronRight, Check, ClipboardList, Users, Package,
-  ScanFace, Loader2, AlertTriangle, Trash2, Plus, CheckCircle, Fingerprint,
-  AlertCircle, Info, Clock, Image as ImageIcon, UserCheck, Calendar,
+  ScanFace, Loader2, AlertTriangle, CheckCircle, Fingerprint,
+  AlertCircle, UserCheck,
   MessageSquare, Hash, Building, AlertOctagon, ShieldAlert, Zap
 } from "lucide-react"
 import Link from "next/link"
@@ -28,100 +29,6 @@ type Person = {
   face_descriptor?: number[]
 }
 
-type Material = {
-  id: string
-  name: string
-  patrimony_number: string
-  serial_number?: string
-  internal_code: string
-  category_id?: string
-  categories?: {
-    id?: string
-    name: string
-  }[]
-}
-
-type CategoryGroup = {
-  id: string
-  name: string
-  materials: Material[]
-}
-
-// ===== CONSTANTES DE VALIDAÇÃO DE CALIBRE =====
-
-// Calibres de armas de fogo (padrões brasileiros)
-const CALIBER_PATTERNS = [
-  { pattern: /9mm/i, caliber: "9mm" },
-  { pattern: /\.40\b/i, caliber: ".40" },
-  { pattern: /\.45\b/i, caliber: ".45" },
-  { pattern: /\.38\b/i, caliber: ".38" },
-  { pattern: /\.357\b/i, caliber: ".357" },
-  { pattern: /\.380\b/i, caliber: ".380" },
-  { pattern: /5\.7/i, caliber: "5.7" },
-  { pattern: /7\.62/i, caliber: "7.62" },
-  { pattern: /7\.62x51/i, caliber: "7.62x51" },
-  { pattern: /12\s*gauge/i, caliber: "12" },
-  { pattern: /\b12\b(?!mm)/i, caliber: "12" },
-  { pattern: /16\s*gauge/i, caliber: "16" },
-  { pattern: /20\s*gauge/i, caliber: "20" },
-  { pattern: /\.223/i, caliber: ".223" },
-  { pattern: /5\.56/i, caliber: "5.56" },
-  { pattern: /6\.35/i, caliber: "6.35" },
-  { pattern: /\.25\b/i, caliber: ".25" },
-  { pattern: /\b9\.3\b/i, caliber: "9.3" },
-]
-
-// Categorias de armas (que contêm calibre)
-const WEAPON_CATEGORIES = [
-  "pistola", "revólver", "carabina", "escopeta", "submetralhadora",
-  "rifle", "garrucha", " espingarda", "pistolete"
-]
-
-// Palavras-chave que indicam munição
-const AMMUNITION_KEYWORDS = ["munição", "municao", "cartucho", "balote", "projectil"]
-
-// Verifica se é uma categoria/arma
-function isWeaponCategory(name: string): boolean {
-  const lowerName = name.toLowerCase()
-  return WEAPON_CATEGORIES.some(keyword => lowerName.includes(keyword))
-}
-
-// Verifica se é uma categoria de munição
-function isAmmunitionCategory(name: string): boolean {
-  const lowerName = name.toLowerCase()
-  return AMMUNITION_KEYWORDS.some(keyword => lowerName.includes(keyword))
-}
-
-// Extrai calibre de um texto (nome da categoria ou material)
-function extractCaliber(text: string): string | null {
-  for (const { pattern, caliber } of CALIBER_PATTERNS) {
-    if (pattern.test(text)) {
-      return caliber
-    }
-  }
-  return null
-}
-
-// Verifica compatibilidade entre calibre de arma e munição
-function areCalibersCompatible(weaponCaliber: string, ammoCaliber: string): boolean {
-  // Normalizar comparações
-  const w = weaponCaliber.toLowerCase().replace(/\s*/g, "")
-  const a = ammoCaliber.toLowerCase().replace(/\s*/g, "")
-  return w === a
-}
-
-// Tipos de incompatibilidade
-interface CaliberMismatch {
-  materialId: string
-  materialName: string
-  ammoCaliber: string
-  incompatibleWeapons: Array<{
-    id: string
-    name: string
-    caliber: string
-  }>
-}
-
 interface CautelaWizardProps {
   onSuccess: () => void
   onCancel: () => void
@@ -133,79 +40,6 @@ const STEPS = [
   { label: "Resumo", icon: ClipboardList },
   { label: "Assinatura", icon: ScanFace },
 ]
-
-// Estado para validação de calibre
-interface CaliberValidation {
-  weapons: Material[]
-  ammunition: Material[]
-  selectedWeapon: Material | null
-  selectedAmmo: Material[]
-  incompatibilities: CaliberMismatch[]
-  warnings: string[]
-}
-
-// Função para validar calibre da munição selecionada
-function validateAmmunitionCaliber(
-  selectedItems: Material[],
-  allMaterials: CategoryGroup[]
-): { incompatibilities: CaliberMismatch[], warnings: string[], selectedWeapon: Material | null } {
-  const incompatibilities: CaliberMismatch[] = []
-  const warnings: string[] = []
-
-  // Separar armas e munições selecionadas
-  const selectedWeapons = selectedItems.filter(item => {
-    const categoryName = item.categories?.[0]?.name || ""
-    return isWeaponCategory(categoryName) || isWeaponCategory(item.name)
-  })
-
-  const selectedAmmunition = selectedItems.filter(item => {
-    const categoryName = item.categories?.[0]?.name || ""
-    return isAmmunitionCategory(categoryName) || isAmmunitionCategory(item.name)
-  })
-
-  // Se não há armas ou munições, não há validação
-  if (selectedWeapons.length === 0 || selectedAmmunition.length === 0) {
-    return { incompatibilities, warnings, selectedWeapon: null }
-  }
-
-  // Pegar a primeira arma selecionada como referência
-  const primaryWeapon = selectedWeapons[0]
-  const weaponName = primaryWeapon.categories?.[0]?.name || primaryWeapon.name
-
-  // Extrair calibre da arma
-  const weaponCaliber = extractCaliber(weaponName) || extractCaliber(primaryWeapon.name)
-
-  if (!weaponCaliber) {
-    warnings.push(`Não foi possível identificar o calibre da arma ${primaryWeapon.name}`)
-    return { incompatibilities, warnings, selectedWeapon: primaryWeapon }
-  }
-
-  // Verificar cada munição selecionada
-  for (const ammo of selectedAmmunition) {
-    const ammoName = ammo.categories?.[0]?.name || ammo.name
-    const ammoCaliber = extractCaliber(ammoName) || extractCaliber(ammo.name)
-
-    if (!ammoCaliber) {
-      warnings.push(`Não foi possível identificar o calibre da munição ${ammo.name}`)
-      continue
-    }
-
-    if (!areCalibersCompatible(weaponCaliber, ammoCaliber)) {
-      incompatibilities.push({
-        materialId: ammo.id,
-        materialName: ammo.name,
-        ammoCaliber,
-        incompatibleWeapons: [{
-          id: primaryWeapon.id,
-          name: primaryWeapon.name,
-          caliber: weaponCaliber
-        }]
-      })
-    }
-  }
-
-  return { incompatibilities, warnings, selectedWeapon: primaryWeapon }
-}
 
 export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProps) {
   const [step, setStep] = useState(1)
@@ -221,20 +55,10 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [loadingPending, setLoadingPending] = useState(false)
 
   // Step 2: Materiais
-  const [categories, setCategories] = useState<any[]>([])
-  const [selectedCategory, setSelectedCategory] = useState("")
-  const [availableMaterials, setAvailableMaterials] = useState<Material[]>([])
-  const [groupedMaterials, setGroupedMaterials] = useState<CategoryGroup[]>([])
-  const [selectedMaterials, setSelectedMaterials] = useState<Material[]>([])
-  const [materialSearch, setMaterialSearch] = useState("")
-  const [loadingMaterials, setLoadingMaterials] = useState(false)
-  const [otherMaterial, setOtherMaterial] = useState("")
-
-  // Validação de calibre (INCOMPATIBILIDADES SÃO BLOQUEANTES)
-  const [caliberIncompatibilities, setCaliberIncompatibilities] = useState<CaliberMismatch[]>([])
-  const [caliberWarnings, setCaliberWarnings] = useState<string[]>([])
-  const [selectedWeaponForCaliber, setSelectedWeaponForCaliber] = useState<Material | null>(null)
-  const [caliberOverrideConfirmed, setCaliberOverrideConfirmed] = useState(false)
+  const [materialLines, setMaterialLines] = useState<MaterialLine[]>([])
+  const [bornal, setBornal] = useState<"yes" | "no" | null>(null)
+  const [outrosExtra, setOutrosExtra] = useState("")
+  const [materialsCanProceed, setMaterialsCanProceed] = useState(false)
 
   // Step 3: Resumo
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
@@ -256,34 +80,6 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [pin, setPin] = useState("")
   const [pinError, setPinError] = useState("")
   const [useFace, setUseFace] = useState(true)
-
-  // Buscar categorias e materiais agrupados ao abrir Step 2
-  useEffect(() => {
-    if (step === 2) {
-      setLoadingMaterials(true)
-      Promise.all([
-        getCategories(),
-        getAvailableMaterialsGrouped()
-      ])
-        .then(([cats, grouped]) => {
-          setCategories(cats)
-          setGroupedMaterials(grouped)
-        })
-        .catch(console.error)
-        .finally(() => setLoadingMaterials(false))
-    }
-  }, [step])
-
-  // Buscar materiais quando muda categoria (para filtro)
-  useEffect(() => {
-    if (step === 2 && selectedCategory) {
-      setLoadingMaterials(true)
-      getAvailableMaterials(selectedCategory)
-        .then(setAvailableMaterials)
-        .catch(console.error)
-        .finally(() => setLoadingMaterials(false))
-    }
-  }, [step, selectedCategory])
 
   // Buscar pessoas
   const handleSearch = async () => {
@@ -333,30 +129,14 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     }
   }
 
-  const toggleMaterial = (mat: Material) => {
-    let newSelected: Material[]
-    if (selectedMaterials.find(m => m.id === mat.id)) {
-      newSelected = selectedMaterials.filter(m => m.id !== mat.id)
-    } else {
-      newSelected = [...selectedMaterials, mat]
-    }
-    setSelectedMaterials(newSelected)
-
-    // Validar calibre após mudança de seleção (NÃO bloqueia, apenas alerta)
-    const validation = validateAmmunitionCaliber(newSelected, groupedMaterials)
-    setCaliberIncompatibilities(validation.incompatibilities)
-    setCaliberWarnings(validation.warnings)
-    setSelectedWeaponForCaliber(validation.selectedWeapon)
+  const buildNotesPayload = () => {
+    const parts = [notes.trim(), bornal !== null ? `Bornal: ${bornal === "yes" ? "Sim" : "Não"}` : "", outrosExtra.trim() ? `Outros: ${outrosExtra.trim()}` : ""].filter(Boolean)
+    return parts.length ? parts.join("\n\n") : undefined
   }
 
   const handleNextStep = () => {
     if (step === 1 && selectedPerson) setStep(2)
-    else if (step === 2 && selectedMaterials.length > 0) {
-      // BLOQUEANTE: Não avança se houver incompatibilidade de calibre sem confirmação
-      if (caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed) {
-        alert("Existe incompatibilidade de calibre que precisa ser confirmada antes de prosseguir.")
-        return
-      }
+    else if (step === 2 && materialsCanProceed) {
       setStep(3)
     }
     else if (step === 3) {
@@ -374,8 +154,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       const result = await createCautela({
         person_id: selectedPerson!.id,
         type: cautelaType,
-        material_ids: selectedMaterials.map(m => m.id),
-        notes: notes || undefined,
+        items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
+        notes: buildNotesPayload(),
         pin,
       })
       if (result.success) {
@@ -401,8 +181,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       const result = await createCautelaFaceAuth({
         person_id: selectedPerson!.id,
         type: cautelaType,
-        material_ids: selectedMaterials.map(m => m.id),
-        notes: notes || undefined,
+        items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
+        notes: buildNotesPayload(),
       })
       if (result.success) {
         // Enviar e-mail em background
@@ -418,11 +198,16 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     }
   }
 
-  const filteredMaterials = availableMaterials.filter((m: any) =>
-    !materialSearch ||
-    m.name.toLowerCase().includes(materialSearch.toLowerCase()) ||
-    m.patrimony_number.toLowerCase().includes(materialSearch.toLowerCase()) ||
-    m.internal_code.toLowerCase().includes(materialSearch.toLowerCase())
+  const caliberSummary = useMemo(
+    () =>
+      validateAmmunitionCaliber(
+        materialLines.map((l) => ({
+          id: l.material.id,
+          name: l.material.name,
+          categories: l.material.categories,
+        }))
+      ),
+    [materialLines]
   )
 
   return (
@@ -524,21 +309,11 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     {pendingCautelas.map(cautela => (
                       <div
                         key={cautela.id}
-                        className={`flex items-start gap-2 p-3 rounded-lg border ${
-                          cautela.is_overdue
-                            ? "bg-red-500/5 border-red-500/20"
-                            : "bg-yellow-500/5 border-yellow-500/20"
-                        }`}
+                        className="flex items-start gap-2 p-3 rounded-lg border bg-red-500/5 border-red-500/20"
                       >
-                        {cautela.is_overdue ? (
-                          <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <Clock className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                        )}
+                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                         <div className="flex-1">
-                          <p className={`text-xs font-medium ${
-                            cautela.is_overdue ? "text-red-400" : "text-yellow-400"
-                          }`}>
+                          <p className="text-xs font-medium text-red-400">
                             Cautela Diária {cautela.is_overdue ? "VENCIDA" : "em aberto"}
                             {cautela.items_count > 0 && ` (${cautela.items_count} item(ns))`}
                           </p>
@@ -624,301 +399,28 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
           </div>
         )}
 
-        {/* ===== STEP 2: Selecionar Materiais ===== */}
+        {/* ===== STEP 2: Materiais ===== */}
         {step === 2 && (
           <div className="space-y-5">
-            <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-white">Selecionar Materiais</h3>
-              <p className="text-slate-400 text-sm">Escolha os materiais a serem cautelados.</p>
-            </div>
-
-            {/* Busca por material */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
-              <input
-                type="text"
-                value={materialSearch}
-                onChange={e => setMaterialSearch(e.target.value)}
-                placeholder="Buscar material por nome, patrimônio ou código..."
-                className="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* ===== ALERTAS DE VALIDAÇÃO DE CALIBRE (NÃO BLOQUEANTES) ===== */}
-            {selectedWeaponForCaliber && (
-              <div className="space-y-2">
-                {/* Info: Arma selecionada */}
-                <div className="flex items-center gap-2 p-2 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                  <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                  <p className="text-xs text-blue-400">
-                    Arma selecionada: <strong className="text-white">{selectedWeaponForCaliber.name}</strong>
-                    {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name) && (
-                      <span className="ml-1 text-blue-300">— Calibre: {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)}</span>
-                    )}
-                  </p>
-                </div>
-
-                {/* Incompatibilidades de calibre */}
-                {caliberIncompatibilities.length > 0 && (
-                  <div className="p-3 bg-red-500/5 border border-red-500/30 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-red-400">
-                          Incompatibilidade de calibre detectada
-                        </p>
-                        <p className="text-[10px] text-red-300/80 mt-1 space-y-1">
-                          {caliberIncompatibilities.map((inc, idx) => (
-                            <span key={idx} className="block">
-                              • <strong>{inc.materialName}</strong> (calibre {inc.ammoCaliber}) incompatível com {selectedWeaponForCaliber.name} (calibre {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)})
-                            </span>
-                          ))}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Avisos de calibre não identificado */}
-                {caliberWarnings.length > 0 && (
-                  <div className="p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-medium text-yellow-400">
-                          Calibre não identificado
-                        </p>
-                        <p className="text-[10px] text-yellow-300/80 mt-1 space-y-0.5">
-                          {caliberWarnings.map((warning, idx) => (
-                            <span key={idx} className="block">• {warning}</span>
-                          ))}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Status: compatível */}
-                {caliberIncompatibilities.length === 0 && caliberWarnings.length === 0 && selectedMaterials.some(m => {
-                  const catName = m.categories?.[0]?.name || m.name
-                  return isAmmunitionCategory(catName)
-                }) && (
-                  <div className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-lg">
-                    <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <p className="text-xs text-green-400">Munições compatíveis com a arma selecionada</p>
-                  </div>
-                )}
-
-                {/* BLOQUEANTE: Confirmação de incompatibilidade */}
-                {caliberIncompatibilities.length > 0 && (
-                  <div className="p-4 bg-red-500/10 border-2 border-red-500/40 rounded-lg space-y-3">
-                    <div className="flex items-start gap-3">
-                      <ShieldAlert className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-red-400">
-                          Atenção: Incompatibilidade de calibre detectada
-                        </p>
-                        <p className="text-xs text-red-300/80 mt-1">
-                          Para prosseguir, você deve confirmar que está ciente do risco.
-                        </p>
-                      </div>
-                    </div>
-
-                    <label className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg cursor-pointer hover:bg-slate-800/50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={caliberOverrideConfirmed}
-                        onChange={(e) => setCaliberOverrideConfirmed(e.target.checked)}
-                        className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-red-500 focus:ring-red-500 focus:ring-offset-slate-900"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-white">
-                          Declaro que estou ciente da incompatibilidade de calibre
-                        </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Munições incompatíveis: {caliberIncompatibilities.map(i => i.materialName).join(", ")}
-                        </p>
-                      </div>
-                    </label>
-
-                    {caliberOverrideConfirmed && (
-                      <div className="flex items-center gap-2 p-2 bg-green-500/10 border border-green-500/30 rounded-lg">
-                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <p className="text-xs text-green-400">Incompatibilidade confirmada. Agora você pode prosseguir.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Lista de materiais por categoria */}
-            <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-              {loadingMaterials ? (
-                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 text-blue-500 animate-spin" /></div>
-              ) : groupedMaterials.length === 0 ? (
-                <p className="text-center text-sm text-slate-500 py-4">Nenhuma categoria encontrada.</p>
-              ) : (
-                groupedMaterials
-                  .filter(group => {
-                    // Se há busca, filtrar grupos que têm materiais correspondentes
-                    if (!materialSearch) return group.materials.length > 0
-                    return group.materials.some((m: any) =>
-                      m.name.toLowerCase().includes(materialSearch.toLowerCase()) ||
-                      m.patrimony_number.toLowerCase().includes(materialSearch.toLowerCase()) ||
-                      m.internal_code.toLowerCase().includes(materialSearch.toLowerCase())
-                    )
-                  })
-                  .map(group => {
-                    const filteredMaterialsInGroup = materialSearch
-                      ? group.materials.filter((m: any) =>
-                          m.name.toLowerCase().includes(materialSearch.toLowerCase()) ||
-                          m.patrimony_number.toLowerCase().includes(materialSearch.toLowerCase()) ||
-                          m.internal_code.toLowerCase().includes(materialSearch.toLowerCase())
-                        )
-                      : group.materials
-
-                    if (filteredMaterialsInGroup.length === 0) return null
-
-                    const selectedInGroup = filteredMaterialsInGroup.filter((m: any) =>
-                      selectedMaterials.some(sm => sm.id === m.id)
-                    ).length
-
-                    return (
-                      <div key={group.id} className="space-y-2">
-                        {/* Header da categoria */}
-                        <div className="flex items-center justify-between px-1">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                            {group.name}
-                          </h4>
-                          {selectedInGroup > 0 && (
-                            <span className="text-[10px] text-blue-400 font-medium">
-                              {selectedInGroup} selecionado(s)
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Materiais da categoria */}
-                        <div className="space-y-1">
-                          {filteredMaterialsInGroup.map((mat: any) => {
-                            const isSelected = selectedMaterials.some(m => m.id === mat.id)
-                            const categoryName = mat.categories?.[0]?.name || ""
-                            const materialName = mat.name
-                            const isAmmunition = isAmmunitionCategory(categoryName) || isAmmunitionCategory(materialName)
-                            const isWeapon = isWeaponCategory(categoryName) || isWeaponCategory(materialName)
-
-                            // Extrair calibre
-                            const caliber = extractCaliber(categoryName) || extractCaliber(materialName)
-                            const weaponCaliber = selectedWeaponForCaliber
-                              ? extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)
-                              : null
-
-                            // Verificar compatibilidade (para munição)
-                            let isCompatible: boolean | null = null
-                            if (isAmmunition && caliber && weaponCaliber) {
-                              isCompatible = areCalibersCompatible(caliber, weaponCaliber)
-                            }
-
-                            // Cor do item baseada na compatibilidade
-                            let itemBorderColor = ""
-                            let itemBgColor = ""
-                            let badgeColor = ""
-
-                            if (isSelected && caliberIncompatibilities.some(inc => inc.materialId === mat.id)) {
-                              itemBorderColor = "border-red-500/50"
-                              itemBgColor = "bg-red-500/5"
-                            }
-
-                            return (
-                              <button
-                                key={mat.id}
-                                onClick={() => toggleMaterial(mat)}
-                                className={`w-full text-left p-2.5 rounded-lg border transition-all flex justify-between items-start ${
-                                  isSelected
-                                    ? `bg-blue-500/10 border-blue-500/30 text-white ${itemBorderColor} ${itemBgColor}`
-                                    : `bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 ${itemBorderColor}`
-                                }`}
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="text-sm font-medium truncate">{mat.name}</p>
-                                    {/* Badge de calibre */}
-                                    {caliber && (
-                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 ${
-                                        isWeapon
-                                          ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                                          : "bg-slate-700/50 text-slate-400"
-                                      }`}>
-                                        {caliber}
-                                      </span>
-                                    )}
-                                    {/* Indicador de compatibilidade para munição */}
-                                    {isAmmunition && selectedWeaponForCaliber && caliber && isCompatible !== null && (
-                                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold flex-shrink-0 ${
-                                        isCompatible
-                                          ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                                          : "bg-red-500/20 text-red-400 border border-red-500/30"
-                                      }`}>
-                                        {isCompatible ? "Compatível" : "Incompatível"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[10px] text-slate-500 mt-0.5">
-                                    Pat: {mat.patrimony_number} • Cód: {mat.internal_code}
-                                  </p>
-                                </div>
-                                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 ml-2 ${
-                                  isSelected ? "bg-blue-600 border-blue-600" : "border-slate-700"
-                                }`}>
-                                  {isSelected && <Check className="h-3 w-3 text-white" />}
-                                </div>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })
-              )}
-            </div>
-
-            {/* Selecionados */}
-            {selectedMaterials.length > 0 && (
-              <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-2">
-                  {selectedMaterials.length} material(is) selecionado(s)
-                </p>
-                <div className="space-y-1">
-                  {selectedMaterials.map(m => (
-                    <div key={m.id} className="flex justify-between items-center text-xs">
-                      <span className="text-slate-300">{m.name}</span>
-                      <button onClick={() => toggleMaterial(m)} className="text-red-400 hover:text-red-300">
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            <CautelaMaterialsStep
+              lines={materialLines}
+              onLinesChange={setMaterialLines}
+              bornal={bornal}
+              onBornalChange={setBornal}
+              outros={outrosExtra}
+              onOutrosChange={setOutrosExtra}
+              onCanProceedChange={setMaterialsCanProceed}
+            />
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
-              <button onClick={handleNextStep}
-                disabled={
-                  selectedMaterials.length === 0 ||
-                  (caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed)
-                }
+              <button
+                onClick={handleNextStep}
+                disabled={!materialsCanProceed}
                 className={`flex-[2] flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold shadow-lg transition-all ${
-                  caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed
-                    ? "bg-red-600/50 text-white/50 cursor-not-allowed"
-                    : "bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500"
+                  !materialsCanProceed ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500"
                 }`}
               >
-                {caliberIncompatibilities.length > 0 && !caliberOverrideConfirmed ? (
-                  <><ShieldAlert className="h-4 w-4" /> Resolver incompatibilidade <ChevronRight className="h-4 w-4" /></>
-                ) : (
-                  <>Próximo: Resumo <ChevronRight className="h-4 w-4" /></>
-                )}
+                Próximo: Resumo <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -943,19 +445,20 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               {/* Materiais */}
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                  Materiais ({selectedMaterials.length})
+                  Materiais ({materialLines.length} linha(s))
                 </p>
                 <div className="space-y-1.5">
-                  {selectedMaterials.map(m => {
-                    // Verificar se este material tem incompatibilidade de calibre
-                    const hasIncompatibility = caliberIncompatibilities.some(inc => inc.materialId === m.id)
+                  {materialLines.map((row) => {
+                    const m = row.material
+                    const hasIncompatibility = caliberSummary.incompatibilities.some((inc) => inc.materialId === m.id)
                     const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
                     return (
-                      <div key={m.id} className="flex items-center gap-2 text-xs">
+                      <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
                         <Package className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : "text-blue-500"}`} />
                         <span className={`font-medium ${hasIncompatibility ? "text-red-300" : "text-slate-300"}`}>
                           {m.name}
                         </span>
+                        <span className="text-slate-500">×{row.quantity}</span>
                         {caliber && (
                           <span className={`text-[9px] px-1 py-0.5 rounded ${
                             hasIncompatibility ? "bg-red-500/20 text-red-400" : "bg-slate-700/50 text-slate-400"
@@ -972,7 +475,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               </div>
 
               {/* Aviso de Incompatibilidade de Calibre */}
-              {caliberIncompatibilities.length > 0 && (
+              {caliberSummary.incompatibilities.length > 0 && (
                 <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
                   <div className="flex items-start gap-2">
                     <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
@@ -981,10 +484,10 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                         Atenção: Incompatibilidade de calibre
                       </p>
                       <p className="text-[10px] text-red-300/80 mt-1">
-                        As seguintes munições são incompatíveis com a arma selecionada. Deseja continuar?
+                        As seguintes munições são incompatíveis com a arma de referência. Confirme no passo anterior se aplicável.
                       </p>
                       <ul className="text-[10px] text-red-300/80 mt-1 space-y-0.5 ml-2">
-                        {caliberIncompatibilities.map((inc, idx) => (
+                        {caliberSummary.incompatibilities.map((inc, idx) => (
                           <li key={idx}>• {inc.materialName} (calibre {inc.ammoCaliber})</li>
                         ))}
                       </ul>

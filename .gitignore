@@ -223,6 +223,9 @@
 **/.next
 **/out/
 
+# Vercel CLI local project link (do not commit)
+.vercel/
+
 # Nuxt.js build / generate output
 **/.nuxt
 **/dist

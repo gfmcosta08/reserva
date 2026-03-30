@@ -7,6 +7,7 @@ import { logAudit } from "./audit"
 import { requireCautelaOperator } from "@/lib/auth-cautela"
 import {
   formatUnavailableMaterialsMessage,
+  mergeCautelaItems,
   validateCautelaModifiable,
 } from "@/lib/cautela-helpers"
 import {
@@ -154,7 +155,7 @@ export async function validatePin(personId: string, pin: string) {
 export async function createCautela(data: {
   person_id: string
   type: "daily" | "permanent"
-  material_ids: string[]
+  items: { material_id: string; quantity?: number }[]
   notes?: string
   pin: string
 }) {
@@ -172,6 +173,8 @@ export async function createCautela(data: {
 
   const supabase = await createClient()
   const payload = parsed.data
+  const merged = mergeCautelaItems(payload.items)
+  const distinctIds = merged.map((m) => m.material_id)
 
   const pinResult = await validatePin(payload.person_id, payload.pin)
   if (!pinResult.valid) return { error: pinResult.error }
@@ -179,10 +182,10 @@ export async function createCautela(data: {
   const { data: materials, error: matError } = await supabase
     .from("materials")
     .select("id, name, status")
-    .in("id", payload.material_ids)
+    .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
-  if (!materials || materials.length !== payload.material_ids.length) {
+  if (!materials || materials.length !== distinctIds.length) {
     return { error: "Um ou mais materiais não foram encontrados" }
   }
 
@@ -195,7 +198,7 @@ export async function createCautela(data: {
     p_person_id: payload.person_id,
     p_type: payload.type,
     p_notes: payload.notes ?? null,
-    p_material_ids: payload.material_ids,
+    p_items: merged,
   })
 
   if (rpcError) {
@@ -215,8 +218,8 @@ export async function createCautela(data: {
     after_state: {
       person_id: payload.person_id,
       type: payload.type,
-      materials_count: payload.material_ids.length,
-      material_ids: payload.material_ids,
+      materials_count: merged.length,
+      items: merged,
       cautela_item_ids: result?.cautela_item_ids ?? [],
     },
   })
@@ -651,6 +654,51 @@ export async function getAvailableMaterialsGrouped() {
   }))
 }
 
+export type SearchableMaterial = {
+  id: string
+  name: string
+  patrimony_number: string
+  serial_number: string | null
+  internal_code: string
+  category_id: string | null
+  categories: { name: string } | { name: string }[] | null
+}
+
+/** Busca materiais disponíveis por nome, patrimônio, serial, código interno ou UUID. */
+export async function searchMaterials(query: string): Promise<SearchableMaterial[]> {
+  const q = query.trim()
+  if (q.length < 1) return []
+
+  const supabase = await createClient()
+  const select =
+    "id, name, patrimony_number, serial_number, internal_code, category_id, categories(name)"
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+  if (uuidPattern.test(q)) {
+    const { data } = await supabase
+      .from("materials")
+      .select(select)
+      .eq("status", "available")
+      .eq("id", q)
+      .limit(5)
+    return (data ?? []) as SearchableMaterial[]
+  }
+
+  const { data, error } = await supabase
+    .from("materials")
+    .select(select)
+    .eq("status", "available")
+    .or(
+      `name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`
+    )
+    .limit(25)
+
+  if (error) return []
+  return (data ?? []) as SearchableMaterial[]
+}
+
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
 // Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
 // Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)
@@ -701,7 +749,7 @@ export async function getPendingCautelasForPerson(personId: string) {
 export async function createCautelaFaceAuth(data: {
   person_id: string
   type: "daily" | "permanent"
-  material_ids: string[]
+  items: { material_id: string; quantity?: number }[]
   notes?: string
 }) {
   const parsed = createCautelaFaceAuthInputSchema.safeParse(data)
@@ -718,14 +766,16 @@ export async function createCautelaFaceAuth(data: {
 
   const supabase = await createClient()
   const payload = parsed.data
+  const merged = mergeCautelaItems(payload.items)
+  const distinctIds = merged.map((m) => m.material_id)
 
   const { data: materials, error: matError } = await supabase
     .from("materials")
     .select("id, name, status")
-    .in("id", payload.material_ids)
+    .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
-  if (!materials || materials.length !== payload.material_ids.length) {
+  if (!materials || materials.length !== distinctIds.length) {
     return { error: "Um ou mais materiais não foram encontrados" }
   }
 
@@ -738,7 +788,7 @@ export async function createCautelaFaceAuth(data: {
     p_person_id: payload.person_id,
     p_type: payload.type,
     p_notes: payload.notes ?? null,
-    p_material_ids: payload.material_ids,
+    p_items: merged,
   })
 
   if (rpcErrorFace) {
@@ -758,8 +808,8 @@ export async function createCautelaFaceAuth(data: {
     after_state: {
       person_id: payload.person_id,
       type: payload.type,
-      materials_count: payload.material_ids.length,
-      material_ids: payload.material_ids,
+      materials_count: merged.length,
+      items: merged,
       cautela_item_ids: resultFace?.cautela_item_ids ?? [],
       auth: "face",
     },

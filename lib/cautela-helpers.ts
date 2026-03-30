@@ -37,3 +37,15 @@ export function formatUnavailableMaterialsMessage(
   const detalhes = materials.map((m) => `${m.name} (${materialStatusLabel(m.status)})`).join(", ")
   return `Materiais não disponíveis: ${detalhes}`
 }
+
+/** Agrupa linhas com o mesmo material_id somando quantidades (envio à RPC). */
+export function mergeCautelaItems(
+  items: { material_id: string; quantity?: number }[]
+): { material_id: string; quantity: number }[] {
+  const map = new Map<string, number>()
+  for (const i of items) {
+    const q = i.quantity ?? 1
+    map.set(i.material_id, (map.get(i.material_id) || 0) + q)
+  }
+  return [...map.entries()].map(([material_id, quantity]) => ({ material_id, quantity }))
+}
