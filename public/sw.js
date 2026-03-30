@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
-const CACHE_NAME = 'reserva-v1';
+// Bump quando quiser limpar caches antigos no cliente (ex.: após deploy grande)
+const CACHE_NAME = 'reserva-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -30,40 +31,48 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - network first, fallback to cache
+// Fetch: não cachear bundle Next (/_next/) nem páginas HTML — evita “app antigo” após deploy na Vercel
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API requests and external URLs
   const url = new URL(event.request.url);
   if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) {
     return;
   }
 
+  // Bundles e chunks do Next: sempre rede, nunca gravar em cache
+  if (url.pathname.startsWith('/_next/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Navegação (HTML): sempre rede primeiro; não duplicar versão antiga no cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        caches.match(event.request).then((r) => r || caches.match('/'))
+      )
+    );
+    return;
+  }
+
+  // Demais GET: rede + cache como antes (imagens, etc.)
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response to cache it
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(event.request, responseClone);
         });
         return response;
       })
-      .catch(() => {
-        // Fallback to cache
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Fallback to home page for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match('/');
-          }
+      .catch(() =>
+        caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          if (event.request.mode === 'navigate') return caches.match('/');
           return new Response('Offline', { status: 503 });
-        });
-      })
+        })
+      )
   );
 });
 
