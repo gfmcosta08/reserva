@@ -56,6 +56,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Rotas públicas (verificação de deploy / build)
+  if (request.nextUrl.pathname === '/api/version') {
+    return response
+  }
+
   // Proteger rotas (exemplo: qualquer coisa fora de /auth)
   if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
