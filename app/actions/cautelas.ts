@@ -4,6 +4,30 @@ import { createClient } from "@/lib/supabase-server"
 import { revalidatePath } from "next/cache"
 import bcrypt from "bcryptjs"
 import { logAudit } from "./audit"
+import { requireCautelaOperator } from "@/lib/auth-cautela"
+import {
+  formatUnavailableMaterialsMessage,
+  validateCautelaModifiable,
+} from "@/lib/cautela-helpers"
+import {
+  createCautelaFaceAuthInputSchema,
+  createCautelaInputSchema,
+  processBulkDevolutionInputSchema,
+  uuidSchema,
+} from "@/lib/cautela-schemas"
+
+function mapCreateCautelaRpcError(message: string): string {
+  if (message.includes("EMPTY_MATERIALS")) {
+    return "Selecione pelo menos um material"
+  }
+  if (message.includes("MATERIALS_NOT_ALL_AVAILABLE")) {
+    return "Um ou mais materiais não estão mais disponíveis. Atualize a lista e tente novamente."
+  }
+  if (message.includes("NOT_AUTHENTICATED")) {
+    return "Sessão inválida. Faça login novamente."
+  }
+  return message
+}
 
 // ===== LISTAR CAUTELAS =====
 export async function getCautelas(filters?: { status?: string; search?: string }) {
@@ -134,76 +158,72 @@ export async function createCautela(data: {
   notes?: string
   pin: string
 }) {
-  const supabase = await createClient()
+  const parsed = createCautelaInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela"
+    return { error: msg }
+  }
 
-  // 1. Validar PIN
-  const pinResult = await validatePin(data.person_id, data.pin)
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+
+  const pinResult = await validatePin(payload.person_id, payload.pin)
   if (!pinResult.valid) return { error: pinResult.error }
 
-  // 2. Verificar se os materiais estão disponíveis
   const { data: materials, error: matError } = await supabase
     .from("materials")
     .select("id, name, status")
-    .in("id", data.material_ids)
+    .in("id", payload.material_ids)
 
   if (matError) return { error: matError.message }
-
-  const unavailable = materials?.filter(m => m.status !== "available") || []
-  if (unavailable.length > 0) {
-    return { error: `Materiais indisponíveis: ${unavailable.map(m => m.name).join(", ")}` }
+  if (!materials || materials.length !== payload.material_ids.length) {
+    return { error: "Um ou mais materiais não foram encontrados" }
   }
 
-  // 3. Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Operador não autenticado" }
+  const unavailable = materials.filter((m) => m.status !== "available")
+  if (unavailable.length > 0) {
+    return { error: formatUnavailableMaterialsMessage(unavailable) }
+  }
 
-  // 4. Criar cautela
-  const { data: cautela, error: cautelaError } = await supabase
-    .from("cautelas")
-    .insert({
-      person_id: data.person_id,
-      operator_id: user.id,
-      type: data.type,
-      status: "open",
-      notes: data.notes || null,
-    })
-    .select("id")
-    .single()
+  const { data: rpcData, error: rpcError } = await supabase.rpc("create_cautela_atomic", {
+    p_person_id: payload.person_id,
+    p_type: payload.type,
+    p_notes: payload.notes ?? null,
+    p_material_ids: payload.material_ids,
+  })
 
-  if (cautelaError) return { error: cautelaError.message }
+  if (rpcError) {
+    return { error: mapCreateCautelaRpcError(rpcError.message) }
+  }
 
-  // 5. Criar itens da cautela
-  const items = data.material_ids.map(material_id => ({
-    cautela_id: cautela.id,
-    material_id,
-    status: "pending",
-  }))
+  const result = rpcData as { cautela_id: string; cautela_item_ids?: string[] } | null
+  const cautelaId = result?.cautela_id
+  if (!cautelaId) {
+    return { error: "Falha ao criar cautela" }
+  }
 
-  const { error: itemsError } = await supabase
-    .from("cautela_items")
-    .insert(items)
-
-  if (itemsError) return { error: itemsError.message }
-
-  // 6. Atualizar status dos materiais para 'cautelado'
-  const { error: updateError } = await supabase
-    .from("materials")
-    .update({ status: "cautelado" })
-    .in("id", data.material_ids)
-
-  if (updateError) return { error: updateError.message }
-
-  // 7. Audit log
   await logAudit({
     action: "cautela_created",
     entity: "cautelas",
-    entity_id: cautela.id,
-    after_state: { person_id: data.person_id, type: data.type, items: data.material_ids.length },
+    entity_id: cautelaId,
+    after_state: {
+      person_id: payload.person_id,
+      type: payload.type,
+      materials_count: payload.material_ids.length,
+      material_ids: payload.material_ids,
+      cautela_item_ids: result?.cautela_item_ids ?? [],
+    },
   })
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")
-  return { success: true, cautelaId: cautela.id }
+  return { success: true, cautelaId }
 }
 
 // ===== DEVOLVER ITEM (com suporte a quantidade) =====
@@ -213,6 +233,15 @@ export async function returnItem(
   notes?: string,
   quantityReturned?: number
 ) {
+  const idParsed = uuidSchema.safeParse(cautelaItemId)
+  if (!idParsed.success) {
+    return { error: "Identificador de item inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const operatorId = auth.user.id
   const supabase = await createClient()
 
   // 1. Buscar item e material_id
@@ -236,9 +265,6 @@ export async function returnItem(
     return { error: `Quantidade inválida. Deve estar entre 0 e ${qtyDelivered}` }
   }
 
-  // Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-
   // 2. Atualizar status do item
   const { error: updateItemError } = await supabase
     .from("cautela_items")
@@ -247,7 +273,7 @@ export async function returnItem(
       notes: notes || null,
       quantity_returned: qtyReturn,
       returned_at: new Date().toISOString(),
-      returned_by: user?.id || null
+      returned_by: operatorId
     })
     .eq("id", cautelaItemId)
 
@@ -283,10 +309,30 @@ export async function returnItem(
 
   if (allDone) {
     const cautelaStatus = hasDivergence ? "divergent" : "closed"
+    const closedAt = new Date().toISOString()
     await supabase
       .from("cautelas")
-      .update({ status: cautelaStatus, closed_at: new Date().toISOString() })
+      .update({ status: cautelaStatus, closed_at: closedAt })
       .eq("id", item.cautela_id)
+
+    const { data: operatorProfile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", operatorId)
+      .single()
+
+    await logAudit({
+      action: "cautela_closed",
+      entity: "cautelas",
+      entity_id: item.cautela_id,
+      after_state: {
+        status: cautelaStatus,
+        closed_at: closedAt,
+        operator_id: operatorId,
+        operator_name: operatorProfile?.name || operatorProfile?.email,
+        items_total: allItems?.length,
+      },
+    })
   } else {
     // Marcar como parcial se pelo menos um foi devolvido
     const someReturned = allItems?.some(i => i.status !== "pending")
@@ -340,6 +386,17 @@ export async function processBulkDevolution(
   cautelaId: string,
   items: DevolutionItemData[]
 ): Promise<ProcessDevolutionResult> {
+  const parsed = processBulkDevolutionInputSchema.safeParse({ cautelaId, items })
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg = (Object.values(first)[0] as string[] | undefined)?.[0] || "Dados inválidos para devolução"
+    return { success: false, error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { success: false, error: auth.error }
+
+  const operatorId = auth.user.id
   const supabase = await createClient()
 
   // 1. Validar que todos os itens precisam de ação
@@ -407,11 +464,7 @@ export async function processBulkDevolution(
     }
   }
 
-  // 4. Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: "Operador não autenticado" }
-
-  // 5. Processar cada item
+  // 4. Processar cada item
   const now = new Date().toISOString()
   let processedCount = 0
 
@@ -454,7 +507,7 @@ export async function processBulkDevolution(
         status: finalStatus === "partial" ? "returned" : finalStatus,
         quantity_returned: quantityReturned,
         returned_at: now,
-        returned_by: user.id,
+        returned_by: operatorId,
         notes: item.notes || null
       })
       .eq("id", item.cautelaItemId)
@@ -509,6 +562,28 @@ export async function processBulkDevolution(
       closed_at: cautelaStatus === "closed" || cautelaStatus === "divergent" ? now : null
     })
     .eq("id", cautelaId)
+
+  if (cautelaStatus === "closed" || cautelaStatus === "divergent") {
+    const { data: operatorProfile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", operatorId)
+      .single()
+
+    await logAudit({
+      action: "cautela_closed",
+      entity: "cautelas",
+      entity_id: cautelaId,
+      after_state: {
+        status: cautelaStatus,
+        closed_at: now,
+        operator_id: operatorId,
+        operator_name: operatorProfile?.name || operatorProfile?.email,
+        bulk_devolution: true,
+        items_total: updatedItems?.length,
+      },
+    })
+  }
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")
@@ -580,49 +655,46 @@ export async function getAvailableMaterialsGrouped() {
 // Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
 // Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)
 export async function getPendingCautelasForPerson(personId: string) {
+  const idParsed = uuidSchema.safeParse(personId)
+  if (!idParsed.success) return []
+
   const supabase = await createClient()
 
-  // Buscar apenas cautelas DIÁRIAS pendentes
   const { data, error } = await supabase
     .from("cautelas")
     .select(`
       id, type, status, created_at, notes,
-      profiles(name)
+      profiles(name),
+      cautela_items(
+        id, cautela_id, status,
+        materials(name, patrimony_number)
+      )
     `)
     .eq("person_id", personId)
-    .eq("type", "daily") // FILTRO: Apenas cautelas DIÁRIAS
+    .eq("type", "daily")
     .in("status", ["open", "partial"])
     .order("created_at", { ascending: false })
 
   if (error) return []
-
-  // Se não há cautelas diárias pendentes, retornar vazio
   if (!data || data.length === 0) return []
 
-  // Buscar os itens de cada cautela diária para mostrar detalhes
-  const cautelaIds = data.map(c => c.id)
-  const { data: items } = await supabase
-    .from("cautela_items")
-    .select(`
-      id, cautela_id, status,
-      materials(name, patrimony_number)
-    `)
-    .in("cautela_id", cautelaIds)
-    .eq("status", "pending")
+  const vinteQuatroHorasAtras = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-  // Verificar se há cautelas diárias vencidas (mais de 24h)
-  const now = new Date()
-  const vinteQuatroHorasAtras = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-
-  return data?.map(cautela => {
-    const cautelaItems = items?.filter(i => i.cautela_id === cautela.id) || []
+  return data.map((cautela) => {
+    const rawItems = cautela.cautela_items || []
+    const cautelaItems = rawItems.filter((i: { status: string }) => i.status === "pending")
     return {
-      ...cautela,
+      id: cautela.id,
+      type: cautela.type,
+      status: cautela.status,
+      created_at: cautela.created_at,
+      notes: cautela.notes,
+      profiles: cautela.profiles,
       is_overdue: new Date(cautela.created_at) < vinteQuatroHorasAtras,
       items: cautelaItems,
-      items_count: cautelaItems.length
+      items_count: cautelaItems.length,
     }
-  }) || []
+  })
 }
 
 // ===== CRIAR CAUTELA COM VERIFICAÇÃO FACIAL (sem PIN) =====
@@ -632,72 +704,70 @@ export async function createCautelaFaceAuth(data: {
   material_ids: string[]
   notes?: string
 }) {
-  const supabase = await createClient()
+  const parsed = createCautelaFaceAuthInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela"
+    return { error: msg }
+  }
 
-  // Verificar se os materiais estão disponíveis
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+
   const { data: materials, error: matError } = await supabase
     .from("materials")
     .select("id, name, status")
-    .in("id", data.material_ids)
+    .in("id", payload.material_ids)
 
   if (matError) return { error: matError.message }
-
-  const unavailable = materials?.filter(m => m.status !== "available") || []
-  if (unavailable.length > 0) {
-    return { error: `Materiais indisponíveis: ${unavailable.map(m => m.name).join(", ")}` }
+  if (!materials || materials.length !== payload.material_ids.length) {
+    return { error: "Um ou mais materiais não foram encontrados" }
   }
 
-  // Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Operador não autenticado" }
+  const unavailable = materials.filter((m) => m.status !== "available")
+  if (unavailable.length > 0) {
+    return { error: formatUnavailableMaterialsMessage(unavailable) }
+  }
 
-  // Criar cautela
-  const { data: cautela, error: cautelaError } = await supabase
-    .from("cautelas")
-    .insert({
-      person_id: data.person_id,
-      operator_id: user.id,
-      type: data.type,
-      status: "open",
-      notes: data.notes || null,
-    })
-    .select("id")
-    .single()
+  const { data: rpcDataFace, error: rpcErrorFace } = await supabase.rpc("create_cautela_atomic", {
+    p_person_id: payload.person_id,
+    p_type: payload.type,
+    p_notes: payload.notes ?? null,
+    p_material_ids: payload.material_ids,
+  })
 
-  if (cautelaError) return { error: cautelaError.message }
+  if (rpcErrorFace) {
+    return { error: mapCreateCautelaRpcError(rpcErrorFace.message) }
+  }
 
-  // Criar itens
-  const items = data.material_ids.map(material_id => ({
-    cautela_id: cautela.id,
-    material_id,
-    status: "pending",
-  }))
+  const resultFace = rpcDataFace as { cautela_id: string; cautela_item_ids?: string[] } | null
+  const cautelaIdFace = resultFace?.cautela_id
+  if (!cautelaIdFace) {
+    return { error: "Falha ao criar cautela" }
+  }
 
-  const { error: itemsError } = await supabase
-    .from("cautela_items")
-    .insert(items)
-
-  if (itemsError) return { error: itemsError.message }
-
-  // Atualizar materiais para 'cautelado'
-  const { error: updateError } = await supabase
-    .from("materials")
-    .update({ status: "cautelado" })
-    .in("id", data.material_ids)
-
-  if (updateError) return { error: updateError.message }
-
-  // Audit log
   await logAudit({
     action: "cautela_created",
     entity: "cautelas",
-    entity_id: cautela.id,
-    after_state: { person_id: data.person_id, type: data.type, items: data.material_ids.length, auth: "face" },
+    entity_id: cautelaIdFace,
+    after_state: {
+      person_id: payload.person_id,
+      type: payload.type,
+      materials_count: payload.material_ids.length,
+      material_ids: payload.material_ids,
+      cautela_item_ids: resultFace?.cautela_item_ids ?? [],
+      auth: "face",
+    },
   })
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")
-  return { success: true, cautelaId: cautela.id }
+  return { success: true, cautelaId: cautelaIdFace }
 }
 
 // ===== RENOVAR CAUTELA =====
@@ -706,9 +776,16 @@ export async function renewCautela(
   newExpirationDate?: string,
   notes?: string
 ) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) {
+    return { error: "Identificador de cautela inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
   const supabase = await createClient()
 
-  // 1. Verificar se a cautela existe e está aberta
   const { data: cautela, error: cautelaError } = await supabase
     .from("cautelas")
     .select("id, status, type, person_id")
@@ -719,13 +796,12 @@ export async function renewCautela(
     return { error: "Cautela não encontrada" }
   }
 
-  if (cautela.status !== "open" && cautela.status !== "partial") {
-    return { error: "Apenas cautelas abertas ou parciais podem ser renovadas" }
+  const mod = validateCautelaModifiable(cautela)
+  if (!mod.valid) {
+    return { error: mod.error }
   }
 
-  // 2. Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Operador não autenticado" }
+  const user = auth.user
 
   // 3. Calcular nova data de expiração (padrão: +30 dias)
   let expiresAt = newExpirationDate
@@ -770,9 +846,16 @@ export async function createSimpleCautelaRenewal(
   cautelaId: string,
   pin: string
 ) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) {
+    return { error: "Identificador de cautela inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
   const supabase = await createClient()
 
-  // 1. Buscar cautela original
   const { data: cautela, error: cautelaError } = await supabase
     .from("cautelas")
     .select("id, status, type, person_id, expires_at")
@@ -783,19 +866,17 @@ export async function createSimpleCautelaRenewal(
     return { error: "Cautela não encontrada" }
   }
 
-  if (cautela.status !== "open" && cautela.status !== "partial") {
-    return { error: "Apenas cautelas abertas ou parciais podem ser renovadas" }
+  const mod = validateCautelaModifiable(cautela)
+  if (!mod.valid) {
+    return { error: mod.error }
   }
 
-  // 2. Validar PIN da pessoa
   const pinResult = await validatePin(cautela.person_id, pin)
   if (!pinResult.valid) {
     return { error: pinResult.error }
   }
 
-  // 3. Obter operador logado
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "Operador não autenticado" }
+  const user = auth.user
 
   // 4. Calcular nova expiração
   const newExpiresAt = new Date()

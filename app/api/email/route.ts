@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase-server"
+import { logEmailIntentDev } from "@/lib/email-intent"
 import { Resend } from "resend"
 
 const resendApiKey = process.env.RESEND_API_KEY
@@ -21,6 +22,8 @@ export async function POST(request: Request) {
     if (!cautelaId) {
       return NextResponse.json({ error: "Missing cautelaId" }, { status: 400 })
     }
+
+    logEmailIntentDev("cautela_recibo_request", { cautelaId })
 
     const supabase = await createClient()
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getCautelaById, returnItem } from "@/app/actions/cautelas"
 import CautelaReturnFlow from "./CautelaReturnFlow"
 import RenewalModal from "./RenewalModal"
@@ -24,9 +24,9 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   const [returning, setReturning] = useState<string | null>(null)
   const [error, setError] = useState("")
 
-  useState(() => {
+  useEffect(() => {
     loadData()
-  })
+  }, [cautelaId])
 
   async function loadData() {
     setLoading(true)
