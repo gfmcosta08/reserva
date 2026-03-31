@@ -232,7 +232,8 @@
 
 # Gatsby files
 **/.cache/
-**/public
+# Não use **/public aqui: em Next.js a pasta public/ (sw.js, manifest, ícones) precisa ir pro Git.
+# Projetos Gatsby: ignore só na pasta do site, ex.: site-gatsby/public/
 
 # Vue.js
 **/dist/
