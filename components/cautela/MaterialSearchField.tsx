@@ -9,6 +9,8 @@ type Props = {
   placeholder?: string
   onSelect: (m: SearchableMaterial) => void
   disabled?: boolean
+  /** Se definido, filtra materiais por `category_id` (UUIDs). Array vazio = nenhum resultado. */
+  categoryIds?: string[]
 }
 
 export function normalizeWizardMaterial(m: SearchableMaterial) {
@@ -27,7 +29,13 @@ export function normalizeWizardMaterial(m: SearchableMaterial) {
   }
 }
 
-export function MaterialSearchField({ label, placeholder = "Digite patrimônio, serial, código ou nome...", onSelect, disabled }: Props) {
+export function MaterialSearchField({
+  label,
+  placeholder = "Digite patrimônio, serial, código ou nome...",
+  onSelect,
+  disabled,
+  categoryIds,
+}: Props) {
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<SearchableMaterial[]>([])
@@ -49,13 +57,13 @@ export function MaterialSearchField({ label, placeholder = "Digite patrimônio, 
     }
     const t = setTimeout(() => {
       setLoading(true)
-      searchMaterials(q.trim())
+      searchMaterials(q.trim(), { categoryIds })
         .then(setResults)
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, 280)
     return () => clearTimeout(t)
-  }, [q])
+  }, [q, categoryIds])
 
   const pick = (m: SearchableMaterial) => {
     onSelect(m)

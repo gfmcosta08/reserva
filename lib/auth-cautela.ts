@@ -28,18 +28,9 @@ export async function requireCautelaOperator(): Promise<
     .eq("id", user.id)
     .maybeSingle()
 
+  // 🔒 SEGURANÇA: fail-closed — sem linha em profiles não concedemos papel de operador (evita bypass se RLS/policy falhar)
   if (!profile) {
-    if (error && error.code !== "PGRST116") {
-      return { error: "Perfil não encontrado" }
-    }
-    return {
-      user,
-      profile: {
-        role: "operator",
-        name: (user.user_metadata?.full_name as string) || user.email?.split("@")[0] || "Operador",
-        email: user.email ?? "",
-      },
-    }
+    return { error: "Perfil operacional não encontrado. Peça a um supervisor para vincular seu usuário em profiles." }
   }
 
   if (!ALLOWED_CAUTELA_ROLES.includes(profile.role as (typeof ALLOWED_CAUTELA_ROLES)[number])) {

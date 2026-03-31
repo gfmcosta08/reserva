@@ -6,6 +6,11 @@ import FaceVerification from "./FaceVerification"
 import { CautelaMaterialsStep, type MaterialLine } from "./cautela/CautelaMaterialsStep"
 import { extractCaliber, validateAmmunitionCaliber } from "@/lib/cautela-caliber"
 import {
+  BUCKET_LABEL,
+  bucketForMaterialLine,
+  type SummaryBucket,
+} from "@/lib/cautela-summary-buckets"
+import {
   X, Search, ChevronRight, Check, ClipboardList, Users, Package,
   ScanFace, Loader2, AlertTriangle, CheckCircle, Fingerprint,
   AlertCircle, UserCheck,
@@ -27,6 +32,8 @@ type Person = {
   rg_front_url?: string
   rg_back_url?: string
   face_descriptor?: number[]
+  /** Definido no servidor a partir de pin_hash (sem expor o hash). */
+  has_registered_pin?: boolean
 }
 
 interface CautelaWizardProps {
@@ -139,8 +146,14 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     else if (step === 2 && materialsCanProceed) {
       setStep(3)
     }
-    else if (step === 3) {
-      // Validação final no resumo
+    else if (step === 3 && selectedPerson) {
+      const hasFace = !!(
+        selectedPerson.face_descriptor &&
+        Array.isArray(selectedPerson.face_descriptor) &&
+        selectedPerson.face_descriptor.length > 0
+      )
+      if (hasFace) setUseFace(true)
+      else if (selectedPerson.has_registered_pin) setUseFace(false)
       setStep(4)
     }
   }
@@ -210,6 +223,30 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     [materialLines]
   )
 
+  const summaryByBucket = useMemo(() => {
+    const buckets: Record<SummaryBucket, typeof materialLines> = {
+      weapon: [],
+      charger: [],
+      ammo: [],
+      other: [],
+    }
+    for (const row of materialLines) {
+      const cat = row.material.categories?.[0]?.name || ""
+      const b = bucketForMaterialLine(cat, row.material.name)
+      buckets[b].push(row)
+    }
+    return buckets
+  }, [materialLines])
+
+  const bucketOrder: SummaryBucket[] = ["weapon", "charger", "ammo", "other"]
+
+  const hasFaceForSign = !!(
+    selectedPerson?.face_descriptor &&
+    Array.isArray(selectedPerson.face_descriptor) &&
+    selectedPerson.face_descriptor.length > 0
+  )
+  const hasPinForSign = selectedPerson?.has_registered_pin === true
+
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-2xl w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto">
       {/* Header */}
@@ -263,6 +300,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     {searchResults.map(person => (
                       <button
                         key={person.id}
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => selectPerson(person)}
                         className="w-full text-left p-3 bg-slate-950 border border-slate-800 rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
                       >
@@ -442,36 +480,55 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                 <p className="text-xs text-slate-400">RG: {selectedPerson?.rg} • Mat: {selectedPerson?.registration_number}</p>
               </div>
 
-              {/* Materiais */}
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+              {/* Materiais por tipo (armas / carregadores / munição / outros) */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-3">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Materiais ({materialLines.length} linha(s))
                 </p>
-                <div className="space-y-1.5">
-                  {materialLines.map((row) => {
-                    const m = row.material
-                    const hasIncompatibility = caliberSummary.incompatibilities.some((inc) => inc.materialId === m.id)
-                    const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
-                    return (
-                      <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
-                        <Package className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : "text-blue-500"}`} />
-                        <span className={`font-medium ${hasIncompatibility ? "text-red-300" : "text-slate-300"}`}>
-                          {m.name}
-                        </span>
-                        <span className="text-slate-500">×{row.quantity}</span>
-                        {caliber && (
-                          <span className={`text-[9px] px-1 py-0.5 rounded ${
-                            hasIncompatibility ? "bg-red-500/20 text-red-400" : "bg-slate-700/50 text-slate-400"
-                          }`}>
-                            {caliber}
-                          </span>
-                        )}
-                        <span className="text-slate-600">—</span>
-                        <span className="text-slate-500">Pat: {m.patrimony_number}</span>
+                {bucketOrder.map((bucket) => {
+                  const rows = summaryByBucket[bucket]
+                  if (rows.length === 0) return null
+                  return (
+                    <div key={bucket}>
+                      <p className="text-[10px] font-bold text-blue-400/90 uppercase tracking-wider mb-1.5">
+                        {BUCKET_LABEL[bucket]}
+                      </p>
+                      <div className="space-y-1.5 pl-1 border-l border-slate-700/80">
+                        {rows.map((row) => {
+                          const m = row.material
+                          const hasIncompatibility = caliberSummary.incompatibilities.some(
+                            (inc) => inc.materialId === m.id
+                          )
+                          const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
+                          return (
+                            <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
+                              <Package
+                                className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : "text-blue-500"}`}
+                              />
+                              <span
+                                className={`font-medium ${hasIncompatibility ? "text-red-300" : "text-slate-300"}`}
+                              >
+                                {m.name}
+                              </span>
+                              <span className="text-slate-500">×{row.quantity}</span>
+                              {caliber && (
+                                <span
+                                  className={`text-[9px] px-1 py-0.5 rounded ${
+                                    hasIncompatibility ? "bg-red-500/20 text-red-400" : "bg-slate-700/50 text-slate-400"
+                                  }`}
+                                >
+                                  {caliber}
+                                </span>
+                              )}
+                              <span className="text-slate-600">—</span>
+                              <span className="text-slate-500">Pat: {m.patrimony_number}</span>
+                            </div>
+                          )
+                        })}
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
 
               {/* Aviso de Incompatibilidade de Calibre */}
@@ -560,76 +617,173 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               <button onClick={() => setStep(2)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
               <button onClick={handleNextStep}
                 className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500"
-              >Próximo: {useFace ? "Assinatura Facial" : "PIN"} <ChevronRight className="h-4 w-4" /></button>
+              >Próximo: {hasFaceForSign ? "Assinatura facial" : hasPinForSign ? "PIN" : "Assinatura"} <ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         )}
 
         {/* ===== STEP 4: Assinatura (Facial ou PIN) ===== */}
-        {step === 4 && (
+        {step === 4 && selectedPerson && (
           <div className="space-y-5">
-            {useFace && selectedPerson?.face_descriptor ? (
-              <FaceVerification
-                storedDescriptor={selectedPerson.face_descriptor}
-                onResult={handleFaceVerified}
-                personName={selectedPerson.full_name}
-              />
+            {hasFaceForSign && useFace ? (
+              <>
+                <FaceVerification
+                  storedDescriptor={selectedPerson.face_descriptor!}
+                  onResult={handleFaceVerified}
+                  personName={selectedPerson.full_name}
+                />
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUseFace(false)
+                      setPin("")
+                      setPinError("")
+                    }}
+                    disabled={!hasPinForSign}
+                    title={
+                      !hasPinForSign
+                        ? "Cadastre um PIN para o cautelado antes de usar esta opção."
+                        : undefined
+                    }
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Usar PIN
+                  </button>
+                </div>
+              </>
+            ) : hasPinForSign && (!hasFaceForSign || !useFace) ? (
+              <>
+                <div className="space-y-6 text-center max-w-xs mx-auto">
+                  <div className="flex justify-center">
+                    <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500/20">
+                      <Fingerprint className="h-7 w-7 text-blue-500" />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Validar PIN</h3>
+                    <p className="text-slate-400 text-sm">
+                      <span className="text-blue-400 font-medium">{selectedPerson.full_name}</span> deve digitar o PIN de 4 dígitos.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-center gap-3">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`h-12 w-10 rounded-xl border-2 flex items-center justify-center text-xl font-bold ${
+                          pin.length > i ? "border-blue-500 bg-blue-500/10 text-white" : "border-slate-800 bg-slate-900 text-slate-700"
+                        }`}
+                      >
+                        {pin[i] ? "•" : ""}
+                      </div>
+                    ))}
+                  </div>
+
+                  {pinError && (
+                    <div className="text-xs text-red-400 font-medium bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+                      {pinError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, "C", 0, "✓"].map((key) => {
+                      if (key === "C")
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setPin("")
+                              setPinError("")
+                            }}
+                            className="h-12 rounded-xl bg-slate-800 text-xs font-bold text-slate-300 hover:bg-slate-700"
+                          >
+                            Limpar
+                          </button>
+                        )
+                      if (key === "✓")
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={handleSubmitWithPin}
+                            disabled={pin.length !== 4 || loading}
+                            className="h-12 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center"
+                          >
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
+                          </button>
+                        )
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => pin.length < 4 && setPin(pin + String(key))}
+                          className="h-12 rounded-xl bg-slate-800 text-lg font-bold text-white hover:bg-slate-700 active:bg-blue-600 transition-colors"
+                        >
+                          {key}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(3)}
+                    className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white"
+                  >
+                    Voltar
+                  </button>
+                  {hasFaceForSign && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUseFace(true)
+                        setPin("")
+                        setPinError("")
+                      }}
+                      className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-xs font-bold text-slate-400 hover:text-white"
+                    >
+                      Usar reconhecimento facial
+                    </button>
+                  )}
+                </div>
+              </>
             ) : (
-              /* Fallback: PIN */
-              <div className="space-y-6 text-center max-w-xs mx-auto">
+              <div className="space-y-4 text-center px-2">
                 <div className="flex justify-center">
-                  <div className="h-14 w-14 rounded-full bg-blue-500/10 flex items-center justify-center border-2 border-blue-500/20">
-                    <Fingerprint className="h-7 w-7 text-blue-500" />
+                  <div className="h-14 w-14 rounded-full bg-amber-500/10 flex items-center justify-center border-2 border-amber-500/30">
+                    <AlertTriangle className="h-7 w-7 text-amber-500" />
                   </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-white">Validar PIN</h3>
-                  <p className="text-slate-400 text-sm">
-                    <span className="text-blue-400 font-medium">{selectedPerson?.full_name}</span> deve digitar o PIN de 4 dígitos.
-                  </p>
-                </div>
-
-                <div className="flex justify-center gap-3">
-                  {[0, 1, 2, 3].map(i => (
-                    <div key={i} className={`h-12 w-10 rounded-xl border-2 flex items-center justify-center text-xl font-bold ${
-                      pin.length > i ? "border-blue-500 bg-blue-500/10 text-white" : "border-slate-800 bg-slate-900 text-slate-700"
-                    }`}>{pin[i] ? "•" : ""}</div>
-                  ))}
-                </div>
-
-                {pinError && (
-                  <div className="text-xs text-red-400 font-medium bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
-                    {pinError}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, "C", 0, "✓"].map(key => {
-                    if (key === "C") return <button key={key} onClick={() => { setPin(""); setPinError("") }} className="h-12 rounded-xl bg-slate-800 text-xs font-bold text-slate-300 hover:bg-slate-700">Limpar</button>
-                    if (key === "✓") return (
-                      <button key={key} onClick={handleSubmitWithPin} disabled={pin.length !== 4 || loading}
-                        className="h-12 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center">
-                        {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />}
-                      </button>
-                    )
-                    return (
-                      <button key={key} onClick={() => pin.length < 4 && setPin(pin + key)}
-                        className="h-12 rounded-xl bg-slate-800 text-lg font-bold text-white hover:bg-slate-700 active:bg-blue-600 transition-colors"
-                      >{key}</button>
-                    )
-                  })}
-                </div>
+                <h3 className="text-lg font-semibold text-white">Assinatura indisponível</h3>
+                <p className="text-sm text-slate-400">
+                  Esta pessoa não possui PIN cadastrado nem biometria facial para concluir a cautela. Regularize o cadastro
+                  antes de continuar.
+                </p>
+                <Link
+                  href={`/persons?edit=${selectedPerson.id}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500"
+                >
+                  Abrir cadastro da pessoa
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="w-full rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white"
+                >
+                  Voltar ao resumo
+                </button>
               </div>
             )}
-
-            <div className="flex gap-3">
-              <button onClick={() => setStep(3)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
-              {useFace && (
-                <button onClick={() => setUseFace(false)} className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-xs font-bold text-slate-400 hover:text-white">
-                  Usar PIN
-                </button>
-              )}
-            </div>
           </div>
         )}
       </div>

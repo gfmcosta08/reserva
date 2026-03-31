@@ -1,9 +1,14 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
-import { Trash2, ShieldAlert, AlertTriangle, CheckCircle, Zap, ChevronRight } from "lucide-react"
+import { useMemo, useState, useEffect, useCallback } from "react"
+import { Trash2, ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus } from "lucide-react"
 import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchField"
 import type { SearchableMaterial } from "@/app/actions/cautelas"
+import { getCategories } from "@/app/actions/categories"
+import {
+  resolveCategoryIdsForGroup,
+  type CautelaMaterialGroup,
+} from "@/lib/cautela-material-groups"
 import {
   validateAmmunitionCaliber,
   extractCaliber,
@@ -26,7 +31,6 @@ type Props = {
   onBornalChange: (v: "yes" | "no" | null) => void
   outros: string
   onOutrosChange: (v: string) => void
-  /** Quando o operador pode avançar (itens + calibre ok ou override marcado). */
   onCanProceedChange?: (canProceed: boolean) => void
 }
 
@@ -38,6 +42,25 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Inputs numéricos sem spinners; mínimo 0 quando aplicável */
+const inputNoSpinner =
+  "mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+
+function mergeLines(
+  prev: MaterialLine[],
+  m: SearchableMaterial,
+  qty: number
+): MaterialLine[] {
+  const norm = normalizeWizardMaterial(m)
+  const i = prev.findIndex((x) => x.material.id === m.id)
+  if (i >= 0) {
+    return prev.map((row, idx) =>
+      idx === i ? { ...row, quantity: row.quantity + qty } : row
+    )
+  }
+  return [...prev, { rowId: crypto.randomUUID(), material: norm, quantity: qty }]
+}
+
 export function CautelaMaterialsStep({
   lines,
   onLinesChange,
@@ -47,11 +70,49 @@ export function CautelaMaterialsStep({
   onOutrosChange,
   onCanProceedChange,
 }: Props) {
-  const [chargerQty, setChargerQty] = useState(1)
-  const [ammoQty, setAmmoQty] = useState(15)
-  const [longChargerQty, setLongChargerQty] = useState(1)
-  const [longAmmoQty, setLongAmmoQty] = useState(20)
-  const [taserAmmoQty, setTaserAmmoQty] = useState(1)
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+
+  useEffect(() => {
+    getCategories()
+      .then((rows) => setCategories(rows ?? []))
+      .catch(() => setCategories([]))
+  }, [])
+
+  const cat = useCallback(
+    (g: CautelaMaterialGroup) => resolveCategoryIdsForGroup(categories, g),
+    [categories]
+  )
+
+  const pistolWeaponIds = useMemo(() => cat("pistol_weapon"), [cat])
+  const longWeaponIds = useMemo(() => cat("long_weapon"), [cat])
+  const chargerIds = useMemo(() => cat("charger"), [cat])
+  const ammoIds = useMemo(() => cat("ammunition"), [cat])
+  const vestIds = useMemo(() => cat("vest_plate"), [cat])
+  const radioIds = useMemo(() => cat("radio_ht"), [cat])
+  const taserEqIds = useMemo(() => cat("taser_equipment"), [cat])
+  const taserAmmoIds = useMemo(() => cat("taser_ammo"), [cat])
+  const cellIds = useMemo(() => cat("cellphone"), [cat])
+  const printerIds = useMemo(() => cat("printer"), [cat])
+
+  /** Se não houver categoria mapeada, busca sem filtro (evita tela vazia). */
+  const opt = (ids: string[]) => (ids.length > 0 ? ids : undefined)
+
+  const [pistolWeapon, setPistolWeapon] = useState<SearchableMaterial | null>(null)
+  const [chargerQty, setChargerQty] = useState(0)
+  const [ammoQty, setAmmoQty] = useState(0)
+  const [pistolChargerMat, setPistolChargerMat] = useState<SearchableMaterial | null>(null)
+  const [pistolAmmoMat, setPistolAmmoMat] = useState<SearchableMaterial | null>(null)
+
+  const [longWeapon, setLongWeapon] = useState<SearchableMaterial | null>(null)
+  const [longChargerQty, setLongChargerQty] = useState(0)
+  const [longAmmoQty, setLongAmmoQty] = useState(0)
+  const [longChargerMat, setLongChargerMat] = useState<SearchableMaterial | null>(null)
+  const [longAmmoMat, setLongAmmoMat] = useState<SearchableMaterial | null>(null)
+
+  const [taserAmmoQty, setTaserAmmoQty] = useState(0)
+  const [taserAmmoMat, setTaserAmmoMat] = useState<SearchableMaterial | null>(null)
+
+  const [packError, setPackError] = useState<string | null>(null)
 
   const [caliberIncompatibilities, setCaliberIncompatibilities] = useState<CaliberMismatch[]>([])
   const [caliberWarnings, setCaliberWarnings] = useState<string[]>([])
@@ -87,19 +148,50 @@ export function CautelaMaterialsStep({
     onCanProceedChange?.(canProceed)
   }, [canProceed, onCanProceedChange])
 
+  const applyPistolPack = () => {
+    setPackError(null)
+    if (!pistolWeapon) {
+      setPackError("Selecione a arma (pistola) acima.")
+      return
+    }
+    if (chargerQty > 0 && !pistolChargerMat) {
+      setPackError("Com quantidade de carregadores maior que zero, selecione o modelo do carregador no cadastro.")
+      return
+    }
+    if (ammoQty > 0 && !pistolAmmoMat) {
+      setPackError("Com quantidade de projéteis maior que zero, selecione a munição no cadastro.")
+      return
+    }
+    let next = [...lines]
+    next = mergeLines(next, pistolWeapon, 1)
+    if (chargerQty > 0 && pistolChargerMat) next = mergeLines(next, pistolChargerMat, chargerQty)
+    if (ammoQty > 0 && pistolAmmoMat) next = mergeLines(next, pistolAmmoMat, ammoQty)
+    onLinesChange(next)
+  }
+
+  const applyLongPack = () => {
+    setPackError(null)
+    if (!longWeapon) {
+      setPackError("Selecione a arma longa acima.")
+      return
+    }
+    if (longChargerQty > 0 && !longChargerMat) {
+      setPackError("Com carregadores > 0, selecione o modelo do carregador.")
+      return
+    }
+    if (longAmmoQty > 0 && !longAmmoMat) {
+      setPackError("Com projéteis > 0, selecione a munição no cadastro.")
+      return
+    }
+    let next = [...lines]
+    next = mergeLines(next, longWeapon, 1)
+    if (longChargerQty > 0 && longChargerMat) next = mergeLines(next, longChargerMat, longChargerQty)
+    if (longAmmoQty > 0 && longAmmoMat) next = mergeLines(next, longAmmoMat, longAmmoQty)
+    onLinesChange(next)
+  }
+
   const addOrMerge = (m: SearchableMaterial, qty: number) => {
-    const norm = normalizeWizardMaterial(m)
-    onLinesChange(
-      (() => {
-        const i = lines.findIndex((x) => x.material.id === m.id)
-        if (i >= 0) {
-          const copy = [...lines]
-          copy[i] = { ...copy[i], quantity: copy[i].quantity + qty }
-          return copy
-        }
-        return [...lines, { rowId: crypto.randomUUID(), material: norm, quantity: qty }]
-      })()
-    )
+    onLinesChange(mergeLines(lines, m, qty))
   }
 
   const removeRow = (rowId: string) => {
@@ -111,126 +203,213 @@ export function CautelaMaterialsStep({
     onLinesChange(lines.map((l) => (l.rowId === rowId ? { ...l, quantity: n } : l)))
   }
 
+  const applyTaserAmmoPack = () => {
+    setPackError(null)
+    if (taserAmmoQty <= 0) {
+      setPackError("Informe quantidade de munição Taser maior que zero ou ignore.")
+      return
+    }
+    if (!taserAmmoMat) {
+      setPackError("Selecione o cartucho / munição Taser no cadastro.")
+      return
+    }
+    onLinesChange(mergeLines(lines, taserAmmoMat, taserAmmoQty))
+  }
+
   return (
     <div className="space-y-5">
       <div className="text-center space-y-1">
         <h3 className="text-lg font-semibold text-white">Materiais</h3>
         <p className="text-slate-400 text-sm">
-          Digite patrimônio, serial ou código para buscar. Ajuste quantidades nas linhas.
+          Cada bloco filtra a busca pela categoria. Em pistola/arma longa, use &quot;Adicionar pacote&quot; para incluir arma + carregadores + munição.
         </p>
       </div>
 
-      <div className="space-y-4 max-h-[min(52vh,480px)] overflow-y-auto pr-1">
-        <div>
-          <SectionTitle>Pistola — arma</SectionTitle>
+      {categories.length === 0 && (
+        <p className="text-[10px] text-amber-400/90 text-center">
+          Carregando categorias… Se não houver categorias com nomes reconhecidos (ex.: Pistola, Carregador), os filtros podem ficar vazios.
+        </p>
+      )}
+
+      {packError && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{packError}</div>
+      )}
+
+      <div className="space-y-6 max-h-[min(52vh,520px)] overflow-y-auto pr-1">
+        <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
+          <SectionTitle>Pistola</SectionTitle>
           <MaterialSearchField
             label="Identificação da arma"
-            onSelect={(m) => addOrMerge(m, 1)}
-            placeholder="Patrimônio, serial, código interno ou nome..."
+            categoryIds={opt(pistolWeaponIds)}
+            onSelect={(m) => {
+              setPistolWeapon(m)
+              setPackError(null)
+            }}
+            placeholder="Patrimônio, serial, código — só pistolas"
           />
-        </div>
+          {pistolWeapon && (
+            <p className="text-[10px] text-slate-500">
+              Selecionada: <span className="text-slate-300">{pistolWeapon.name}</span> • Pat {pistolWeapon.patrimony_number}
+            </p>
+          )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd carregadores</label>
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={chargerQty}
-              onChange={(e) => setChargerQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd carregadores</label>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                value={chargerQty}
+                onChange={(e) => setChargerQty(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))}
+                className={inputNoSpinner}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis (munição)</label>
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                value={ammoQty}
+                onChange={(e) => setAmmoQty(Math.max(0, Math.min(9999, parseInt(e.target.value, 10) || 0)))}
+                className={inputNoSpinner}
+              />
+            </div>
           </div>
-          <div>
+
+          {chargerQty > 0 && (
             <MaterialSearchField
-              label="Carregador (buscar e adicionar)"
-              onSelect={(m) => addOrMerge(m, chargerQty)}
-              placeholder="Buscar carregador..."
+              label="Modelo do carregador (cadastro)"
+              categoryIds={opt(chargerIds)}
+              onSelect={(m) => {
+                setPistolChargerMat(m)
+                setPackError(null)
+              }}
+              placeholder="Buscar só carregadores/pentes"
             />
-          </div>
-        </div>
+          )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis (munição)</label>
-            <input
-              type="number"
-              min={1}
-              max={9999}
-              value={ammoQty}
-              onChange={(e) => setAmmoQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-            />
-          </div>
-          <div>
+          {ammoQty > 0 && (
             <MaterialSearchField
-              label="Identificação da munição (cadastro)"
-              onSelect={(m) => addOrMerge(m, ammoQty)}
-              placeholder="Número / lote no sistema..."
+              label="Munição (cadastro)"
+              categoryIds={opt(ammoIds)}
+              onSelect={(m) => {
+                setPistolAmmoMat(m)
+                setPackError(null)
+              }}
+              placeholder="Lote / tipo de munição"
             />
-          </div>
+          )}
+
+          <button
+            type="button"
+            onClick={applyPistolPack}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-sm font-bold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar pacote pistola à cautela
+          </button>
         </div>
 
-        <div>
+        <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
           <SectionTitle>Arma longa</SectionTitle>
           <MaterialSearchField
             label="Identificação da arma longa"
-            onSelect={(m) => addOrMerge(m, 1)}
-            placeholder="Patrimônio, serial, código..."
+            categoryIds={opt(longWeaponIds)}
+            onSelect={(m) => {
+              setLongWeapon(m)
+              setPackError(null)
+            }}
+            placeholder="Fuzil, carabina…"
           />
-        </div>
+          {longWeapon && (
+            <p className="text-[10px] text-slate-500">
+              Selecionada: <span className="text-slate-300">{longWeapon.name}</span>
+            </p>
+          )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd carregadores</label>
-            <input
-              type="number"
-              min={1}
-              max={99}
-              value={longChargerQty}
-              onChange={(e) => setLongChargerQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd carregadores</label>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                value={longChargerQty}
+                onChange={(e) =>
+                  setLongChargerQty(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))
+                }
+                className={inputNoSpinner}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis</label>
+              <input
+                type="number"
+                min={0}
+                max={9999}
+                value={longAmmoQty}
+                onChange={(e) =>
+                  setLongAmmoQty(Math.max(0, Math.min(9999, parseInt(e.target.value, 10) || 0)))
+                }
+                className={inputNoSpinner}
+              />
+            </div>
           </div>
-          <div>
-            <MaterialSearchField
-              label="Carregador (arma longa)"
-              onSelect={(m) => addOrMerge(m, longChargerQty)}
-              placeholder="Buscar carregador..."
-            />
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis</label>
-            <input
-              type="number"
-              min={1}
-              max={9999}
-              value={longAmmoQty}
-              onChange={(e) => setLongAmmoQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-              className="mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-            />
-          </div>
-          <div>
+          {longChargerQty > 0 && (
             <MaterialSearchField
-              label="Identificação da munição (cadastro)"
-              onSelect={(m) => addOrMerge(m, longAmmoQty)}
-              placeholder="Número / lote no sistema..."
+              label="Modelo do carregador (cadastro)"
+              categoryIds={opt(chargerIds)}
+              onSelect={(m) => {
+                setLongChargerMat(m)
+                setPackError(null)
+              }}
+              placeholder="Carregador compatível"
             />
-          </div>
+          )}
+
+          {longAmmoQty > 0 && (
+            <MaterialSearchField
+              label="Munição (cadastro)"
+              categoryIds={opt(ammoIds)}
+              onSelect={(m) => {
+                setLongAmmoMat(m)
+                setPackError(null)
+              }}
+              placeholder="Tipo de munição"
+            />
+          )}
+
+          <button
+            type="button"
+            onClick={applyLongPack}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-sm font-bold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Adicionar pacote arma longa à cautela
+          </button>
         </div>
 
         <div>
           <SectionTitle>Colete / placa</SectionTitle>
-          <MaterialSearchField label="Buscar colete" onSelect={(m) => addOrMerge(m, 1)} placeholder="Tamanho, código..." />
+          <MaterialSearchField
+            label="Buscar colete ou placa"
+            categoryIds={opt(vestIds)}
+            onSelect={(m) => addOrMerge(m, 1)}
+            placeholder="Tamanho, código…"
+          />
         </div>
 
         <div>
           <SectionTitle>HT (rádio)</SectionTitle>
-          <MaterialSearchField label="Buscar HT" onSelect={(m) => addOrMerge(m, 1)} />
+          <MaterialSearchField
+            label="Buscar HT"
+            categoryIds={opt(radioIds)}
+            onSelect={(m) => addOrMerge(m, 1)}
+            placeholder="Código do rádio"
+          />
         </div>
 
         <div>
@@ -259,39 +438,69 @@ export function CautelaMaterialsStep({
           </div>
         </div>
 
-        <div>
+        <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
           <SectionTitle>Taser</SectionTitle>
-          <MaterialSearchField label="Equipamento Taser" onSelect={(m) => addOrMerge(m, 1)} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+          <MaterialSearchField
+            label="Equipamento Taser"
+            categoryIds={opt(taserEqIds)}
+            onSelect={(m) => addOrMerge(m, 1)}
+            placeholder="Somente equipamento Taser"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd munição Taser</label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={99}
                 value={taserAmmoQty}
-                onChange={(e) => setTaserAmmoQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white"
-              />
-            </div>
-            <div>
-              <MaterialSearchField
-                label="Cartucho / munição Taser (cadastro)"
-                onSelect={(m) => addOrMerge(m, taserAmmoQty)}
-                placeholder="Opcional — se houver no estoque"
+                onChange={(e) =>
+                  setTaserAmmoQty(Math.max(0, Math.min(99, parseInt(e.target.value, 10) || 0)))
+                }
+                className={inputNoSpinner}
               />
             </div>
           </div>
+          {taserAmmoQty > 0 && (
+            <>
+              <MaterialSearchField
+                label="Cartucho / munição Taser (cadastro)"
+                categoryIds={opt(taserAmmoIds.length > 0 ? taserAmmoIds : taserEqIds)}
+                onSelect={(m) => {
+                  setTaserAmmoMat(m)
+                  setPackError(null)
+                }}
+                placeholder="Cartucho Taser"
+              />
+              <button
+                type="button"
+                onClick={applyTaserAmmoPack}
+                className="w-full py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold text-white"
+              >
+                Adicionar munição Taser à cautela
+              </button>
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <SectionTitle>Celular</SectionTitle>
-            <MaterialSearchField label="Identificação do aparelho" onSelect={(m) => addOrMerge(m, 1)} />
+            <MaterialSearchField
+              label="Identificação do aparelho"
+              categoryIds={opt(cellIds)}
+              onSelect={(m) => addOrMerge(m, 1)}
+              placeholder="Somente celular / smartphone"
+            />
           </div>
           <div>
             <SectionTitle>Impressora</SectionTitle>
-            <MaterialSearchField label="Identificação da impressora" onSelect={(m) => addOrMerge(m, 1)} />
+            <MaterialSearchField
+              label="Identificação da impressora"
+              categoryIds={opt(printerIds)}
+              onSelect={(m) => addOrMerge(m, 1)}
+              placeholder="Somente impressoras"
+            />
           </div>
         </div>
 
@@ -388,11 +597,14 @@ export function CautelaMaterialsStep({
       {lines.length > 0 && (
         <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg space-y-2">
           <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">
-            Itens ({lines.length} linha(s))
+            Itens na cautela ({lines.length} linha(s))
           </p>
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {lines.map((row) => (
-              <div key={row.rowId} className="flex items-center gap-2 text-xs bg-slate-950/80 rounded-lg px-2 py-1.5 border border-slate-800">
+              <div
+                key={row.rowId}
+                className="flex items-center gap-2 text-xs bg-slate-950/80 rounded-lg px-2 py-1.5 border border-slate-800"
+              >
                 <div className="flex-1 min-w-0">
                   <span className="text-slate-200 truncate block">{row.material.name}</span>
                   <span className="text-[10px] text-slate-500">Pat {row.material.patrimony_number}</span>
@@ -403,9 +615,13 @@ export function CautelaMaterialsStep({
                   max={99999}
                   value={row.quantity}
                   onChange={(e) => setQty(row.rowId, parseInt(e.target.value, 10) || 1)}
-                  className="w-16 py-1 px-1 bg-slate-900 border border-slate-700 rounded text-right text-white text-xs"
+                  className={`w-16 py-1 px-1 bg-slate-900 border border-slate-700 rounded text-right text-white text-xs ${inputNoSpinner}`}
                 />
-                <button type="button" onClick={() => removeRow(row.rowId)} className="text-red-400 hover:text-red-300 p-1">
+                <button
+                  type="button"
+                  onClick={() => removeRow(row.rowId)}
+                  className="text-red-400 hover:text-red-300 p-1"
+                >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -413,7 +629,6 @@ export function CautelaMaterialsStep({
           </div>
         </div>
       )}
-
     </div>
   )
 }
