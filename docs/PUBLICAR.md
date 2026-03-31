@@ -4,8 +4,10 @@ Eu **não consigo** abrir o site nem a Vercel por você. O que evita problema é
 
 ## 1. Um lugar só para o código
 
-- Trabalhe neste repositório e na branch **main** (ou abra um PR para **main**).
-- Depois de editar: **salve tudo** e envie para o GitHub (commit + push).
+- Repositório: [github.com/gfmcosta08/reserva](https://github.com/gfmcosta08/reserva).
+- No GitHub, a branch **padrão** é **`master`**. A Vercel costuma publicar essa branch — **não** a `main`.
+- Se você trabalha na **`main`**, depois do `push` rode no projeto: `git checkout master && git merge main && git push origin master` (ou peça para alguém alinhar as duas).
+- Alternativa: no GitHub em **Settings → General → Default branch**, troque para **`main`** e na Vercel em **Settings → Git → Production Branch**, aponte para **`main`** — aí um `push` só nessa branch basta.
 
 ## 2. Um endereço só para testar
 
