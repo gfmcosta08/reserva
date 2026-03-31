@@ -25,6 +25,8 @@ Deve aparecer um texto JSON com `"app":"RESERVA"`. O site está certo.
 - Abra em **aba anônima**, ou
 - Limpe dados só desse site no navegador (o app pode estar guardando página velha).
 
-## 5. GitHub Actions
+## 5. Build automático no GitHub (opcional)
 
-Todo push no **main** dispara um **build de teste** aqui no GitHub. Se ficar vermelho, o código não compila — corrija antes de esperar a Vercel.
+Na pasta do projeto existe `.github/workflows/ci.yml`. Para ele passar a rodar no GitHub, alguém com acesso ao repositório precisa **enviar esse arquivo** (commit + push). Se o push der erro de “workflow”, use o GitHub no site (ou um token com permissão **workflow**) — é uma limitação de segurança do GitHub.
+
+Quando estiver ativo, todo push no **main** dispara um build de teste. Se ficar vermelho, o código não compila — corrija antes de esperar a Vercel.
