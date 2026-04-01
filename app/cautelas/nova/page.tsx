@@ -43,7 +43,7 @@ interface Pessoa {
   rg_front_url: string | null;
   rg_back_url: string | null;
   face_descriptor: number[] | null;
-  has_registered_pin: boolean;
+  has_registered_pin?: boolean;
 }
 
 interface Material {
