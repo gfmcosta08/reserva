@@ -12,7 +12,7 @@ Guia completo para deployment e configuração do sistema.
 |---------|-----|---------|
 | **GitHub** | https://github.com/gfmcosta08/reserva | gfmcosta08/reserva |
 | **Vercel** | https://vercel.com/gianpaolo-ferreira-matos-costas-projects/reserva-master | reserva-master |
-| **Produção** | https://reserva-master.vercel.app | Alias: reserva-master.vercel.app |
+| **Produção** | https://reserva1bpm.vercel.app | Alias: reserva1bpm.vercel.app |
 | **Supabase** | https://chguaozitzwfsmqyhreb.supabase.co | chguaozitzwfsmqyhreb |
 
 ### Arquitetura
@@ -269,6 +269,9 @@ Esses warnings são de bibliotecas de reconhecimento facial que usam APIs de fil
 ---
 
 ## 9. CHANGELOG
+
+### 2026-04-01 - Atualização URL Produção
+- Domínio alterado para https://reserva1bpm.vercel.app
 
 ### 2026-04-01 - Deployment Completo
 - Sistema de controle de custódia implementado
