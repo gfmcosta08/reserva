@@ -1,0 +1,195 @@
+# Source URL: https://vercel.com
+# Content Length: 10355 characters
+# Extracted at: 2026-03-28 06:39:05
+#============================================================
+
+Important
+Action needed for [two new vulnerabilities](https://vercel.com/kb/bulletin/security-bulletin-cve-2025-55184-and-cve-2025-55183)
+[Auto-fix projects](https://vercel.com/d?to=%2F%5Bteam%5D%2F~%2Ffixes&title=Automatically%20fix%20vulnerable%20projects)
+# Build and deploy on the AI Cloud.
+Vercel provides the developer tools and cloud infrastructure to build, scale, and secure a faster, more personalized web.
+[DeployStart Deploying](https://vercel.com/new) [Get a Demo](https://vercel.com/contact/sales/demo)
+# Build and deploy on the AI Cloud.
+Vercel provides the developer tools and cloud infrastructure to build, scale, and secure a faster, more personalized web.
+[DeployStart Deploying](https://vercel.com/new) [Get a Demo](https://vercel.com/contact/sales/demo)
+![runway Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/runway-light.4fe4ed23.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![runway Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/runway-dark.8aa92cef.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![leonardo-ai Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/leonardo-ai-light.c7c240a2.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![leonardo-ai Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/leonardo-ai-dark.98769390.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![zapier Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/zapier-light.5dde0542.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![zapier Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/zapier-dark.828a0308.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![adobe Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/adobe-light.ecca5ec5.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![adobe Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/adobe-dark.52acb024.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![typefully Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/typefully-light.208beb58.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![typefully Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/typefully-dark.fdef2d94.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![neo Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/neo-light.77f8719d.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![neo Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/neo-dark.1d8bd067.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![ruggable Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/ruggable-light.ce6fe2a6.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![ruggable Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/ruggable-dark.a54bcf52.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![sonos Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/sonos-light.058187ad.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![sonos Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/sonos-dark.7e53f91f.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![chicos Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/chicos-light.8b918415.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![chicos Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/chicos-dark.d71165a9.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![stripe Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/stripe-light.4919d80b.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![stripe Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/stripe-dark.aebeabe0.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![box Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/box-light.c9a32a40.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![box Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/box-dark.4c433bc1.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![hydrow Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/hydrow-light.dc35dedb.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![hydrow Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/hydrow-dark.ce83ce7c.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![super Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/super-light.79f378db.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![super Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/super-dark.acf052da.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![hashnode Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/hashnode-light.446ce9a8.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![hashnode Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/hashnode-dark.9de1af3f.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)
+![runway Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/runway-light.4fe4ed23.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![runway Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/runway-dark.8aa92cef.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr) build times went from 7m to 40s.![leonardo-ai Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/leonardo-ai-light.c7c240a2.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![leonardo-ai Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/leonardo-ai-dark.98769390.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr) saw a 95% reduction in page load times. ![zapier Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/zapier-light.5dde0542.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)![zapier Logo](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/zapier-dark.828a0308.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr) saw 24x faster builds.
+AI Apps
+AI Apps
+Web Apps
+Web Apps
+Ecommerce
+Ecommerce
+Marketing
+Marketing
+Platforms
+Platforms
+Get started using our pre-built templates. Easily stream long-running LLM responses for a better user experience with zero-config infrastructure that's always globally performant.
+Fast load times, zero overhead with Vercel's highly optimized infrastructure and CDN, reducing bounce rates and improving SEO. Streamline content creation & publishing with built-in previews.
+[Deploy AI Apps in seconds](https://vercel.com/ai)
+### Your product, delivered.
+Security, speed, and AI included, so you can focus on your user.
+![Agent modal thinking](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-web-agents-min.svg)![Agent modal thinking](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-web-agents-min-dark.svg)
+- Fluid
+- AISDK
+- AI Gateway
+- Workflow
+- Sandbox
+- BotID
+![Web browser featuring the text: What will you create?](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-web-apps-min.svg)![Web browser featuring the text: What will you create?](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-web-apps-min-dark.svg)
+![Commerce webpage featuring polo shirts](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-commerce-min.svg)![Commerce webpage featuring polo shirts](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/delivered-commerce-min-dark.svg)
+customer.domain.com
+project.domain.com
+jane.domain.com
+joe.domain.com
+Svelte
+Vite
+Next.js
+Nuxt
+Turbopack
+## Framework-Defined Infrastructure
+From code to infrastructure in one git push. Vercel deeply understands your app to provision the right resources and optimize for high-performance apps.
+## Scale your
+[Enterprise](https://vercel.com/enterprise)
+## without compromising
+[Security](https://vercel.com/security)
+## Deploy once, deliver everywhere.
+When you push code to Vercel, we make it instantly available across the globe.
+[More about Infrastructure](https://vercel.com/products/managed-infrastructure) [Learn about Enterprise](https://vercel.com/enterprise)
+## Fluid Compute
+A compute model for all workloads. With Active CPU pricing.
+[Learn more](https://vercel.com/fluid)
+![Fluid compute](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/fluid-compute-min-home.svg)![Fluid compute](https://lishhsx6kmthaacj.public.blob.vercel-storage.com/fluid-compute-home-min-dark.svg)
+## AI Gateway
+The AI Gateway For Developers. Effortlessly access and deploy hundreds of AI models from one interface.
+AI SDKPythonOpenAI HTTP
+- 1
+- 2
+- 3
+- 4
+- 5
+- 6
+```
+import { streamText } from 'ai'
+const result = streamText({
+model: 'openai/gpt-5',
+prompt: 'Why is the sky blue?'
+})
+```
+Use it with
+OpenAIxAIAnthropic
+and
+[many more](https://vercel.com/ai-gateway/models)
+Top models on Dec 14, 2025
+1
+Grok Code Fast 1
+47.2%
+2
+Claude Sonnet 4.5
+11.2%
+3
+Gemini 2.5 Flash Lite
+7.1%
+4
+MiniMax M2
+4.1%
+5
+Claude Haiku 4.5
+3.5%
+6
+GPT-5.2
+3.2%
+7
+Gemini 3 Pro Preview
+3.1%
+8
+Claude 3.7 Sonnet
+2.1%
+9
+Grok 4 Fast Reasoning
+1.7%
+10
+Claude Sonnet 4
+1.5%
+## Deploy your first app in seconds.
+- Deploy automatically \*\*from git\*\* or with \*\*our CLI\*\*
+- \*\*Wide range\*\* support for the most popular frameworks
+- \*\*Previews\*\* for every push
+- \*\*Automatic HTTPS\*\* for all your domains
+[\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+Next.js Templates](https://vercel.com/templates/nextjs) [\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+React Templates](https://vercel.com/templates/react) [\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+Astro Templates](https://vercel.com/templates/astro) [\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+Svelte Templates](https://vercel.com/templates/svelte) [\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+Nuxt Templates](https://vercel.com/templates/nuxt) [\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+\* \* \*\\
+\\
+Python Templates](https://vercel.com/templates/python)
+[\*\*StartDeploying\*\* \\
+\\
+StartDeploying](https://vercel.com/new)
+[Talk to an ExpertTalk to an Expert![](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/chevron-circle-right-fill.d76f481e.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)](https://vercel.com/contact/sales) [Get an Enterprise TrialGet an Enterprise Trial![](https://vercel.com/vc-ap-vercel-marketing/\_next/static/media/chevron-circle-right-fill.d76f481e.svg?dpl=dpl\_CQfYtA6CAwryF3Kx2juj4rmGo5Jr)](https://vercel.com/contact/sales/enterprise-trial)
