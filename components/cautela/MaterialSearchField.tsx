@@ -57,7 +57,7 @@ export function MaterialSearchField({
     }
     const t = setTimeout(() => {
       setLoading(true)
-      searchMaterials(q.trim(), { categoryIds })
+      searchMaterials(q.trim())
         .then(setResults)
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
