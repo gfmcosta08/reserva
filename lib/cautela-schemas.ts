@@ -14,7 +14,9 @@ export const createCautelaInputSchema = z.object({
     .array(cautelaItemRowSchema)
     .min(1, "Selecione pelo menos um material"),
   notes: z.string().max(2000, "Observações muito longas").optional(),
-  pin: z.string().regex(/^\d{6}$/, "PIN deve ter 6 dígitos numéricos"),
+  pin: z.string().regex(/^\d{6}$/, "PIN deve ter 6 dígitos numéricos").optional(),
+  autenticacao_tipo: z.enum(["pin", "facial"]).optional(),
+  expected_return_date: z.string().optional(),
 })
 
 export const createCautelaFaceAuthInputSchema = z.object({
