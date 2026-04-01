@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Check,
   Loader2,
-  QRCode,
+  QrCode,
   History
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -143,7 +143,7 @@ export default function MaterialDetalhePage({ params }: { params: Promise<{ id: 
           onClick={() => setShowQR(!showQR)}
           className="p-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
         >
-          <QRCode className="h-5 w-5" />
+          <QrCode className="h-5 w-5" />
         </button>
       </div>
 

@@ -15,6 +15,8 @@ export type AuditAction =
   | "material_updated"
   | "material_status_changed"
   | "correction_made"
+  | "autorizacao_manual_criada"
+  | "escala_criada"
 
 export async function logAudit(params: {
   action: AuditAction
