@@ -192,7 +192,7 @@ export async function POST(request: Request) {
     for (const item of items) {
       await supabase.rpc("decrement_material_available", {
         material_id: item.material_id,
-        amount: item.quantidade || 1,
+        amount: item.quantity || 1,
       });
     }
 
