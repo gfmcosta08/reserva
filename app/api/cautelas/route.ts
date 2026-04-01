@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     const cautelaItems = items.map(item => ({
       cautela_id: cautela.id,
       material_id: item.material_id,
-      quantity_delivered: item.quantidade || 1,
+      quantity_delivered: item.quantity || 1,
       status: "pending",
     }));
 
