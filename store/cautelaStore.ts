@@ -6,11 +6,23 @@ import { create } from 'zustand';
 import { 
   Cautela, 
   ItemCautela, 
-  Pessoa, 
   Material,
   TipoCautela,
   StatusCautela 
 } from '@/types';
+
+interface SupabasePessoa {
+  id: string;
+  full_name: string;
+  rg: string;
+  registration_number: string;
+  function: string;
+  status: string;
+  rg_front_url: string | null;
+  rg_back_url: string | null;
+  face_descriptor: number[] | null;
+  has_registered_pin?: boolean;
+}
 
 interface CautelaItemData {
   material_id: string;
@@ -26,7 +38,7 @@ interface CautelaItemData {
 interface CautelaState {
   // Wizard state
   step: number;
-  selectedPessoa: Pessoa | null;
+  selectedPessoa: SupabasePessoa | null;
   items: CautelaItemData[];
   tipo: TipoCautela;
   dataPrevistaDevolucao: Date | null;
@@ -35,13 +47,13 @@ interface CautelaState {
   
   // Lists
   cautelas: Cautela[];
-  cautelaAtual: (Cautela & { pessoa: Pessoa; items: (ItemCautela & { material: Material })[] }) | null;
+  cautelaAtual: (Cautela & { pessoa: SupabasePessoa; items: (ItemCautela & { material: Material })[] }) | null;
   loading: boolean;
   error: string | null;
   
   // Actions
   setStep: (step: number) => void;
-  setSelectedPessoa: (pessoa: Pessoa | null) => void;
+  setSelectedPessoa: (pessoa: SupabasePessoa | null) => void;
   addItem: (item: CautelaItemData) => void;
   updateItem: (index: number, item: CautelaItemData) => void;
   removeItem: (index: number) => void;

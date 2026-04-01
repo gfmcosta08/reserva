@@ -33,7 +33,7 @@ import { useEscalaStore } from "@/store/escalaStore";
 import { searchPersons } from "@/app/actions/cautelas";
 import { toast } from "sonner";
 
-interface Pessoa {
+type PessoaResult = {
   id: string;
   full_name: string;
   rg: string;
@@ -44,9 +44,9 @@ interface Pessoa {
   rg_back_url: string | null;
   face_descriptor: number[] | null;
   has_registered_pin?: boolean;
-}
+};
 
-interface Material {
+type Material = {
   id: string;
   name: string;
   patrimony_number: string;
@@ -78,7 +78,7 @@ export default function NovaCautelaPage() {
   const { fetchEscalasHoje, escalasHoje, verificarAutorizacao, registrarAutorizacaoManual } = useEscalaStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Pessoa[]>([]);
+  const [searchResults, setSearchResults] = useState<PessoaResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
@@ -122,7 +122,7 @@ export default function NovaCautelaPage() {
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearchPessoa]);
 
-  const handleSelectPessoa = async (pessoa: Pessoa) => {
+  const handleSelectPessoa = async (pessoa: PessoaResult) => {
     setSelectedPessoa(pessoa);
     setSearchResults([]);
     setSearchQuery("");
