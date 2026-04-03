@@ -6,6 +6,7 @@ on:
       - '**'
   delete: {}
   create: {}
+    workflow_dispatch: {}
 
 jobs:
   mirror:
