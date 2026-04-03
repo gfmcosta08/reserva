@@ -1,12 +1,12 @@
 name: Mirror to farollapi-cloud
 
-on:
+"on":
   push:
     branches:
       - '**'
   delete: {}
   create: {}
-    workflow_dispatch: {}
+  workflow_dispatch: {}
 
 jobs:
   mirror:
