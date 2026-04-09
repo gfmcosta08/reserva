@@ -18,7 +18,7 @@ export default function FaceRegistration({ onCapture }: FaceRegistrationProps) {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/"
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/"
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
