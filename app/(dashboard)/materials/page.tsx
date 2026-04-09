@@ -1,7 +1,20 @@
+import { Suspense } from "react";
 import { getMaterials } from "@/app/actions/materials";
 import { getMaterialCategoryOptions } from "@/app/actions/categories";
 import MaterialsClient from "@/components/MaterialsClient";
 import { createClient } from "@/lib/supabase-server";
+
+export const dynamic = "force-dynamic";
+
+function MaterialsLoading() {
+  return (
+    <div className="p-8 space-y-8 animate-pulse">
+      <div className="h-10 w-72 rounded-lg bg-slate-800" />
+      <div className="h-14 rounded-2xl border border-slate-800 bg-slate-900/50" />
+      <div className="min-h-[320px] rounded-2xl border border-slate-800 bg-slate-900/50" />
+    </div>
+  );
+}
 
 export default async function MaterialsPage({
   searchParams,
@@ -25,11 +38,13 @@ export default async function MaterialsPage({
   const locations = Array.from(new Set((allMaterials ?? []).map((m) => m.reservation_id))).filter(Boolean).sort() as string[]
 
   return (
-    <MaterialsClient
-      initialMaterials={materials}
-      categoryOptions={categories}
-      materialNames={materialNames}
-      locations={locations}
-    />
+    <Suspense fallback={<MaterialsLoading />}>
+      <MaterialsClient
+        initialMaterials={materials}
+        categoryOptions={categories}
+        materialNames={materialNames}
+        locations={locations}
+      />
+    </Suspense>
   );
 }
