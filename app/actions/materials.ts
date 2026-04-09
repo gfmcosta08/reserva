@@ -44,8 +44,11 @@ export async function getMaterials(filters?: {
 
   const { data, error } = await query
 
-  if (error) throw new Error(error.message)
-  return data
+  if (error) {
+    console.error("[getMaterials]", error.message)
+    throw new Error(error.message)
+  }
+  return data ?? []
 }
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
