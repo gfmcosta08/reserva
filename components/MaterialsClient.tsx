@@ -17,19 +17,42 @@ import {
 import CategoryManager from "./CategoryManager";
 import MaterialForm from "./MaterialForm";
 import QRCodeModal from "./QRCodeModal";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { importMaterialsCsv } from "@/app/actions/materials";
+
+export type MaterialsUrlQuery = {
+  search?: string;
+  name?: string;
+  reservation_id?: string;
+  category?: string;
+  status?: string;
+};
+
+function pushMaterialsRoute(
+  router: ReturnType<typeof useRouter>,
+  current: MaterialsUrlQuery,
+  patch: Partial<MaterialsUrlQuery>
+) {
+  const merged: Record<string, string> = {}
+  for (const [k, v] of Object.entries({ ...current, ...patch })) {
+    if (v != null && String(v).length > 0) merged[k] = String(v)
+  }
+  const q = new URLSearchParams(merged).toString()
+  router.push(q ? `/materials?${q}` : "/materials")
+}
 
 export default function MaterialsClient({
   initialMaterials,
   categoryOptions,
   materialNames = [],
   locations = [],
+  urlQuery,
 }: {
   initialMaterials: any[];
   categoryOptions: { name: string }[];
   materialNames?: string[];
   locations?: string[];
+  urlQuery: MaterialsUrlQuery;
 }) {
   const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -37,7 +60,6 @@ export default function MaterialsClient({
   const [qrModalMaterial, setQrModalMaterial] = useState<any>(null);
   const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const handleDownloadTemplate = () => {
     const headers = ["Nome", "Patrimonio", "CodigoInterno", "NumeroSerie", "IdentificacaoReserva", "Categoria", "Observacoes"];
@@ -102,23 +124,11 @@ export default function MaterialsClient({
   };
 
   function handleSearch(term: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (term) {
-      params.set("search", term);
-    } else {
-      params.delete("search");
-    }
-    router.push(`/materials?${params.toString()}`);
+    pushMaterialsRoute(router, urlQuery, { search: term || undefined })
   }
 
   function handleFilter(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-    router.push(`/materials?${params.toString()}`);
+    pushMaterialsRoute(router, urlQuery, { [key]: value || undefined })
   }
 
   return (
@@ -186,7 +196,7 @@ export default function MaterialsClient({
             type="text" 
             placeholder="Buscar por nome, patrimônio ou código..." 
             className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-200 pl-10 underline-offset-4"
-            defaultValue={searchParams.get("search") || ""}
+            defaultValue={urlQuery.search || ""}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
@@ -198,7 +208,7 @@ export default function MaterialsClient({
           </div>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={searchParams.get("name") || ""}
+            defaultValue={urlQuery.name || ""}
             onChange={(e) => handleFilter("name", e.target.value)}
           >
             <option value="">Por Material</option>
@@ -208,7 +218,7 @@ export default function MaterialsClient({
           </select>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={searchParams.get("reservation_id") || ""}
+            defaultValue={urlQuery.reservation_id || ""}
             onChange={(e) => handleFilter("reservation_id", e.target.value)}
           >
             <option value="">Por Localização</option>
@@ -218,7 +228,7 @@ export default function MaterialsClient({
           </select>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={searchParams.get("category") || ""}
+            defaultValue={urlQuery.category || ""}
             onChange={(e) => handleFilter("category", e.target.value)}
           >
             <option value="">Por Categoria</option>
@@ -230,7 +240,7 @@ export default function MaterialsClient({
           </select>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={searchParams.get("status") || ""}
+            defaultValue={urlQuery.status || ""}
             onChange={(e) => handleFilter("status", e.target.value)}
           >
             <option value="">Status</option>
