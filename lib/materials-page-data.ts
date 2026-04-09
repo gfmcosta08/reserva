@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server"
+import { MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit"
 
 export type MaterialsPageFilters = {
   search?: string
@@ -8,11 +9,26 @@ export type MaterialsPageFilters = {
   reservation_id?: string
 }
 
+export type MaterialsPagePayload = {
+  materials: Record<string, unknown>[]
+  categoryOptions: { name: string }[]
+  materialNames: string[]
+  locations: string[]
+  /** true se existirem mais linhas que o limite para os filtros atuais */
+  listTruncated: boolean
+  /** Total de linhas que correspondem aos filtros (PostgREST count) */
+  materialsTotalCount: number
+}
+
 /** Dados da página /materials — módulo servidor comum (não é Server Action). */
-export async function loadMaterialsPageData(filters: MaterialsPageFilters) {
+export async function loadMaterialsPageData(filters: MaterialsPageFilters): Promise<MaterialsPagePayload> {
   const supabase = await createClient()
 
-  let query = supabase.from("materials").select("*").order("created_at", { ascending: false })
+  let query = supabase
+    .from("materials")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .limit(MATERIALS_LIST_ROW_LIMIT)
 
   if (filters.status) query = query.eq("status", filters.status)
   if (filters.category) query = query.eq("category", filters.category)
@@ -24,21 +40,39 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters) {
     )
   }
 
-  const [{ data: materials, error: materialsError }, { data: catRows, error: catError }, { data: allMaterials, error: namesError }] =
+  const [{ data: materials, error: materialsError, count: materialsCount }, { data: catRows, error: catError }, { data: allMaterials, error: namesError }] =
     await Promise.all([
       query,
       supabase.from("materials").select("category"),
       supabase.from("materials").select("name, reservation_id"),
     ])
 
+  const rowCount = materials?.length ?? 0
+  const total = materialsCount ?? rowCount
+  const listTruncated = total > MATERIALS_LIST_ROW_LIMIT
+
+  console.info(
+    "[materials-page] loadMaterialsPageData",
+    JSON.stringify({
+      phase: "after_queries",
+      rowCount,
+      materialsTotalCount: total,
+      listTruncated,
+      limit: MATERIALS_LIST_ROW_LIMIT,
+      hasMaterialsError: !!materialsError,
+      hasCatError: !!catError,
+      hasNamesError: !!namesError,
+    })
+  )
+
   if (materialsError) {
-    console.error("[loadMaterialsPageData] materials", materialsError.message)
+    console.error("[materials-page] materials query", materialsError.message, materialsError)
   }
   if (catError) {
-    console.error("[loadMaterialsPageData] categories", catError.message)
+    console.error("[materials-page] categories query", catError.message, catError)
   }
   if (namesError) {
-    console.error("[loadMaterialsPageData] names/locations", namesError.message)
+    console.error("[materials-page] names/locations query", namesError.message, namesError)
   }
 
   const categoryOptions = (() => {
@@ -54,9 +88,11 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters) {
   const locations = Array.from(new Set(rows.map((m) => m.reservation_id))).filter(Boolean).sort() as string[]
 
   return {
-    materials: materials ?? [],
+    materials: (materials ?? []) as Record<string, unknown>[],
     categoryOptions,
     materialNames,
     locations,
+    listTruncated,
+    materialsTotalCount: total,
   }
 }

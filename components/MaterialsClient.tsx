@@ -19,6 +19,7 @@ import MaterialForm from "./MaterialForm";
 import QRCodeModal from "./QRCodeModal";
 import { useRouter } from "next/navigation";
 import { importMaterialsCsv } from "@/app/actions/materials";
+import { MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit";
 
 export type MaterialsUrlQuery = {
   search?: string;
@@ -47,12 +48,16 @@ export default function MaterialsClient({
   materialNames = [],
   locations = [],
   urlQuery,
+  listTruncated = false,
+  materialsTotalCount,
 }: {
   initialMaterials: any[];
   categoryOptions: { name: string }[];
   materialNames?: string[];
   locations?: string[];
   urlQuery: MaterialsUrlQuery;
+  listTruncated?: boolean;
+  materialsTotalCount?: number;
 }) {
   const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
@@ -133,6 +138,22 @@ export default function MaterialsClient({
 
   return (
     <div className="p-8 space-y-8">
+      {listTruncated && (
+        <div
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/95"
+          role="status"
+        >
+          Lista limitada a <strong>{MATERIALS_LIST_ROW_LIMIT.toLocaleString("pt-BR")}</strong> itens por carregamento.
+          {materialsTotalCount != null && (
+            <>
+              {" "}
+              Total com os filtros atuais: <strong>{materialsTotalCount.toLocaleString("pt-BR")}</strong>. Use filtros
+              para refinar.
+            </>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Materiais</h1>
