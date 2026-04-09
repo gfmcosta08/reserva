@@ -14,43 +14,6 @@ const materialSchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function getMaterials(filters?: {
-  status?: string
-  category?: string
-  search?: string
-  name?: string
-  reservation_id?: string
-}) {
-  const supabase = await createClient()
-  let query = supabase.from("materials").select("*").order("created_at", { ascending: false })
-
-  if (filters?.status) {
-    query = query.eq("status", filters.status)
-  }
-  if (filters?.category) {
-    query = query.eq("category", filters.category)
-  }
-  if (filters?.name) {
-    query = query.eq("name", filters.name)
-  }
-  if (filters?.reservation_id) {
-    query = query.eq("reservation_id", filters.reservation_id)
-  }
-  if (filters?.search) {
-    query = query.or(
-      `name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%`
-    )
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error("[getMaterials]", error.message, error)
-    return []
-  }
-  return data ?? []
-}
-
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
   const supabase = await createClient()
   const result = materialSchema.safeParse(data)
