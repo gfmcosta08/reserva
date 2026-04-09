@@ -11,7 +11,7 @@ export default async function MaterialsReportPage() {
   // 1. Matérias com Categoria
   const { data: materials, error: matErr } = await supabase
     .from("materials")
-    .select("*, categories(name)")
+    .select("*")
     .order("name")
 
   // 2. Cautelas Abertas e seus Itens
@@ -49,7 +49,7 @@ export default async function MaterialsReportPage() {
   
   if (materials) {
     materials.forEach((m: any) => {
-      const cat = m.categories?.name || "Sem Categoria"
+      const cat = m.category || "Sem Categoria"
       if (!grouped[cat]) grouped[cat] = { available: [], cautelados: [], other: [] }
       
       const detail = activeMaterialMap.get(m.id)

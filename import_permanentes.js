@@ -57,17 +57,9 @@ async function runImport() {
         if (!rg) rg = '99999' + i; // fallback se for vazio
         if (!serial) serial = 'S/N-' + i;
 
-        // 1. Verificar categoria
-        let catId;
-        const { data: catData } = await supabase.from('categories').select('id').eq('name', categoria).single();
-        if (catData) {
-            catId = catData.id;
-        } else {
-            const { data: newCat } = await supabase.from('categories').insert({ name: categoria }).select().single();
-            catId = newCat ? newCat.id : null;
-        }
+        const categoryName = (categoria || 'Geral').trim() || 'Geral';
 
-        // 2. Verificar/Criar Pessoa
+        // 1. Verificar/Criar Pessoa
         let personId;
         const { data: personData } = await supabase.from('persons').select('id').eq('registration_number', rg).single();
         if (personData) {
@@ -95,7 +87,7 @@ async function runImport() {
             console.log(`Criando material: ${serial}`);
             const { data: newMat, error: mErr } = await supabase.from('materials').insert({
                 name: categoria,
-                category_id: catId,
+                category: categoryName,
                 patrimony_number: patNum,
                 serial_number: serial,
                 internal_code: intCode,

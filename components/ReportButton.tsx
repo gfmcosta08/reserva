@@ -68,7 +68,7 @@ export default function ReportButton() {
         y = addSectionTitle(doc, "MATERIAIS DISPONÍVEIS", y, margin, [34, 197, 94])
 
         const rows = data.availableMaterials.map((m: any, i: number) => [
-          i + 1, m.name, m.patrimony_number, m.internal_code, m.serial_number || "—", m.categories?.name || "—"
+          i + 1, m.name, m.patrimony_number, m.internal_code, m.serial_number || "—", m.category || "—"
         ])
 
         autoTable(doc, {
@@ -212,7 +212,7 @@ function addCautelaBlock(doc: jsPDF, cautela: any, y: number, margin: number, pa
         item.materials?.name || "—",
         item.materials?.patrimony_number || "—",
         item.materials?.internal_code || "—",
-        item.materials?.categories?.name || "—",
+        item.materials?.category || "—",
         statusMap[item.status] || item.status,
       ]
     })

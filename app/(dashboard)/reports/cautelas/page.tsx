@@ -17,7 +17,7 @@ export default async function CautelasReportPage() {
       profiles(name, email),
       cautela_items(
          id, returned, return_date, status, notes,
-         materials(name, patrimony_number, internal_code, categories(name))
+         materials(name, patrimony_number, internal_code, category)
       )
     `)
     .in("status", ["open", "partial"])

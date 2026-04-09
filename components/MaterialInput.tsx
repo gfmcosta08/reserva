@@ -11,7 +11,7 @@ interface Material {
   internal_code: string | null
   serial_number: string | null
   status: string
-  category?: { name: string }
+  category?: string
 }
 
 interface MaterialInputProps {

@@ -54,7 +54,7 @@ export default function CautelaReturnFlow({
         material_name: item.materials?.name || "Material",
         patrimony_number: item.materials?.patrimony_number || "",
         internal_code: item.materials?.internal_code || "",
-        category_name: item.materials?.categories?.name || "",
+        category_name: item.materials?.category || "",
         quantity_delivered: item.quantity_delivered || 1,
         status: item.status,
         returned_at: item.returned_at,

@@ -95,7 +95,7 @@ export async function getCautelaById(id: string) {
     .from("cautela_items")
     .select(`
       *,
-      materials(id, name, patrimony_number, serial_number, internal_code, categories(name))
+      materials(id, name, patrimony_number, serial_number, internal_code, category)
     `)
     .eq("cautela_id", id)
 
@@ -609,16 +609,16 @@ export async function searchPersons(query: string) {
 }
 
 // ===== BUSCAR MATERIAIS DISPONÍVEIS =====
-export async function getAvailableMaterials(categoryId?: string) {
+export async function getAvailableMaterials(categoryName?: string) {
   const supabase = await createClient()
   let query = supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, categories(name)")
+    .select("id, name, patrimony_number, serial_number, internal_code, category")
     .eq("status", "available")
     .order("name")
 
-  if (categoryId) {
-    query = query.eq("category_id", categoryId)
+  if (categoryName) {
+    query = query.eq("category", categoryName)
   }
 
   const { data, error } = await query
@@ -630,28 +630,25 @@ export async function getAvailableMaterials(categoryId?: string) {
 export async function getAvailableMaterialsGrouped() {
   const supabase = await createClient()
 
-  // Buscar todas as categorias ordenadas
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name")
-    .order("name")
-
-  if (!categories) return []
-
-  // Buscar materiais disponíveis
   const { data: materials } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, category_id")
+    .select("id, name, patrimony_number, serial_number, internal_code, category")
     .eq("status", "available")
     .order("name")
 
-  if (!materials) return categories.map(c => ({ ...c, materials: [] }))
+  if (!materials?.length) return []
 
-  // Agrupar materiais por categoria
-  return categories.map(category => ({
-    ...category,
-    materials: materials.filter(m => m.category_id === category.id)
-  }))
+  const byName = new Map<string, typeof materials>()
+  for (const m of materials) {
+    const key = m.category || "Geral"
+    const arr = byName.get(key) ?? []
+    arr.push(m)
+    byName.set(key, arr)
+  }
+
+  return [...byName.entries()]
+    .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
+    .map(([name, mats]) => ({ name, materials: mats }))
 }
 
 export type SearchableMaterial = {
@@ -660,40 +657,44 @@ export type SearchableMaterial = {
   patrimony_number: string
   serial_number: string | null
   internal_code: string
-  category_id: string | null
-  categories: { name: string } | { name: string }[] | null
+  category: string
 }
 
 /** Busca materiais disponíveis por nome, patrimônio, serial, código interno ou UUID. */
-export async function searchMaterials(query: string): Promise<SearchableMaterial[]> {
+export async function searchMaterials(
+  query: string,
+  categoryNames?: string[]
+): Promise<SearchableMaterial[]> {
   const q = query.trim()
   if (q.length < 1) return []
 
   const supabase = await createClient()
-  const select =
-    "id, name, patrimony_number, serial_number, internal_code, category_id, categories(name)"
+  const select = "id, name, patrimony_number, serial_number, internal_code, category"
 
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   if (uuidPattern.test(q)) {
-    const { data } = await supabase
-      .from("materials")
-      .select(select)
-      .eq("status", "available")
-      .eq("id", q)
-      .limit(5)
+    let qUuid = supabase.from("materials").select(select).eq("status", "available").eq("id", q).limit(5)
+    if (categoryNames && categoryNames.length > 0) {
+      qUuid = qUuid.in("category", categoryNames)
+    }
+    const { data } = await qUuid
     return (data ?? []) as SearchableMaterial[]
   }
 
-  const { data, error } = await supabase
+  let qText = supabase
     .from("materials")
     .select(select)
     .eq("status", "available")
-    .or(
-      `name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`
-    )
+    .or(`name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`)
     .limit(25)
+
+  if (categoryNames && categoryNames.length > 0) {
+    qText = qText.in("category", categoryNames)
+  }
+
+  const { data, error } = await qText
 
   if (error) return []
   return (data ?? []) as SearchableMaterial[]

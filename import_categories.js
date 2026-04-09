@@ -5,6 +5,10 @@ const supabase = createClient(
 );
 
 async function setup() {
+  console.error(
+    "Obsoleto: a tabela `categories` foi unificada em `materials.category`. Não execute este script. Encerrando."
+  );
+  process.exit(1);
   // 1. Delete invalid categories
   console.log('1. Cleaning up invalid categories...');
   

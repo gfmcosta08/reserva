@@ -33,11 +33,9 @@ export function categoryNameMatchesGroup(categoryName: string, group: CautelaMat
   return keywords.some((k) => lower.includes(k.toLowerCase()))
 }
 
-export function resolveCategoryIdsForGroup(
-  categories: { id: string; name: string }[],
-  group: CautelaMaterialGroup
-): string[] {
-  return categories.filter((c) => categoryNameMatchesGroup(c.name, group)).map((c) => c.id)
+/** Nomes de categoria (texto em materials.category) que pertencem ao grupo da UI. */
+export function resolveCategoryNamesForGroup(distinctNames: string[], group: CautelaMaterialGroup): string[] {
+  return distinctNames.filter((n) => categoryNameMatchesGroup(n, group))
 }
 
 /** Nome da categoria do material (primeiro elemento). */

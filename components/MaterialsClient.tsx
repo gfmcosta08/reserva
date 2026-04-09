@@ -20,16 +20,14 @@ import QRCodeModal from "./QRCodeModal";
 import { useRouter, useSearchParams } from "next/navigation";
 import { importMaterialsCsv } from "@/app/actions/materials";
 
-export default function MaterialsClient({ 
-  initialMaterials, 
-  categories,
-  userRole = "operator",
+export default function MaterialsClient({
+  initialMaterials,
+  categoryOptions,
   materialNames = [],
-  locations = []
-}: { 
-  initialMaterials: any[]; 
-  categories: any[];
-  userRole?: string;
+  locations = [],
+}: {
+  initialMaterials: any[];
+  categoryOptions: { name: string }[];
   materialNames?: string[];
   locations?: string[];
 }) {
@@ -87,7 +85,7 @@ export default function MaterialsClient({
     csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Status,Observacoes\n";
 
     initialMaterials.forEach(m => {
-      const catName = m.categories?.name || "";
+      const catName = m.category || "";
       const statusMap: any = { available: "Disponivel", cautelado: "Em Uso", maintenance: "Manutencao", unavailable: "Bloqueado/Indisponível" };
       const statusLabel = statusMap[m.status] || m.status;
 
@@ -220,12 +218,14 @@ export default function MaterialsClient({
           </select>
           <select 
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={searchParams.get("category_id") || ""}
-            onChange={(e) => handleFilter("category_id", e.target.value)}
+            defaultValue={searchParams.get("category") || ""}
+            onChange={(e) => handleFilter("category", e.target.value)}
           >
             <option value="">Por Categoria</option>
-            {categories.map((cat: any) => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            {categoryOptions.map((cat) => (
+              <option key={cat.name} value={cat.name}>
+                {cat.name}
+              </option>
             ))}
           </select>
           <select 
@@ -287,7 +287,7 @@ export default function MaterialsClient({
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 capitalize">
-                      {m.categories?.name}
+                      {m.category}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -321,16 +321,15 @@ export default function MaterialsClient({
       </div>
 
       {showCategories && (
-        <CategoryManager 
-          categories={categories} 
-          onClose={() => setShowCategories(false)} 
-          userRole={userRole}
+        <CategoryManager
+          categoryNames={categoryOptions.map((c) => c.name)}
+          onClose={() => setShowCategories(false)}
         />
       )}
 
       {showMaterialForm && (
         <MaterialForm
-          categories={categories}
+          categorySuggestions={categoryOptions.map((c) => c.name)}
           material={editingMaterial}
           onClose={() => {
             setShowMaterialForm(false);

@@ -8,7 +8,7 @@ export async function getReportData() {
   // 1. Todos os materiais com categoria
   const { data: materials } = await supabase
     .from("materials")
-    .select("*, categories(name)")
+    .select("*")
     .order("name")
 
   // 2. Cautelas abertas/parciais com itens e pessoa
@@ -28,7 +28,7 @@ export async function getReportData() {
     for (const cautela of openCautelas) {
       const { data: items } = await supabase
         .from("cautela_items")
-        .select("*, materials(name, patrimony_number, internal_code, serial_number, categories(name))")
+        .select("*, materials(name, patrimony_number, internal_code, serial_number, category)")
         .eq("cautela_id", cautela.id)
 
       cautelasWithItems.push({ ...cautela, items: items || [] })

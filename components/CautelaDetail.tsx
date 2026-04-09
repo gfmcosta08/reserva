@@ -195,7 +195,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                         <p className="text-sm font-semibold text-white">{item.materials?.name}</p>
                         <p className="text-[10px] text-slate-500">
                           Pat: {item.materials?.patrimony_number} • Cód: {item.materials?.internal_code}
-                          {item.materials?.categories?.name && <span> • {item.materials.categories.name}</span>}
+                          {item.materials?.category && <span> • {item.materials.category}</span>}
                         </p>
                       </div>
                     </div>

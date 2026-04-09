@@ -217,7 +217,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
         materialLines.map((l) => ({
           id: l.material.id,
           name: l.material.name,
-          categories: l.material.categories,
+          category: l.material.category,
         }))
       ),
     [materialLines]
@@ -231,7 +231,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       other: [],
     }
     for (const row of materialLines) {
-      const cat = row.material.categories?.[0]?.name || ""
+      const cat = row.material.category || ""
       const b = bucketForMaterialLine(cat, row.material.name)
       buckets[b].push(row)
     }
@@ -499,7 +499,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           const hasIncompatibility = caliberSummary.incompatibilities.some(
                             (inc) => inc.materialId === m.id
                           )
-                          const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
+                          const caliber = extractCaliber(m.category || m.name)
                           return (
                             <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
                               <Package
