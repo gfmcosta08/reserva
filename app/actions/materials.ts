@@ -45,8 +45,8 @@ export async function getMaterials(filters?: {
   const { data, error } = await query
 
   if (error) {
-    console.error("[getMaterials]", error.message)
-    throw new Error(error.message)
+    console.error("[getMaterials]", error.message, error)
+    return []
   }
   return data ?? []
 }

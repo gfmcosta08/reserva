@@ -13,9 +13,16 @@ export default async function MaterialsPage({
 
   const supabase = await createClient()
 
-  const { data: allMaterials } = await supabase.from("materials").select("name, reservation_id");
-  const materialNames = Array.from(new Set(allMaterials?.map(m => m.name))).filter(Boolean).sort() as string[];
-  const locations = Array.from(new Set(allMaterials?.map(m => m.reservation_id))).filter(Boolean).sort() as string[];
+  const { data: allMaterials, error: allMaterialsError } = await supabase
+    .from("materials")
+    .select("name, reservation_id")
+
+  if (allMaterialsError) {
+    console.error("[materials/page] select name,reservation_id", allMaterialsError.message)
+  }
+
+  const materialNames = Array.from(new Set((allMaterials ?? []).map((m) => m.name))).filter(Boolean).sort() as string[]
+  const locations = Array.from(new Set((allMaterials ?? []).map((m) => m.reservation_id))).filter(Boolean).sort() as string[]
 
   return (
     <MaterialsClient
