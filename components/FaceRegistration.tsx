@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { Camera, RefreshCw, CheckCircle, Loader2 } from "lucide-react"
+
 let faceapi: any
 // face-api.js loaded lazily to avoid bundling on non-biometrics pages
-import { Camera, RefreshCw, CheckCircle, Loader2 } from "lucide-react"
 
 interface FaceRegistrationProps {
   onCapture: (descriptor: number[]) => void
@@ -19,7 +20,7 @@ export default function FaceRegistration({ onCapture }: FaceRegistrationProps) {
   useEffect(() => {
     const loadModels = async () => {
       try {
-    const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/" 
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/"
         faceapi = await (await import("face-api.js")) as any
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -35,8 +36,8 @@ export default function FaceRegistration({ onCapture }: FaceRegistrationProps) {
 
     const startVideo = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: "user" } // Pode ser alternado para environment se necessário
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" }
         })
         if (videoRef.current) {
           videoRef.current.srcObject = stream
@@ -91,7 +92,6 @@ export default function FaceRegistration({ onCapture }: FaceRegistrationProps) {
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Iniciando Biometria...</p>
           </div>
         )}
-        
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 p-6 text-center z-20">
             <p className="text-red-400 text-sm font-medium">{error}</p>
@@ -105,10 +105,7 @@ export default function FaceRegistration({ onCapture }: FaceRegistrationProps) {
           playsInline
           className={`w-full h-full object-cover transition-opacity duration-500 ${loading ? 'opacity-0' : 'opacity-100'}`}
         />
-        
         <canvas ref={canvasRef} className="hidden" />
-
-        {/* Overlay do Rosto */}
         <div className="absolute inset-0 border-[40px] border-slate-900/60 pointer-events-none">
           <div className="w-full h-full border-2 border-dashed border-blue-500/50 rounded-full" />
         </div>

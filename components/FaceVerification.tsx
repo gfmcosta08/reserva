@@ -1,8 +1,12 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+<<<<<<< HEAD
 let faceapi: any
 // face-api.js loaded lazily to avoid bundling on non-biometrics pages
+=======
+import * as faceapi from "face-api.js"
+>>>>>>> 38c68314507147e87982077315c699ed957414a0
 import { Camera, Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 
 interface FaceVerificationProps {
@@ -26,8 +30,12 @@ export default function FaceVerification({ storedDescriptor, onResult, personNam
   useEffect(() => {
     const loadModels = async () => {
       try {
+<<<<<<< HEAD
     const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/" 
         faceapi = await (await import("face-api.js")) as any
+=======
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/"
+>>>>>>> 38c68314507147e87982077315c699ed957414a0
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
