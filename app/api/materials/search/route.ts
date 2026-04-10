@@ -9,12 +9,17 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q") || "";
+  const categoriesParam = searchParams.get("categories");
+  const categories = (categoriesParam ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
 
   if (query.length < 1) {
     return NextResponse.json({ materials: [] });
   }
 
-  const { data, error } = await supabase
+  let queryBuilder = supabase
     .from("materials")
     .select(`
       id,
@@ -24,15 +29,17 @@ export async function GET(request: Request) {
       internal_code,
       caliber,
       status,
-      category_id,
       subcategoria,
-      categories(name)
+      categories
     `)
     .eq("status", "available")
     .or(
       `name.ilike.%${query}%,patrimony_number.ilike.%${query}%,internal_code.ilike.%${query}%,serial_number.ilike.%${query}%`
     )
-    .limit(20);
+  if (categories.length > 0) {
+    queryBuilder = queryBuilder.in("categories", categories);
+  }
+  const { data, error } = await queryBuilder.limit(20);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

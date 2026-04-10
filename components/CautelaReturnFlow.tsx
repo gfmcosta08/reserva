@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import {
@@ -26,9 +26,9 @@ type ItemReturnState = {
   status: "pending" | "returned" | "missing" | "damaged"
   returned_at?: string
   // Novo fluxo
-  is_confirmed: boolean      // Tick ✔️ marcado
+  is_confirmed: boolean      // Tick âœ”ï¸ marcado
   quantity_returned: number   // Quantidade devolvida
-  notes: string              // Observação
+  notes: string              // ObservaÃ§Ã£o
 }
 
 export default function CautelaReturnFlow({
@@ -54,11 +54,11 @@ export default function CautelaReturnFlow({
         material_name: item.materials?.name || "Material",
         patrimony_number: item.materials?.patrimony_number || "",
         internal_code: item.materials?.internal_code || "",
-        category_name: item.materials?.categories?.name || "",
+        category_name: item.materials?.categories || "",
         quantity_delivered: item.quantity_delivered || 1,
         status: item.status,
         returned_at: item.returned_at,
-        is_confirmed: false,         // NÃO ticado por padrão
+        is_confirmed: false,         // NÃƒO ticado por padrÃ£o
         quantity_returned: 0,        // Quantidade zerada
         notes: item.notes || ""
       }))
@@ -74,13 +74,13 @@ export default function CautelaReturnFlow({
     ))
   }
 
-  // Marcar/desmarcar tick de confirmação
+  // Marcar/desmarcar tick de confirmaÃ§Ã£o
   const toggleConfirm = (itemId: string) => {
     const item = itemStates.find(i => i.id === itemId)
     if (!item) return
 
     if (!item.is_confirmed) {
-      // Marcando tick: assume devolução completa
+      // Marcando tick: assume devoluÃ§Ã£o completa
       updateItemState(itemId, {
         is_confirmed: true,
         quantity_returned: item.quantity_delivered,
@@ -111,10 +111,10 @@ export default function CautelaReturnFlow({
     if (qty === item.quantity_delivered) {
       newStatus = "returned"
     } else if (qty > 0) {
-      newStatus = "returned" // Devolução parcial ainda é "returned"
+      newStatus = "returned" // DevoluÃ§Ã£o parcial ainda Ã© "returned"
     }
 
-    // Desmarcar tick se quantidade não for completa
+    // Desmarcar tick se quantidade nÃ£o for completa
     const is_confirmed = qty === item.quantity_delivered
 
     updateItemState(itemId, {
@@ -144,31 +144,31 @@ export default function CautelaReturnFlow({
 
   // Validar antes de submeter
   const validateReturn = (): string | null => {
-    // Verificar se há itens pendentes
+    // Verificar se hÃ¡ itens pendentes
     const uncheckedItems = itemStates.filter(item => {
-      // Item não processado: sem tick E quantidade = 0
+      // Item nÃ£o processado: sem tick E quantidade = 0
       return !item.is_confirmed && item.quantity_returned === 0
     })
 
     if (uncheckedItems.length > 0) {
-      return `Existem ${uncheckedItems.length} item(ns) que não foram conferidos. Marque como devolvido ou informe a quantidade devolvida.`
+      return `Existem ${uncheckedItems.length} item(ns) que nÃ£o foram conferidos. Marque como devolvido ou informe a quantidade devolvida.`
     }
 
-    // Verificar devoluções parciais
+    // Verificar devoluÃ§Ãµes parciais
     const partialReturns = itemStates.filter(item =>
       item.quantity_returned > 0 &&
       item.quantity_returned < item.quantity_delivered
     )
 
     if (partialReturns.length > 0) {
-      // Isso é permitido, apenas informar
+      // Isso Ã© permitido, apenas informar
       return null
     }
 
     return null
   }
 
-  // Submeter devolução (usando processBulkDevolution para 1 única chamada)
+  // Submeter devoluÃ§Ã£o (usando processBulkDevolution para 1 Ãºnica chamada)
   const handleSubmit = async () => {
     // Validar
     const validation = validateReturn()
@@ -181,7 +181,7 @@ export default function CautelaReturnFlow({
     setValidationError(null)
 
     try {
-      // Preparar dados para devolução em lote
+      // Preparar dados para devoluÃ§Ã£o em lote
       const itemsToProcess = itemStates
         .filter(item => item.is_confirmed || item.quantity_returned > 0)
         .map(item => ({
@@ -191,21 +191,21 @@ export default function CautelaReturnFlow({
           notes: item.notes || undefined
         }))
 
-      // Usar função de devolução em lote (1 chamada em vez de N)
+      // Usar funÃ§Ã£o de devoluÃ§Ã£o em lote (1 chamada em vez de N)
       const result = await processBulkDevolution(cautelaId, itemsToProcess)
 
       if (!result.success) {
-        throw new Error(result.error || "Erro ao processar devolução")
+        throw new Error(result.error || "Erro ao processar devoluÃ§Ã£o")
       }
 
-      setSuccessMessage(`Devolução processada com sucesso! (${result.processedCount} item(ns))`)
+      setSuccessMessage(`DevoluÃ§Ã£o processada com sucesso! (${result.processedCount} item(ns))`)
       setTimeout(() => {
         onUpdate()
         onClose()
       }, 1500)
 
     } catch (error: any) {
-      setValidationError(error.message || "Erro ao processar devolução")
+      setValidationError(error.message || "Erro ao processar devoluÃ§Ã£o")
     } finally {
       setSubmitting(false)
     }
@@ -233,7 +233,7 @@ export default function CautelaReturnFlow({
     return (
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-8 max-w-3xl w-full mx-auto text-center">
         <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-        <p className="text-lg font-bold text-white">Todos os itens já foram devolvidos</p>
+        <p className="text-lg font-bold text-white">Todos os itens jÃ¡ foram devolvidos</p>
         <button
           onClick={onClose}
           className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700"
@@ -250,7 +250,7 @@ export default function CautelaReturnFlow({
       <div className="px-5 py-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <RotateCcw className="h-5 w-5 text-blue-500" />
-          <h2 className="text-lg font-bold text-white">Devolução de Itens</h2>
+          <h2 className="text-lg font-bold text-white">DevoluÃ§Ã£o de Itens</h2>
           <span className="text-xs text-slate-400">({summary.total} item(s))</span>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -259,7 +259,7 @@ export default function CautelaReturnFlow({
       </div>
 
       <div className="p-5 space-y-4">
-        {/* Resumo Rápido */}
+        {/* Resumo RÃ¡pido */}
         <div className="flex gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
           <div className="flex-1 text-center">
             <p className="text-lg font-bold text-green-400">{summary.confirmed}</p>
@@ -279,15 +279,15 @@ export default function CautelaReturnFlow({
           </div>
         </div>
 
-        {/* Instruções */}
+        {/* InstruÃ§Ãµes */}
         <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
           <p className="text-xs text-blue-400">
-            <strong>Como funciona:</strong> Marque ✔️ para devolução completa, ou preencha a quantidade para devolução parcial.
-            Itens danificados ou extraviados devem ser marcados com os botões correspondentes.
+            <strong>Como funciona:</strong> Marque âœ”ï¸ para devoluÃ§Ã£o completa, ou preencha a quantidade para devoluÃ§Ã£o parcial.
+            Itens danificados ou extraviados devem ser marcados com os botÃµes correspondentes.
           </p>
         </div>
 
-        {/* Mensagem de Erro de Validação */}
+        {/* Mensagem de Erro de ValidaÃ§Ã£o */}
         {validationError && (
           <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-2">
             <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -362,7 +362,7 @@ export default function CautelaReturnFlow({
                       )}
                       {isPartial && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                          DEVOLUÇÃO PARCIAL
+                          DEVOLUÃ‡ÃƒO PARCIAL
                         </span>
                       )}
                       {isFull && item.is_confirmed && !isDamagedOrMissing && (
@@ -372,8 +372,8 @@ export default function CautelaReturnFlow({
                       )}
                     </div>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      Pat: {item.patrimony_number} • Cód: {item.internal_code}
-                      {item.category_name && ` • ${item.category_name}`}
+                      Pat: {item.patrimony_number} â€¢ CÃ³d: {item.internal_code}
+                      {item.category_name && ` â€¢ ${item.category_name}`}
                     </p>
                   </div>
 
@@ -384,7 +384,7 @@ export default function CautelaReturnFlow({
                   </div>
                 </div>
 
-                {/* Controles (só mostra se não estiver danificado/extraviado) */}
+                {/* Controles (sÃ³ mostra se nÃ£o estiver danificado/extraviado) */}
                 {!isDamagedOrMissing && (
                   <div className="mt-3 pt-3 border-t border-slate-800/50 grid grid-cols-2 gap-3">
                     {/* Campo de Quantidade Devolvida */}
@@ -408,15 +408,15 @@ export default function CautelaReturnFlow({
                       />
                       {item.quantity_returned < item.quantity_delivered && item.quantity_returned > 0 && (
                         <p className="text-[9px] text-yellow-400 mt-1">
-                          Pendência: {item.quantity_delivered - item.quantity_returned} un.
+                          PendÃªncia: {item.quantity_delivered - item.quantity_returned} un.
                         </p>
                       )}
                     </div>
 
-                    {/* Observação */}
+                    {/* ObservaÃ§Ã£o */}
                     <div>
                       <label className="text-[10px] text-slate-500 uppercase font-bold">
-                        Observação
+                        ObservaÃ§Ã£o
                       </label>
                       <input
                         type="text"
@@ -429,7 +429,7 @@ export default function CautelaReturnFlow({
                   </div>
                 )}
 
-                {/* Ações Rápidas (Danificado/Extraviado) */}
+                {/* AÃ§Ãµes RÃ¡pidas (Danificado/Extraviado) */}
                 {!isDamagedOrMissing && (
                   <div className="mt-3 flex gap-2">
                     <button
@@ -449,12 +449,12 @@ export default function CautelaReturnFlow({
                   </div>
                 )}
 
-                {/* Observação para Danificado/Extraviado */}
+                {/* ObservaÃ§Ã£o para Danificado/Extraviado */}
                 {isDamagedOrMissing && (
                   <div className="mt-3 pt-3 border-t border-slate-800/50">
                     <label className="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1">
                       <MessageSquare className="h-3 w-3" />
-                      Justificativa (obrigatório)
+                      Justificativa (obrigatÃ³rio)
                     </label>
                     <input
                       type="text"
@@ -470,7 +470,7 @@ export default function CautelaReturnFlow({
           })}
         </div>
 
-        {/* Ações */}
+        {/* AÃ§Ãµes */}
         <div className="flex gap-3 pt-2">
           <button
             onClick={onClose}
@@ -491,7 +491,7 @@ export default function CautelaReturnFlow({
             ) : (
               <>
                 <CheckSquare className="h-4 w-4" />
-                Finalizar Devolução
+                Finalizar DevoluÃ§Ã£o
               </>
             )}
           </button>
@@ -508,3 +508,4 @@ export default function CautelaReturnFlow({
     </div>
   )
 }
+

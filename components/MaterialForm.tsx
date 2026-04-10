@@ -15,7 +15,7 @@ export default function MaterialForm({
   material,
   onClose 
 }: { 
-  categories: any[]; 
+  categories: string[]; 
   material?: any;
   onClose: () => void 
 }) {
@@ -30,7 +30,7 @@ export default function MaterialForm({
     const formData = new FormData(e.currentTarget);
     const data = {
       name: formData.get("name") as string,
-      category_id: formData.get("category_id") as string,
+      categories: formData.get("categories") as string,
       patrimony_number: formData.get("patrimony_number") as string,
       serial_number: formData.get("serial_number") as string,
       internal_code: formData.get("internal_code") as string,
@@ -82,17 +82,19 @@ export default function MaterialForm({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoria</label>
-              <select 
-                name="category_id"
-                defaultValue={material?.category_id}
+              <input 
+                name="categories"
+                defaultValue={material?.categories}
                 required
-                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all cursor-pointer"
-              >
-                <option value="">Selecione...</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                list="materials-category-options"
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: Armamento Letal"
+              />
+              <datalist id="materials-category-options">
+                {categories.map((category) => (
+                  <option key={category} value={category} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div className="space-y-2">

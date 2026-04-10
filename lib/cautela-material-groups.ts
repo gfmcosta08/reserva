@@ -1,6 +1,5 @@
 /**
- * Mapeamento de grupos de UI da cautela → palavras-chave nos NOMES de categorias no Supabase.
- * Ajuste os arrays se os nomes no seu banco forem diferentes (match parcial, case-insensitive).
+ * Mapeamento de grupos da UI de cautela para palavras-chave em `materials.categories`.
  */
 export type CautelaMaterialGroup =
   | "pistol_weapon"
@@ -15,14 +14,14 @@ export type CautelaMaterialGroup =
   | "printer"
 
 const GROUP_KEYWORDS: Record<CautelaMaterialGroup, string[]> = {
-  pistol_weapon: ["pistola", "arma curta", "revólver", "revolver", "glock"],
+  pistol_weapon: ["pistola", "arma curta", "revolver", "glock"],
   long_weapon: ["arma longa", "fuzil", "carabina", "rifle", "metralhadora", "submetralhadora", "escopeta"],
   charger: ["carregador", "pente"],
-  ammunition: ["munição", "municao", "cartucho", "projétil", "projetil", "balote"],
-  vest_plate: ["colete", "placa", "balístico", "balistico"],
-  radio_ht: ["rádio", "radio", "ht ", " ht", "comunicação", "comunicacao"],
+  ammunition: ["municao", "cartucho", "projetil", "balote"],
+  vest_plate: ["colete", "placa", "balistico"],
+  radio_ht: ["radio", "ht ", " ht", "comunicacao"],
   taser_equipment: ["taser", "eletrochoque"],
-  taser_ammo: ["cartucho taser", "munição taser", "municao taser", "taser cartucho"],
+  taser_ammo: ["cartucho taser", "municao taser", "taser cartucho"],
   cellphone: ["celular", "smartphone", "telefone"],
   printer: ["impressora"],
 }
@@ -33,14 +32,14 @@ export function categoryNameMatchesGroup(categoryName: string, group: CautelaMat
   return keywords.some((k) => lower.includes(k.toLowerCase()))
 }
 
-export function resolveCategoryIdsForGroup(
-  categories: { id: string; name: string }[],
+export function resolveCategoryNamesForGroup(
+  categories: string[],
   group: CautelaMaterialGroup
 ): string[] {
-  return categories.filter((c) => categoryNameMatchesGroup(c.name, group)).map((c) => c.id)
+  return categories.filter((categoryName) => categoryNameMatchesGroup(categoryName, group))
 }
 
-/** Nome da categoria do material (primeiro elemento). */
 export function isChargerCategoryName(categoryName: string): boolean {
   return categoryNameMatchesGroup(categoryName, "charger")
 }
+

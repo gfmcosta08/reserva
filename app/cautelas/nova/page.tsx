@@ -53,7 +53,7 @@ type Material = {
   internal_code: string;
   caliber: string | null;
   status: string;
-  category_id: string;
+  categories: string;
   subcategoria: string;
   quantity_available?: number;
 }

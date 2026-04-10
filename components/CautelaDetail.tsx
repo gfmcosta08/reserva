@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { getCautelaById, returnItem } from "@/app/actions/cautelas"
@@ -87,13 +87,13 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   if (error || !cautela) {
     return (
       <div className="bg-slate-900 rounded-xl border border-slate-800 p-8 max-w-2xl w-full mx-auto text-center">
-        <p className="text-red-400">{error || "Cautela não encontrada"}</p>
+        <p className="text-red-400">{error || "Cautela nÃ£o encontrada"}</p>
         <button onClick={onClose} className="mt-4 text-sm text-slate-400 hover:text-white">Fechar</button>
       </div>
     )
   }
 
-  // Se estiver no fluxo de devolução, mostrar componente de retorno
+  // Se estiver no fluxo de devoluÃ§Ã£o, mostrar componente de retorno
   if (showReturnFlow && pendingItems.length > 0) {
     return (
       <CautelaReturnFlow
@@ -128,17 +128,17 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
             <div>
               <p className="text-sm font-bold text-white">{cautela.persons?.full_name}</p>
               <p className="text-xs text-slate-400">
-                RG: {cautela.persons?.rg} • Mat: {cautela.persons?.registration_number}
+                RG: {cautela.persons?.rg} â€¢ Mat: {cautela.persons?.registration_number}
               </p>
             </div>
           </div>
           <div className="mt-3 flex gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            <span>Tipo: <span className="text-blue-400">{cautela.type === "daily" ? "Diária" : "Permanente"}</span></span>
+            <span>Tipo: <span className="text-blue-400">{cautela.type === "daily" ? "DiÃ¡ria" : "Permanente"}</span></span>
             <span>Operador: <span className="text-slate-300">{cautela.profiles?.name || cautela.profiles?.email}</span></span>
           </div>
           <p className="text-[10px] text-slate-600 mt-1">
             Aberta em: {new Date(cautela.created_at).toLocaleString("pt-BR")}
-            {cautela.closed_at && <span> • Fechada em: {new Date(cautela.closed_at).toLocaleString("pt-BR")}</span>}
+            {cautela.closed_at && <span> â€¢ Fechada em: {new Date(cautela.closed_at).toLocaleString("pt-BR")}</span>}
           </p>
           {cautela.notes && <p className="mt-2 text-xs text-slate-400 italic">"{cautela.notes}"</p>}
         </div>
@@ -179,7 +179,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
               const isPending = item.status === "pending"
               const isReturning = returning === item.id
 
-              // Calcular pendência se houver
+              // Calcular pendÃªncia se houver
               const qtyDelivered = item.quantity_delivered || 1
               const qtyReturned = item.quantity_returned || 0
               const hasPartialReturn = qtyReturned > 0 && qtyReturned < qtyDelivered
@@ -194,8 +194,8 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                       <div>
                         <p className="text-sm font-semibold text-white">{item.materials?.name}</p>
                         <p className="text-[10px] text-slate-500">
-                          Pat: {item.materials?.patrimony_number} • Cód: {item.materials?.internal_code}
-                          {item.materials?.categories?.name && <span> • {item.materials.categories.name}</span>}
+                          Pat: {item.materials?.patrimony_number} â€¢ CÃ³d: {item.materials?.internal_code}
+                          {item.materials?.categories && <span> â€¢ {item.materials.categories}</span>}
                         </p>
                       </div>
                     </div>
@@ -208,13 +208,13 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
                       {(qtyDelivered > 1 || qtyReturned > 0) && (
                         <p className="text-[9px] text-slate-500 mt-1">
                           {qtyReturned}/{qtyDelivered} devolvidos
-                          {hasPartialReturn && <span className="text-yellow-400"> (pendência: {qtyDelivered - qtyReturned})</span>}
+                          {hasPartialReturn && <span className="text-yellow-400"> (pendÃªncia: {qtyDelivered - qtyReturned})</span>}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Ações rápidas para item pendente (via velho fluxo) */}
+                  {/* AÃ§Ãµes rÃ¡pidas para item pendente (via velho fluxo) */}
                   {isPending && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-slate-800/50">
                       <button
@@ -252,7 +252,7 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
         </div>
       </div>
 
-      {/* Modal de Renovação */}
+      {/* Modal de RenovaÃ§Ã£o */}
       {showRenewal && cautela && (
         <RenewalModal
           cautela={cautela}
@@ -266,3 +266,4 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     </div>
   )
 }
+

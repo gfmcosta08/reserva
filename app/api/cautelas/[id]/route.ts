@@ -40,7 +40,7 @@ export async function GET(
     .select(`
       *,
       materials(id, name, patrimony_number, serial_number, internal_code, 
-                caliber, subcategoria, categories(name))
+                caliber, subcategoria, categories)
     `)
     .eq("cautela_id", id);
 

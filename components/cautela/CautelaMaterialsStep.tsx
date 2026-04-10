@@ -1,12 +1,12 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState, useEffect, useCallback } from "react"
 import { Trash2, ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus } from "lucide-react"
 import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchField"
 import type { SearchableMaterial } from "@/app/actions/cautelas"
-import { getCategories } from "@/app/actions/categories"
+import { getMaterialCategoryOptions } from "@/app/actions/materials"
 import {
-  resolveCategoryIdsForGroup,
+  resolveCategoryNamesForGroup,
   type CautelaMaterialGroup,
 } from "@/lib/cautela-material-groups"
 import {
@@ -42,7 +42,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Inputs numéricos sem spinners; mínimo 0 quando aplicável */
+/** Inputs numÃ©ricos sem spinners; mÃ­nimo 0 quando aplicÃ¡vel */
 const inputNoSpinner =
   "mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 
@@ -70,16 +70,16 @@ export function CautelaMaterialsStep({
   onOutrosChange,
   onCanProceedChange,
 }: Props) {
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([])
+  const [categories, setCategories] = useState<string[]>([])
 
   useEffect(() => {
-    getCategories()
+    getMaterialCategoryOptions()
       .then((rows) => setCategories(rows ?? []))
       .catch(() => setCategories([]))
   }, [])
 
   const cat = useCallback(
-    (g: CautelaMaterialGroup) => resolveCategoryIdsForGroup(categories, g),
+    (g: CautelaMaterialGroup) => resolveCategoryNamesForGroup(categories, g),
     [categories]
   )
 
@@ -94,7 +94,7 @@ export function CautelaMaterialsStep({
   const cellIds = useMemo(() => cat("cellphone"), [cat])
   const printerIds = useMemo(() => cat("printer"), [cat])
 
-  /** Se não houver categoria mapeada, busca sem filtro (evita tela vazia). */
+  /** Se nÃ£o houver categoria mapeada, busca sem filtro (evita tela vazia). */
   const opt = (ids: string[]) => (ids.length > 0 ? ids : undefined)
 
   const [pistolWeapon, setPistolWeapon] = useState<SearchableMaterial | null>(null)
@@ -159,7 +159,7 @@ export function CautelaMaterialsStep({
       return
     }
     if (ammoQty > 0 && !pistolAmmoMat) {
-      setPackError("Com quantidade de projéteis maior que zero, selecione a munição no cadastro.")
+      setPackError("Com quantidade de projÃ©teis maior que zero, selecione a muniÃ§Ã£o no cadastro.")
       return
     }
     let next = [...lines]
@@ -180,7 +180,7 @@ export function CautelaMaterialsStep({
       return
     }
     if (longAmmoQty > 0 && !longAmmoMat) {
-      setPackError("Com projéteis > 0, selecione a munição no cadastro.")
+      setPackError("Com projÃ©teis > 0, selecione a muniÃ§Ã£o no cadastro.")
       return
     }
     let next = [...lines]
@@ -206,11 +206,11 @@ export function CautelaMaterialsStep({
   const applyTaserAmmoPack = () => {
     setPackError(null)
     if (taserAmmoQty <= 0) {
-      setPackError("Informe quantidade de munição Taser maior que zero ou ignore.")
+      setPackError("Informe quantidade de muniÃ§Ã£o Taser maior que zero ou ignore.")
       return
     }
     if (!taserAmmoMat) {
-      setPackError("Selecione o cartucho / munição Taser no cadastro.")
+      setPackError("Selecione o cartucho / muniÃ§Ã£o Taser no cadastro.")
       return
     }
     onLinesChange(mergeLines(lines, taserAmmoMat, taserAmmoQty))
@@ -221,13 +221,13 @@ export function CautelaMaterialsStep({
       <div className="text-center space-y-1">
         <h3 className="text-lg font-semibold text-white">Materiais</h3>
         <p className="text-slate-400 text-sm">
-          Cada bloco filtra a busca pela categoria. Em pistola/arma longa, use &quot;Adicionar pacote&quot; para incluir arma + carregadores + munição.
+          Cada bloco filtra a busca pela categoria. Em pistola/arma longa, use &quot;Adicionar pacote&quot; para incluir arma + carregadores + muniÃ§Ã£o.
         </p>
       </div>
 
       {categories.length === 0 && (
         <p className="text-[10px] text-amber-400/90 text-center">
-          Carregando categorias… Se não houver categorias com nomes reconhecidos (ex.: Pistola, Carregador), os filtros podem ficar vazios.
+          Carregando categoriasâ€¦ Se nÃ£o houver categorias com nomes reconhecidos (ex.: Pistola, Carregador), os filtros podem ficar vazios.
         </p>
       )}
 
@@ -239,17 +239,17 @@ export function CautelaMaterialsStep({
         <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
           <SectionTitle>Pistola</SectionTitle>
           <MaterialSearchField
-            label="Identificação da arma"
-            categoryIds={opt(pistolWeaponIds)}
+            label="IdentificaÃ§Ã£o da arma"
+            categoryNames={opt(pistolWeaponIds)}
             onSelect={(m) => {
               setPistolWeapon(m)
               setPackError(null)
             }}
-            placeholder="Patrimônio, serial, código — só pistolas"
+            placeholder="PatrimÃ´nio, serial, cÃ³digo â€” sÃ³ pistolas"
           />
           {pistolWeapon && (
             <p className="text-[10px] text-slate-500">
-              Selecionada: <span className="text-slate-300">{pistolWeapon.name}</span> • Pat {pistolWeapon.patrimony_number}
+              Selecionada: <span className="text-slate-300">{pistolWeapon.name}</span> â€¢ Pat {pistolWeapon.patrimony_number}
             </p>
           )}
 
@@ -266,7 +266,7 @@ export function CautelaMaterialsStep({
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis (munição)</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projÃ©teis (muniÃ§Ã£o)</label>
               <input
                 type="number"
                 min={0}
@@ -281,24 +281,24 @@ export function CautelaMaterialsStep({
           {chargerQty > 0 && (
             <MaterialSearchField
               label="Modelo do carregador (cadastro)"
-              categoryIds={opt(chargerIds)}
+              categoryNames={opt(chargerIds)}
               onSelect={(m) => {
                 setPistolChargerMat(m)
                 setPackError(null)
               }}
-              placeholder="Buscar só carregadores/pentes"
+              placeholder="Buscar sÃ³ carregadores/pentes"
             />
           )}
 
           {ammoQty > 0 && (
             <MaterialSearchField
-              label="Munição (cadastro)"
-              categoryIds={opt(ammoIds)}
+              label="MuniÃ§Ã£o (cadastro)"
+              categoryNames={opt(ammoIds)}
               onSelect={(m) => {
                 setPistolAmmoMat(m)
                 setPackError(null)
               }}
-              placeholder="Lote / tipo de munição"
+              placeholder="Lote / tipo de muniÃ§Ã£o"
             />
           )}
 
@@ -308,20 +308,20 @@ export function CautelaMaterialsStep({
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-sm font-bold text-white"
           >
             <Plus className="h-4 w-4" />
-            Adicionar pacote pistola à cautela
+            Adicionar pacote pistola Ã  cautela
           </button>
         </div>
 
         <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
           <SectionTitle>Arma longa</SectionTitle>
           <MaterialSearchField
-            label="Identificação da arma longa"
-            categoryIds={opt(longWeaponIds)}
+            label="IdentificaÃ§Ã£o da arma longa"
+            categoryNames={opt(longWeaponIds)}
             onSelect={(m) => {
               setLongWeapon(m)
               setPackError(null)
             }}
-            placeholder="Fuzil, carabina…"
+            placeholder="Fuzil, carabinaâ€¦"
           />
           {longWeapon && (
             <p className="text-[10px] text-slate-500">
@@ -344,7 +344,7 @@ export function CautelaMaterialsStep({
               />
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projéteis</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd projÃ©teis</label>
               <input
                 type="number"
                 min={0}
@@ -361,24 +361,24 @@ export function CautelaMaterialsStep({
           {longChargerQty > 0 && (
             <MaterialSearchField
               label="Modelo do carregador (cadastro)"
-              categoryIds={opt(chargerIds)}
+              categoryNames={opt(chargerIds)}
               onSelect={(m) => {
                 setLongChargerMat(m)
                 setPackError(null)
               }}
-              placeholder="Carregador compatível"
+              placeholder="Carregador compatÃ­vel"
             />
           )}
 
           {longAmmoQty > 0 && (
             <MaterialSearchField
-              label="Munição (cadastro)"
-              categoryIds={opt(ammoIds)}
+              label="MuniÃ§Ã£o (cadastro)"
+              categoryNames={opt(ammoIds)}
               onSelect={(m) => {
                 setLongAmmoMat(m)
                 setPackError(null)
               }}
-              placeholder="Tipo de munição"
+              placeholder="Tipo de muniÃ§Ã£o"
             />
           )}
 
@@ -388,7 +388,7 @@ export function CautelaMaterialsStep({
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-500 text-sm font-bold text-white"
           >
             <Plus className="h-4 w-4" />
-            Adicionar pacote arma longa à cautela
+            Adicionar pacote arma longa Ã  cautela
           </button>
         </div>
 
@@ -396,19 +396,19 @@ export function CautelaMaterialsStep({
           <SectionTitle>Colete / placa</SectionTitle>
           <MaterialSearchField
             label="Buscar colete ou placa"
-            categoryIds={opt(vestIds)}
+            categoryNames={opt(vestIds)}
             onSelect={(m) => addOrMerge(m, 1)}
-            placeholder="Tamanho, código…"
+            placeholder="Tamanho, cÃ³digoâ€¦"
           />
         </div>
 
         <div>
-          <SectionTitle>HT (rádio)</SectionTitle>
+          <SectionTitle>HT (rÃ¡dio)</SectionTitle>
           <MaterialSearchField
             label="Buscar HT"
-            categoryIds={opt(radioIds)}
+            categoryNames={opt(radioIds)}
             onSelect={(m) => addOrMerge(m, 1)}
-            placeholder="Código do rádio"
+            placeholder="CÃ³digo do rÃ¡dio"
           />
         </div>
 
@@ -433,7 +433,7 @@ export function CautelaMaterialsStep({
                 onChange={() => onBornalChange("no")}
                 className="accent-blue-500"
               />
-              Não
+              NÃ£o
             </label>
           </div>
         </div>
@@ -442,13 +442,13 @@ export function CautelaMaterialsStep({
           <SectionTitle>Taser</SectionTitle>
           <MaterialSearchField
             label="Equipamento Taser"
-            categoryIds={opt(taserEqIds)}
+            categoryNames={opt(taserEqIds)}
             onSelect={(m) => addOrMerge(m, 1)}
             placeholder="Somente equipamento Taser"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd munição Taser</label>
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Qtd muniÃ§Ã£o Taser</label>
               <input
                 type="number"
                 min={0}
@@ -464,8 +464,8 @@ export function CautelaMaterialsStep({
           {taserAmmoQty > 0 && (
             <>
               <MaterialSearchField
-                label="Cartucho / munição Taser (cadastro)"
-                categoryIds={opt(taserAmmoIds.length > 0 ? taserAmmoIds : taserEqIds)}
+                label="Cartucho / muniÃ§Ã£o Taser (cadastro)"
+                categoryNames={opt(taserAmmoIds.length > 0 ? taserAmmoIds : taserEqIds)}
                 onSelect={(m) => {
                   setTaserAmmoMat(m)
                   setPackError(null)
@@ -477,7 +477,7 @@ export function CautelaMaterialsStep({
                 onClick={applyTaserAmmoPack}
                 className="w-full py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-bold text-white"
               >
-                Adicionar munição Taser à cautela
+                Adicionar muniÃ§Ã£o Taser Ã  cautela
               </button>
             </>
           )}
@@ -487,8 +487,8 @@ export function CautelaMaterialsStep({
           <div>
             <SectionTitle>Celular</SectionTitle>
             <MaterialSearchField
-              label="Identificação do aparelho"
-              categoryIds={opt(cellIds)}
+              label="IdentificaÃ§Ã£o do aparelho"
+              categoryNames={opt(cellIds)}
               onSelect={(m) => addOrMerge(m, 1)}
               placeholder="Somente celular / smartphone"
             />
@@ -496,8 +496,8 @@ export function CautelaMaterialsStep({
           <div>
             <SectionTitle>Impressora</SectionTitle>
             <MaterialSearchField
-              label="Identificação da impressora"
-              categoryIds={opt(printerIds)}
+              label="IdentificaÃ§Ã£o da impressora"
+              categoryNames={opt(printerIds)}
               onSelect={(m) => addOrMerge(m, 1)}
               placeholder="Somente impressoras"
             />
@@ -509,7 +509,7 @@ export function CautelaMaterialsStep({
           <textarea
             value={outros}
             onChange={(e) => onOutrosChange(e.target.value)}
-            placeholder="Descreva outros itens ou observações..."
+            placeholder="Descreva outros itens ou observaÃ§Ãµes..."
             rows={2}
             className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 resize-none"
           />
@@ -521,11 +521,11 @@ export function CautelaMaterialsStep({
           <div className="flex items-center gap-2 p-2 bg-blue-500/5 border border-blue-500/20 rounded-lg">
             <Zap className="h-4 w-4 text-blue-500 flex-shrink-0" />
             <p className="text-xs text-blue-400">
-              Arma de referência: <strong className="text-white">{selectedWeaponForCaliber.name}</strong>
-              {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name) && (
+              Arma de referÃªncia: <strong className="text-white">{selectedWeaponForCaliber.name}</strong>
+              {extractCaliber(selectedWeaponForCaliber.categories || selectedWeaponForCaliber.name) && (
                 <span className="ml-1 text-blue-300">
-                  — Calibre:{" "}
-                  {extractCaliber(selectedWeaponForCaliber.categories?.[0]?.name || selectedWeaponForCaliber.name)}
+                  â€” Calibre:{" "}
+                  {extractCaliber(selectedWeaponForCaliber.categories || selectedWeaponForCaliber.name)}
                 </span>
               )}
             </p>
@@ -540,7 +540,7 @@ export function CautelaMaterialsStep({
                   <p className="text-[10px] text-red-300/80 mt-1 space-y-1">
                     {caliberIncompatibilities.map((inc, idx) => (
                       <span key={idx} className="block">
-                        • <strong>{inc.materialName}</strong> (calibre {inc.ammoCaliber}) incompatível com{" "}
+                        â€¢ <strong>{inc.materialName}</strong> (calibre {inc.ammoCaliber}) incompatÃ­vel com{" "}
                         {selectedWeaponForCaliber.name}
                       </span>
                     ))}
@@ -555,10 +555,10 @@ export function CautelaMaterialsStep({
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <p className="text-xs font-medium text-yellow-400">Calibre não identificado</p>
+                  <p className="text-xs font-medium text-yellow-400">Calibre nÃ£o identificado</p>
                   {caliberWarnings.map((w, idx) => (
                     <p key={idx} className="text-[10px] text-yellow-300/80 mt-0.5">
-                      • {w}
+                      â€¢ {w}
                     </p>
                   ))}
                 </div>
@@ -569,12 +569,12 @@ export function CautelaMaterialsStep({
           {caliberIncompatibilities.length === 0 &&
             caliberWarnings.length === 0 &&
             lines.some((l) => {
-              const cat = l.material.categories?.[0]?.name || ""
+              const cat = l.material.categories || ""
               return isAmmunitionCategory(cat) || isAmmunitionCategory(l.material.name)
             }) && (
               <div className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-lg">
                 <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                <p className="text-xs text-green-400">Munições compatíveis com a arma de referência</p>
+                <p className="text-xs text-green-400">MuniÃ§Ãµes compatÃ­veis com a arma de referÃªncia</p>
               </div>
             )}
 
@@ -587,7 +587,7 @@ export function CautelaMaterialsStep({
                   onChange={(e) => setCaliberOverrideConfirmed(e.target.checked)}
                   className="h-5 w-5 rounded border-slate-600 bg-slate-800 text-red-500"
                 />
-                <span className="text-sm text-white">Declaro ciência da incompatibilidade de calibre</span>
+                <span className="text-sm text-white">Declaro ciÃªncia da incompatibilidade de calibre</span>
               </label>
             </div>
           )}
@@ -632,3 +632,4 @@ export function CautelaMaterialsStep({
     </div>
   )
 }
+

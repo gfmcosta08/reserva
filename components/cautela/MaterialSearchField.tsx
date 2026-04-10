@@ -9,32 +9,25 @@ type Props = {
   placeholder?: string
   onSelect: (m: SearchableMaterial) => void
   disabled?: boolean
-  /** Se definido, filtra materiais por `category_id` (UUIDs). Array vazio = nenhum resultado. */
-  categoryIds?: string[]
+  /** Se definido, filtra materiais pela coluna textual `materials.categories`. */
+  categoryNames?: string[]
 }
 
 export function normalizeWizardMaterial(m: SearchableMaterial) {
-  const raw = m as SearchableMaterial & { categories?: { name: string }[] | { name: string } | null }
-  let cats: { name: string }[] = []
-  if (Array.isArray(raw.categories)) {
-    cats = raw.categories
-  } else if (raw.categories && typeof raw.categories === "object" && "name" in raw.categories) {
-    cats = [{ name: (raw.categories as { name: string }).name }]
-  }
   return {
     ...m,
     patrimony_number: m.patrimony_number ?? "",
     internal_code: m.internal_code ?? "",
-    categories: cats,
+    categories: typeof m.categories === "string" && m.categories.trim().length > 0 ? m.categories.trim() : "Sem Categoria",
   }
 }
 
 export function MaterialSearchField({
   label,
-  placeholder = "Digite patrimônio, serial, código ou nome...",
+  placeholder = "Digite patrimonio, serial, codigo ou nome...",
   onSelect,
   disabled,
-  categoryIds,
+  categoryNames,
 }: Props) {
   const [q, setQ] = useState("")
   const [loading, setLoading] = useState(false)
@@ -55,15 +48,22 @@ export function MaterialSearchField({
       setResults([])
       return
     }
+
+    if (categoryNames && categoryNames.length === 0) {
+      setResults([])
+      return
+    }
+
     const t = setTimeout(() => {
       setLoading(true)
-      searchMaterials(q.trim())
+      searchMaterials(q.trim(), categoryNames)
         .then(setResults)
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, 280)
+
     return () => clearTimeout(t)
-  }, [q, categoryIds])
+  }, [q, categoryNames])
 
   const pick = (m: SearchableMaterial) => {
     onSelect(m)
@@ -102,14 +102,10 @@ export function MaterialSearchField({
               >
                 <span className="text-white font-medium">{m.name}</span>
                 <span className="block text-[10px] text-slate-500 mt-0.5">
-                  Pat {m.patrimony_number} • Cód {m.internal_code}
+                  Pat {m.patrimony_number} • Cod {m.internal_code}
                   {m.serial_number ? ` • SN ${m.serial_number}` : ""}
                 </span>
-                {(Array.isArray(m.categories) ? m.categories[0]?.name : m.categories?.name) && (
-                  <span className="text-[9px] text-slate-600">
-                    {Array.isArray(m.categories) ? m.categories[0]?.name : m.categories?.name}
-                  </span>
-                )}
+                {m.categories && <span className="text-[9px] text-slate-600">{m.categories}</span>}
               </button>
             </li>
           ))}
@@ -121,3 +117,4 @@ export function MaterialSearchField({
     </div>
   )
 }
+

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
@@ -71,12 +71,12 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
   const [notes, setNotes] = useState("")
 
-  // Sugestões de observações comuns
+  // SugestÃµes de observaÃ§Ãµes comuns
   const observationSuggestions = [
-    { label: "Operação", icon: AlertOctagon, text: "Operação no Setor Norte" },
-    { label: "Treinamento", icon: Building, text: "Treinamento/Ginástica" },
-    { label: "Escala", icon: Hash, text: "Escala de serviço plantão" },
-    { label: "Diligência", icon: MessageSquare, text: "Diligência judicial" },
+    { label: "OperaÃ§Ã£o", icon: AlertOctagon, text: "OperaÃ§Ã£o no Setor Norte" },
+    { label: "Treinamento", icon: Building, text: "Treinamento/GinÃ¡stica" },
+    { label: "Escala", icon: Hash, text: "Escala de serviÃ§o plantÃ£o" },
+    { label: "DiligÃªncia", icon: MessageSquare, text: "DiligÃªncia judicial" },
   ]
 
   const addObservation = (text: string) => {
@@ -128,7 +128,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     } else {
       setPhotoWarning(false)
     }
-    // Decidir método de assinatura
+    // Decidir mÃ©todo de assinatura
     if (person.face_descriptor && Array.isArray(person.face_descriptor) && person.face_descriptor.length > 0) {
       setUseFace(true)
     } else {
@@ -137,7 +137,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   }
 
   const buildNotesPayload = () => {
-    const parts = [notes.trim(), bornal !== null ? `Bornal: ${bornal === "yes" ? "Sim" : "Não"}` : "", outrosExtra.trim() ? `Outros: ${outrosExtra.trim()}` : ""].filter(Boolean)
+    const parts = [notes.trim(), bornal !== null ? `Bornal: ${bornal === "yes" ? "Sim" : "NÃ£o"}` : "", outrosExtra.trim() ? `Outros: ${outrosExtra.trim()}` : ""].filter(Boolean)
     return parts.length ? parts.join("\n\n") : undefined
   }
 
@@ -186,7 +186,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     }
   }
 
-  // Submeter cautela com verificação facial
+  // Submeter cautela com verificaÃ§Ã£o facial
   const handleFaceVerified = async (matched: boolean) => {
     if (!matched) return
     setLoading(true)
@@ -231,7 +231,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       other: [],
     }
     for (const row of materialLines) {
-      const cat = row.material.categories?.[0]?.name || ""
+      const cat = row.material.categories || ""
       const b = bucketForMaterialLine(cat, row.material.name)
       buckets[b].push(row)
     }
@@ -277,7 +277,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
           <div className="space-y-5">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-white">Selecionar Pessoa</h3>
-              <p className="text-slate-400 text-sm">Busque por nome, RG ou matrícula.</p>
+              <p className="text-slate-400 text-sm">Busque por nome, RG ou matrÃ­cula.</p>
             </div>
 
             {!selectedPerson ? (
@@ -306,8 +306,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                       >
                         <p className="text-sm font-bold text-white">{person.full_name}</p>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          RG: {person.rg} • Matrícula: {person.registration_number}
-                          {person.function && <span> • {person.function}</span>}
+                          RG: {person.rg} â€¢ MatrÃ­cula: {person.registration_number}
+                          {person.function && <span> â€¢ {person.function}</span>}
                         </p>
                       </button>
                     ))}
@@ -325,7 +325,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     <div>
                       <p className="text-sm font-bold text-white">{selectedPerson.full_name}</p>
                       <p className="text-xs text-slate-400 mt-1">
-                        RG: {selectedPerson.rg} • Matrícula: {selectedPerson.registration_number}
+                        RG: {selectedPerson.rg} â€¢ MatrÃ­cula: {selectedPerson.registration_number}
                       </p>
                       {selectedPerson.function && <p className="text-xs text-blue-400 mt-0.5">{selectedPerson.function}</p>}
                     </div>
@@ -334,9 +334,9 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   </div>
                 </div>
 
-                {/* ===== ALERTAS NÃO BLOQUEANTES ===== */}
+                {/* ===== ALERTAS NÃƒO BLOQUEANTES ===== */}
 
-                {/* Cautelas Pendentes (apenas DIÁRIAS) */}
+                {/* Cautelas Pendentes (apenas DIÃRIAS) */}
                 {loadingPending ? (
                   <div className="flex items-center gap-2 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
                     <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
@@ -352,12 +352,12 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                         <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs font-medium text-red-400">
-                            Cautela Diária {cautela.is_overdue ? "VENCIDA" : "em aberto"}
+                            Cautela DiÃ¡ria {cautela.is_overdue ? "VENCIDA" : "em aberto"}
                             {cautela.items_count > 0 && ` (${cautela.items_count} item(ns))`}
                           </p>
                           <p className="text-[10px] text-slate-400 mt-0.5">
                             Criada em {format(new Date(cautela.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                            {cautela.profiles?.name && ` • Operador: ${cautela.profiles.name}`}
+                            {cautela.profiles?.name && ` â€¢ Operador: ${cautela.profiles.name}`}
                           </p>
                           {/* Lista de itens pendentes */}
                           {cautela.items && cautela.items.length > 0 && (
@@ -386,21 +386,21 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                 ) : (
                   <div className="flex items-center gap-2 p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-green-400">Nenhuma cautela diária pendente</p>
+                    <p className="text-xs text-green-400">Nenhuma cautela diÃ¡ria pendente</p>
                   </div>
                 )}
 
-                {/* Pendências Cadastrais */}
+                {/* PendÃªncias Cadastrais */}
                 {(photoWarning || !useFace) && (
                   <div className="flex items-start gap-2 p-3 bg-yellow-500/5 border border-yellow-500/20 rounded-lg">
                     <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-xs text-yellow-400">
-                        Pendências cadastrais detectadas:
+                        PendÃªncias cadastrais detectadas:
                       </p>
                       <ul className="text-[10px] text-yellow-300/80 mt-1 space-y-0.5">
-                        {photoWarning && <li>• Fotos do RG incompletas</li>}
-                        {!useFace && <li>• Biometria facial não cadastrada</li>}
+                        {photoWarning && <li>â€¢ Fotos do RG incompletas</li>}
+                        {!useFace && <li>â€¢ Biometria facial nÃ£o cadastrada</li>}
                       </ul>
                       <Link
                         href={`/persons?edit=${selectedPerson.id}`}
@@ -412,19 +412,19 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   </div>
                 )}
 
-                {/* Info sobre método de assinatura */}
+                {/* Info sobre mÃ©todo de assinatura */}
                 {!useFace ? (
                   <div className="flex items-start gap-2 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
                     <Fingerprint className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-slate-400">
-                      Biometria facial não cadastrada. A assinatura será feita com <strong className="text-slate-300">PIN</strong>.
+                      Biometria facial nÃ£o cadastrada. A assinatura serÃ¡ feita com <strong className="text-slate-300">PIN</strong>.
                     </p>
                   </div>
                 ) : (
                   <div className="flex items-start gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
                     <UserCheck className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
                     <p className="text-xs text-blue-400">
-                      Biometria facial disponível. Assinatura será feita com <strong>reconhecimento facial</strong>.
+                      Biometria facial disponÃ­vel. Assinatura serÃ¡ feita com <strong>reconhecimento facial</strong>.
                     </p>
                   </div>
                 )}
@@ -433,7 +433,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
 
             <button onClick={handleNextStep} disabled={!selectedPerson}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50"
-            >Próximo: Materiais <ChevronRight className="h-4 w-4" /></button>
+            >PrÃ³ximo: Materiais <ChevronRight className="h-4 w-4" /></button>
           </div>
         )}
 
@@ -458,7 +458,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   !materialsCanProceed ? "bg-slate-700 text-slate-500 cursor-not-allowed" : "bg-blue-600 text-white shadow-blue-900/40 hover:bg-blue-500"
                 }`}
               >
-                Próximo: Resumo <ChevronRight className="h-4 w-4" />
+                PrÃ³ximo: Resumo <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -477,10 +477,10 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cautelado</p>
                 <p className="text-sm font-bold text-white">{selectedPerson?.full_name}</p>
-                <p className="text-xs text-slate-400">RG: {selectedPerson?.rg} • Mat: {selectedPerson?.registration_number}</p>
+                <p className="text-xs text-slate-400">RG: {selectedPerson?.rg} â€¢ Mat: {selectedPerson?.registration_number}</p>
               </div>
 
-              {/* Materiais por tipo (armas / carregadores / munição / outros) */}
+              {/* Materiais por tipo (armas / carregadores / muniÃ§Ã£o / outros) */}
               <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-3">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                   Materiais ({materialLines.length} linha(s))
@@ -499,7 +499,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           const hasIncompatibility = caliberSummary.incompatibilities.some(
                             (inc) => inc.materialId === m.id
                           )
-                          const caliber = extractCaliber(m.categories?.[0]?.name || m.name)
+                          const caliber = extractCaliber(m.categories || m.name)
                           return (
                             <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
                               <Package
@@ -510,7 +510,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                               >
                                 {m.name}
                               </span>
-                              <span className="text-slate-500">×{row.quantity}</span>
+                              <span className="text-slate-500">Ã—{row.quantity}</span>
                               {caliber && (
                                 <span
                                   className={`text-[9px] px-1 py-0.5 rounded ${
@@ -520,7 +520,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                                   {caliber}
                                 </span>
                               )}
-                              <span className="text-slate-600">—</span>
+                              <span className="text-slate-600">â€”</span>
                               <span className="text-slate-500">Pat: {m.patrimony_number}</span>
                             </div>
                           )
@@ -538,14 +538,14 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
                       <p className="text-xs font-bold text-red-400">
-                        Atenção: Incompatibilidade de calibre
+                        AtenÃ§Ã£o: Incompatibilidade de calibre
                       </p>
                       <p className="text-[10px] text-red-300/80 mt-1">
-                        As seguintes munições são incompatíveis com a arma de referência. Confirme no passo anterior se aplicável.
+                        As seguintes muniÃ§Ãµes sÃ£o incompatÃ­veis com a arma de referÃªncia. Confirme no passo anterior se aplicÃ¡vel.
                       </p>
                       <ul className="text-[10px] text-red-300/80 mt-1 space-y-0.5 ml-2">
                         {caliberSummary.incompatibilities.map((inc, idx) => (
-                          <li key={idx}>• {inc.materialName} (calibre {inc.ammoCaliber})</li>
+                          <li key={idx}>â€¢ {inc.materialName} (calibre {inc.ammoCaliber})</li>
                         ))}
                       </ul>
                     </div>
@@ -560,7 +560,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   <button onClick={() => setCautelaType("daily")}
                     className={`flex-1 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
                       cautelaType === "daily" ? "bg-blue-600/10 border-blue-500 text-blue-400" : "border-slate-700 text-slate-500 hover:border-slate-600"
-                    }`}>Diária</button>
+                    }`}>DiÃ¡ria</button>
                   <button onClick={() => setCautelaType("permanent")}
                     className={`flex-1 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
                       cautelaType === "permanent" ? "bg-blue-600/10 border-blue-500 text-blue-400" : "border-slate-700 text-slate-500 hover:border-slate-600"
@@ -568,17 +568,17 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                 </div>
               </div>
 
-              {/* Observações */}
+              {/* ObservaÃ§Ãµes */}
               <div className="space-y-2">
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                     <MessageSquare className="h-3 w-3" />
-                    Observações
+                    ObservaÃ§Ãµes
                   </label>
-                  <p className="text-[9px] text-slate-600 mt-0.5">Adicione informações relevantes para rastreabilidade</p>
+                  <p className="text-[9px] text-slate-600 mt-0.5">Adicione informaÃ§Ãµes relevantes para rastreabilidade</p>
                 </div>
 
-                {/* Sugestões rápidas */}
+                {/* SugestÃµes rÃ¡pidas */}
                 <div className="flex flex-wrap gap-1.5">
                   {observationSuggestions.map((suggestion, index) => {
                     const Icon = suggestion.icon
@@ -595,11 +595,11 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   })}
                 </div>
 
-                {/* Campo de observação */}
+                {/* Campo de observaÃ§Ã£o */}
                 <textarea
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  placeholder="Ex: Material para operação no Setor Norte, em horário noturno..."
+                  placeholder="Ex: Material para operaÃ§Ã£o no Setor Norte, em horÃ¡rio noturno..."
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
                   rows={3}
                 />
@@ -617,7 +617,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
               <button onClick={() => setStep(2)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
               <button onClick={handleNextStep}
                 className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500"
-              >Próximo: {hasFaceForSign ? "Assinatura facial" : hasPinForSign ? "PIN" : "Assinatura"} <ChevronRight className="h-4 w-4" /></button>
+              >PrÃ³ximo: {hasFaceForSign ? "Assinatura facial" : hasPinForSign ? "PIN" : "Assinatura"} <ChevronRight className="h-4 w-4" /></button>
             </div>
           </div>
         )}
@@ -650,7 +650,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     disabled={!hasPinForSign}
                     title={
                       !hasPinForSign
-                        ? "Cadastre um PIN para o cautelado antes de usar esta opção."
+                        ? "Cadastre um PIN para o cautelado antes de usar esta opÃ§Ã£o."
                         : undefined
                     }
                     className="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
@@ -670,7 +670,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   <div>
                     <h3 className="text-lg font-semibold text-white">Validar PIN</h3>
                     <p className="text-slate-400 text-sm">
-                      <span className="text-blue-400 font-medium">{selectedPerson.full_name}</span> deve digitar o PIN de 4 dígitos.
+                      <span className="text-blue-400 font-medium">{selectedPerson.full_name}</span> deve digitar o PIN de 4 dÃ­gitos.
                     </p>
                   </div>
 
@@ -682,7 +682,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           pin.length > i ? "border-blue-500 bg-blue-500/10 text-white" : "border-slate-800 bg-slate-900 text-slate-700"
                         }`}
                       >
-                        {pin[i] ? "•" : ""}
+                        {pin[i] ? "â€¢" : ""}
                       </div>
                     ))}
                   </div>
@@ -694,7 +694,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   )}
 
                   <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, "C", 0, "✓"].map((key) => {
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, "C", 0, "âœ“"].map((key) => {
                       if (key === "C")
                         return (
                           <button
@@ -709,7 +709,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                             Limpar
                           </button>
                         )
-                      if (key === "✓")
+                      if (key === "âœ“")
                         return (
                           <button
                             key={key}
@@ -764,9 +764,9 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     <AlertTriangle className="h-7 w-7 text-amber-500" />
                   </div>
                 </div>
-                <h3 className="text-lg font-semibold text-white">Assinatura indisponível</h3>
+                <h3 className="text-lg font-semibold text-white">Assinatura indisponÃ­vel</h3>
                 <p className="text-sm text-slate-400">
-                  Esta pessoa não possui PIN cadastrado nem biometria facial para concluir a cautela. Regularize o cadastro
+                  Esta pessoa nÃ£o possui PIN cadastrado nem biometria facial para concluir a cautela. Regularize o cadastro
                   antes de continuar.
                 </p>
                 <Link
@@ -790,3 +790,4 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     </div>
   )
 }
+

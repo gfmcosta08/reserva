@@ -74,7 +74,7 @@ export interface CaliberMismatch {
 export type MaterialLike = {
   id: string
   name: string
-  categories?: { name: string }[]
+  categories?: string
 }
 
 export function validateAmmunitionCaliber(selectedItems: MaterialLike[]): {
@@ -86,12 +86,12 @@ export function validateAmmunitionCaliber(selectedItems: MaterialLike[]): {
   const warnings: string[] = []
 
   const selectedWeapons = selectedItems.filter((item) => {
-    const categoryName = item.categories?.[0]?.name || ""
+    const categoryName = item.categories || ""
     return isWeaponCategory(categoryName) || isWeaponCategory(item.name)
   })
 
   const selectedAmmunition = selectedItems.filter((item) => {
-    const categoryName = item.categories?.[0]?.name || ""
+    const categoryName = item.categories || ""
     return isAmmunitionCategory(categoryName) || isAmmunitionCategory(item.name)
   })
 
@@ -100,7 +100,7 @@ export function validateAmmunitionCaliber(selectedItems: MaterialLike[]): {
   }
 
   const primaryWeapon = selectedWeapons[0]
-  const weaponName = primaryWeapon.categories?.[0]?.name || primaryWeapon.name
+  const weaponName = primaryWeapon.categories || primaryWeapon.name
   const weaponCaliber = extractCaliber(weaponName) || extractCaliber(primaryWeapon.name)
 
   if (!weaponCaliber) {
@@ -109,7 +109,7 @@ export function validateAmmunitionCaliber(selectedItems: MaterialLike[]): {
   }
 
   for (const ammo of selectedAmmunition) {
-    const ammoName = ammo.categories?.[0]?.name || ammo.name
+    const ammoName = ammo.categories || ammo.name
     const ammoCaliber = extractCaliber(ammoName) || extractCaliber(ammo.name)
 
     if (!ammoCaliber) {

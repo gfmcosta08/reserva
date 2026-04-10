@@ -21,10 +21,7 @@ export async function GET(
 
   const { data: material, error } = await supabase
     .from("materials")
-    .select(`
-      *,
-      categories(name)
-    `)
+    .select("*")
     .eq("id", id)
     .single();
 

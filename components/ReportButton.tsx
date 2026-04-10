@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState } from "react"
 import { getReportData } from "@/app/actions/report"
@@ -18,7 +18,7 @@ export default function ReportButton() {
       const margin = 14
       let y = 0
 
-      // ===== CABEÇALHO =====
+      // ===== CABEÃ‡ALHO =====
       doc.setFillColor(15, 23, 42) // slate-950
       doc.rect(0, 0, pageW, 42, "F")
       doc.setFillColor(37, 99, 235) // blue-600
@@ -27,7 +27,7 @@ export default function ReportButton() {
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
       doc.setFont("helvetica", "bold")
-      doc.text("RELATÓRIO DE CONFERÊNCIA DE MATERIAL", margin, 18)
+      doc.text("RELATÃ“RIO DE CONFERÃŠNCIA DE MATERIAL", margin, 18)
 
       doc.setFontSize(9)
       doc.setFont("helvetica", "normal")
@@ -36,11 +36,11 @@ export default function ReportButton() {
 
       doc.setFontSize(8)
       doc.setTextColor(148, 163, 184) // slate-400
-      doc.text(`Total de materiais: ${data.totalMaterials}  |  Disponíveis: ${data.availableMaterials.length}  |  Cautelados: ${data.permanentCautelas.reduce((a: number, c: any) => a + c.items.length, 0) + data.dailyCautelas.reduce((a: number, c: any) => a + c.items.length, 0)}  |  Manutenção: ${data.maintenanceMaterials.length}`, margin, 36)
+      doc.text(`Total de materiais: ${data.totalMaterials}  |  DisponÃ­veis: ${data.availableMaterials.length}  |  Cautelados: ${data.permanentCautelas.reduce((a: number, c: any) => a + c.items.length, 0) + data.dailyCautelas.reduce((a: number, c: any) => a + c.items.length, 0)}  |  ManutenÃ§Ã£o: ${data.maintenanceMaterials.length}`, margin, 36)
 
       y = 52
 
-      // ===== SEÇÃO: CAUTELAS PERMANENTES =====
+      // ===== SEÃ‡ÃƒO: CAUTELAS PERMANENTES =====
       if (data.permanentCautelas.length > 0) {
         y = addSectionTitle(doc, "CAUTELAS PERMANENTES", y, margin, [37, 99, 235])
 
@@ -51,10 +51,10 @@ export default function ReportButton() {
         }
       }
 
-      // ===== SEÇÃO: CAUTELAS DIÁRIAS =====
+      // ===== SEÃ‡ÃƒO: CAUTELAS DIÃRIAS =====
       if (data.dailyCautelas.length > 0) {
         if (y > 230) { doc.addPage(); y = 20 }
-        y = addSectionTitle(doc, "CAUTELAS DIÁRIAS", y, margin, [245, 158, 11])
+        y = addSectionTitle(doc, "CAUTELAS DIÃRIAS", y, margin, [245, 158, 11])
 
         for (const cautela of data.dailyCautelas) {
           if (y > 260) { doc.addPage(); y = 20 }
@@ -62,19 +62,19 @@ export default function ReportButton() {
         }
       }
 
-      // ===== SEÇÃO: MATERIAIS DISPONÍVEIS =====
+      // ===== SEÃ‡ÃƒO: MATERIAIS DISPONÃVEIS =====
       if (data.availableMaterials.length > 0) {
         if (y > 230) { doc.addPage(); y = 20 }
-        y = addSectionTitle(doc, "MATERIAIS DISPONÍVEIS", y, margin, [34, 197, 94])
+        y = addSectionTitle(doc, "MATERIAIS DISPONÃVEIS", y, margin, [34, 197, 94])
 
         const rows = data.availableMaterials.map((m: any, i: number) => [
-          i + 1, m.name, m.patrimony_number, m.internal_code, m.serial_number || "—", m.categories?.name || "—"
+          i + 1, m.name, m.patrimony_number, m.internal_code, m.serial_number || "â€”", m.categories || "â€”"
         ])
 
         autoTable(doc, {
           startY: y,
           margin: { left: margin, right: margin },
-          head: [["#", "Material", "Patrimônio", "Código", "Série", "Categoria"]],
+          head: [["#", "Material", "PatrimÃ´nio", "CÃ³digo", "SÃ©rie", "Categoria"]],
           body: rows,
           headStyles: { fillColor: [30, 41, 59], textColor: [148, 163, 184], fontSize: 7, fontStyle: "bold" },
           bodyStyles: { fontSize: 7, textColor: [226, 232, 240] },
@@ -84,19 +84,19 @@ export default function ReportButton() {
         y = (doc as any).lastAutoTable.finalY + 8
       }
 
-      // ===== SEÇÃO: EM MANUTENÇÃO =====
+      // ===== SEÃ‡ÃƒO: EM MANUTENÃ‡ÃƒO =====
       if (data.maintenanceMaterials.length > 0) {
         if (y > 240) { doc.addPage(); y = 20 }
-        y = addSectionTitle(doc, "MATERIAIS EM MANUTENÇÃO", y, margin, [245, 158, 11])
+        y = addSectionTitle(doc, "MATERIAIS EM MANUTENÃ‡ÃƒO", y, margin, [245, 158, 11])
 
         const rows = data.maintenanceMaterials.map((m: any, i: number) => [
-          i + 1, m.name, m.patrimony_number, m.internal_code, m.notes || "—"
+          i + 1, m.name, m.patrimony_number, m.internal_code, m.notes || "â€”"
         ])
 
         autoTable(doc, {
           startY: y,
           margin: { left: margin, right: margin },
-          head: [["#", "Material", "Patrimônio", "Código", "Observação"]],
+          head: [["#", "Material", "PatrimÃ´nio", "CÃ³digo", "ObservaÃ§Ã£o"]],
           body: rows,
           headStyles: { fillColor: [30, 41, 59], textColor: [148, 163, 184], fontSize: 7, fontStyle: "bold" },
           bodyStyles: { fontSize: 7, textColor: [226, 232, 240] },
@@ -105,19 +105,19 @@ export default function ReportButton() {
         y = (doc as any).lastAutoTable.finalY + 8
       }
 
-      // ===== MATERIAIS INDISPONÍVEIS =====
+      // ===== MATERIAIS INDISPONÃVEIS =====
       if (data.unavailableMaterials.length > 0) {
         if (y > 240) { doc.addPage(); y = 20 }
-        y = addSectionTitle(doc, "MATERIAIS INDISPONÍVEIS", y, margin, [239, 68, 68])
+        y = addSectionTitle(doc, "MATERIAIS INDISPONÃVEIS", y, margin, [239, 68, 68])
 
         const rows = data.unavailableMaterials.map((m: any, i: number) => [
-          i + 1, m.name, m.patrimony_number, m.internal_code, m.notes || "—"
+          i + 1, m.name, m.patrimony_number, m.internal_code, m.notes || "â€”"
         ])
 
         autoTable(doc, {
           startY: y,
           margin: { left: margin, right: margin },
-          head: [["#", "Material", "Patrimônio", "Código", "Motivo"]],
+          head: [["#", "Material", "PatrimÃ´nio", "CÃ³digo", "Motivo"]],
           body: rows,
           headStyles: { fillColor: [30, 41, 59], textColor: [148, 163, 184], fontSize: 7, fontStyle: "bold" },
           bodyStyles: { fontSize: 7, textColor: [226, 232, 240] },
@@ -125,7 +125,7 @@ export default function ReportButton() {
         })
       }
 
-      // ===== RODAPÉ EM CADA PÁGINA =====
+      // ===== RODAPÃ‰ EM CADA PÃGINA =====
       const totalPages = (doc as any).internal.getNumberOfPages()
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i)
@@ -133,8 +133,8 @@ export default function ReportButton() {
         doc.rect(0, 285, pageW, 12, "F")
         doc.setFontSize(7)
         doc.setTextColor(100, 116, 139)
-        doc.text("Sistema RESERVA — Controle de Cautela", margin, 291)
-        doc.text(`Página ${i} de ${totalPages}`, pageW - margin - 25, 291)
+        doc.text("Sistema RESERVA â€” Controle de Cautela", margin, 291)
+        doc.text(`PÃ¡gina ${i} de ${totalPages}`, pageW - margin - 25, 291)
       }
 
       // Download
@@ -142,7 +142,7 @@ export default function ReportButton() {
 
     } catch (err) {
       console.error("Erro ao gerar PDF:", err)
-      alert("Erro ao gerar relatório.")
+      alert("Erro ao gerar relatÃ³rio.")
     } finally {
       setLoading(false)
     }
@@ -155,7 +155,7 @@ export default function ReportButton() {
       className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs disabled:opacity-50 transition-all border border-slate-700 hover:border-slate-600"
     >
       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-      {loading ? "Gerando..." : "Relatório PDF"}
+      {loading ? "Gerando..." : "RelatÃ³rio PDF"}
     </button>
   )
 }
@@ -184,12 +184,12 @@ function addCautelaBlock(doc: jsPDF, cautela: any, y: number, margin: number, pa
   doc.setFontSize(9)
   doc.setFont("helvetica", "bold")
   doc.setTextColor(255, 255, 255)
-  doc.text(person?.full_name || "—", margin + 4, y + 6)
+  doc.text(person?.full_name || "â€”", margin + 4, y + 6)
 
   doc.setFontSize(7)
   doc.setFont("helvetica", "normal")
   doc.setTextColor(148, 163, 184)
-  doc.text(`RG: ${person?.rg || "—"}  |  Mat: ${person?.registration_number || "—"}  |  ${person?.function || ""}`, margin + 4, y + 12)
+  doc.text(`RG: ${person?.rg || "â€”"}  |  Mat: ${person?.registration_number || "â€”"}  |  ${person?.function || ""}`, margin + 4, y + 12)
 
   // Status e data
   doc.setFontSize(7)
@@ -209,10 +209,10 @@ function addCautelaBlock(doc: jsPDF, cautela: any, y: number, margin: number, pa
       const statusMap: Record<string, string> = { pending: "Pendente", returned: "Devolvido", damaged: "Danificado", missing: "Extraviado" }
       return [
         i + 1,
-        item.materials?.name || "—",
-        item.materials?.patrimony_number || "—",
-        item.materials?.internal_code || "—",
-        item.materials?.categories?.name || "—",
+        item.materials?.name || "â€”",
+        item.materials?.patrimony_number || "â€”",
+        item.materials?.internal_code || "â€”",
+        item.materials?.categories || "â€”",
         statusMap[item.status] || item.status,
       ]
     })
@@ -220,7 +220,7 @@ function addCautelaBlock(doc: jsPDF, cautela: any, y: number, margin: number, pa
     autoTable(doc, {
       startY: y,
       margin: { left: margin + 4, right: margin + 4 },
-      head: [["#", "Material", "Patrimônio", "Código", "Categoria", "Status"]],
+      head: [["#", "Material", "PatrimÃ´nio", "CÃ³digo", "Categoria", "Status"]],
       body: rows,
       headStyles: { fillColor: [30, 41, 59], textColor: [148, 163, 184], fontSize: 6.5, fontStyle: "bold" },
       bodyStyles: { fontSize: 6.5, textColor: [203, 213, 225] },
@@ -249,3 +249,4 @@ function addCautelaBlock(doc: jsPDF, cautela: any, y: number, margin: number, pa
 
   return y + 4
 }
+

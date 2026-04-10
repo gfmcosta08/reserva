@@ -95,7 +95,7 @@ export async function getCautelaById(id: string) {
     .from("cautela_items")
     .select(`
       *,
-      materials(id, name, patrimony_number, serial_number, internal_code, categories(name))
+      materials(id, name, patrimony_number, serial_number, internal_code, categories)
     `)
     .eq("cautela_id", id)
 
@@ -609,16 +609,16 @@ export async function searchPersons(query: string) {
 }
 
 // ===== BUSCAR MATERIAIS DISPONÍVEIS =====
-export async function getAvailableMaterials(categoryId?: string) {
+export async function getAvailableMaterials(category?: string) {
   const supabase = await createClient()
   let query = supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, categories(name)")
+    .select("id, name, patrimony_number, serial_number, internal_code, categories")
     .eq("status", "available")
     .order("name")
 
-  if (categoryId) {
-    query = query.eq("category_id", categoryId)
+  if (category) {
+    query = query.eq("categories", category)
   }
 
   const { data, error } = await query
@@ -629,29 +629,30 @@ export async function getAvailableMaterials(categoryId?: string) {
 // ===== BUSCAR MATERIAIS AGRUPADOS POR CATEGORIA =====
 export async function getAvailableMaterialsGrouped() {
   const supabase = await createClient()
-
-  // Buscar todas as categorias ordenadas
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name")
-    .order("name")
-
-  if (!categories) return []
-
-  // Buscar materiais disponíveis
   const { data: materials } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, category_id")
+    .select("id, name, patrimony_number, serial_number, internal_code, categories")
     .eq("status", "available")
     .order("name")
 
-  if (!materials) return categories.map(c => ({ ...c, materials: [] }))
+  if (!materials) return []
 
-  // Agrupar materiais por categoria
-  return categories.map(category => ({
-    ...category,
-    materials: materials.filter(m => m.category_id === category.id)
-  }))
+  const grouped = materials.reduce((acc: Record<string, any[]>, material: any) => {
+    const key = typeof material.categories === "string" && material.categories.trim().length > 0
+      ? material.categories.trim()
+      : "Sem Categoria"
+    if (!acc[key]) acc[key] = []
+    acc[key].push(material)
+    return acc
+  }, {})
+
+  return Object.keys(grouped)
+    .sort((a, b) => a.localeCompare(b, "pt-BR"))
+    .map((name) => ({
+      id: name,
+      name,
+      materials: grouped[name],
+    }))
 }
 
 export type SearchableMaterial = {
@@ -660,43 +661,60 @@ export type SearchableMaterial = {
   patrimony_number: string
   serial_number: string | null
   internal_code: string
-  category_id: string | null
-  categories: { name: string } | { name: string }[] | null
+  categories: string
+}
+
+function normalizeSearchableMaterial(row: any): SearchableMaterial {
+  return {
+    ...row,
+    categories:
+      typeof row?.categories === "string" && row.categories.trim().length > 0
+        ? row.categories.trim()
+        : "Sem Categoria",
+  }
 }
 
 /** Busca materiais disponíveis por nome, patrimônio, serial, código interno ou UUID. */
-export async function searchMaterials(query: string): Promise<SearchableMaterial[]> {
+export async function searchMaterials(
+  query: string,
+  categoryNames?: string[]
+): Promise<SearchableMaterial[]> {
   const q = query.trim()
   if (q.length < 1) return []
 
   const supabase = await createClient()
-  const select =
-    "id, name, patrimony_number, serial_number, internal_code, category_id, categories(name)"
+  const select = "id, name, patrimony_number, serial_number, internal_code, categories"
+  const normalizedCategoryNames =
+    (categoryNames ?? []).map((name) => name.trim()).filter((name) => name.length > 0)
 
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   if (uuidPattern.test(q)) {
-    const { data } = await supabase
+    let queryBuilder = supabase
       .from("materials")
       .select(select)
       .eq("status", "available")
       .eq("id", q)
-      .limit(5)
-    return (data ?? []) as SearchableMaterial[]
+    if (normalizedCategoryNames.length > 0) {
+      queryBuilder = queryBuilder.in("categories", normalizedCategoryNames)
+    }
+    const { data } = await queryBuilder.limit(5)
+    return (data ?? []).map(normalizeSearchableMaterial)
   }
 
-  const { data, error } = await supabase
+  let queryBuilder = supabase
     .from("materials")
     .select(select)
     .eq("status", "available")
-    .or(
-      `name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`
-    )
-    .limit(25)
+    .or(`name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`)
+  if (normalizedCategoryNames.length > 0) {
+    queryBuilder = queryBuilder.in("categories", normalizedCategoryNames)
+  }
+  const { data, error } = await queryBuilder.limit(25)
 
   if (error) return []
-  return (data ?? []) as SearchableMaterial[]
+  return (data ?? []).map(normalizeSearchableMaterial)
 }
 
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====

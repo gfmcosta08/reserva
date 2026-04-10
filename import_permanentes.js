@@ -57,17 +57,9 @@ async function runImport() {
         if (!rg) rg = '99999' + i; // fallback se for vazio
         if (!serial) serial = 'S/N-' + i;
 
-        // 1. Verificar categoria
-        let catId;
-        const { data: catData } = await supabase.from('categories').select('id').eq('name', categoria).single();
-        if (catData) {
-            catId = catData.id;
-        } else {
-            const { data: newCat } = await supabase.from('categories').insert({ name: categoria }).select().single();
-            catId = newCat ? newCat.id : null;
-        }
+        const categoryName = (categoria || '').trim() || 'Sem Categoria';
 
-        // 2. Verificar/Criar Pessoa
+        // 1. Verificar/Criar Pessoa
         let personId;
         const { data: personData } = await supabase.from('persons').select('id').eq('registration_number', rg).single();
         if (personData) {
@@ -84,7 +76,7 @@ async function runImport() {
             personId = newPerson.id;
         }
 
-        // 3. Verificar/Criar Material
+        // 2. Verificar/Criar Material
         let materialId;
         const patNum = `PAT-${serial}`;
         const intCode = `INT-${serial}`;
@@ -95,7 +87,7 @@ async function runImport() {
             console.log(`Criando material: ${serial}`);
             const { data: newMat, error: mErr } = await supabase.from('materials').insert({
                 name: categoria,
-                category_id: catId,
+                categories: categoryName,
                 patrimony_number: patNum,
                 serial_number: serial,
                 internal_code: intCode,
@@ -106,7 +98,7 @@ async function runImport() {
             materialId = newMat.id;
         }
 
-        // 4. Criar Cautela Permanente
+        // 3. Criar Cautela Permanente
         console.log(`Criando cautela permanente para ${nome}`);
         const { data: cautelaData, error: cErr } = await supabase.from('cautelas').insert({
             person_id: personId,
@@ -119,7 +111,7 @@ async function runImport() {
 
         if (cErr) { console.error("Erro cautela:", cErr); continue; }
 
-        // 5. Vincular Material na Cautela Item
+        // 4. Vincular Material na Cautela Item
         const { error: ciErr } = await supabase.from('cautela_items').insert({
             cautela_id: cautelaData.id,
             material_id: materialId,
