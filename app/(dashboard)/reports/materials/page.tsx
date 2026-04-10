@@ -43,7 +43,7 @@ export default async function MaterialsReportPage() {
 
   if (materials) {
     materials.forEach((m: any) => {
-      const cat = m.categories || "Sem Categoria"
+      const cat = m.categories || m.category || "Sem Categoria"
       if (!grouped[cat]) grouped[cat] = { available: [], cautelados: [], other: [] }
 
       const detail = activeMaterialMap.get(m.id)
@@ -107,4 +107,3 @@ export default async function MaterialsReportPage() {
     </div>
   )
 }
-

@@ -57,7 +57,10 @@ export default function MaterialDetalhePage({ params }: { params: Promise<{ id: 
       const response = await fetch(`/api/materials/${id}`)
       const data = await response.json()
       if (data.material) {
-        setMaterial(data.material)
+        setMaterial({
+          ...data.material,
+          categories: data.material.categories || data.material.category || "Sem Categoria",
+        })
       }
     } catch (_err) {
       toast.error("Erro ao carregar dados")
@@ -256,4 +259,3 @@ export default function MaterialDetalhePage({ params }: { params: Promise<{ id: 
     </div>
   )
 }
-

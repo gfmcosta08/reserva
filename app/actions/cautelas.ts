@@ -30,6 +30,23 @@ function mapCreateCautelaRpcError(message: string): string {
   return message
 }
 
+function isMissingCategoriesColumnError(error: { message?: string } | null) {
+  const message = error?.message ?? ""
+  return /column .*categories.* does not exist/i.test(message)
+}
+
+function normalizeMaterialCategoryValue(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : "Sem Categoria"
+}
+
+function normalizeNestedMaterial(material: any) {
+  if (!material) return material
+  return {
+    ...material,
+    categories: normalizeMaterialCategoryValue(material.categories ?? material.category),
+  }
+}
+
 // ===== LISTAR CAUTELAS =====
 export async function getCautelas(filters?: { status?: string; search?: string }) {
   const supabase = await createClient()
@@ -91,7 +108,7 @@ export async function getCautelaById(id: string) {
   if (error) return { error: error.message }
 
   // Buscar itens com dados do material
-  const { data: items } = await supabase
+  let { data: items, error: itemsError } = await supabase
     .from("cautela_items")
     .select(`
       *,
@@ -99,7 +116,28 @@ export async function getCautelaById(id: string) {
     `)
     .eq("cautela_id", id)
 
-  return { cautela, items: items || [] }
+  if (itemsError && isMissingCategoriesColumnError(itemsError)) {
+    const fallback = await supabase
+      .from("cautela_items")
+      .select(`
+        *,
+        materials(id, name, patrimony_number, serial_number, internal_code, category)
+      `)
+      .eq("cautela_id", id)
+    items = fallback.data
+    itemsError = fallback.error
+  }
+
+  if (itemsError) {
+    return { error: itemsError.message }
+  }
+
+  const normalizedItems = (items ?? []).map((item: any) => ({
+    ...item,
+    materials: normalizeNestedMaterial(item.materials),
+  }))
+
+  return { cautela, items: normalizedItems }
 }
 
 // ===== VALIDAR PIN =====
@@ -621,28 +659,55 @@ export async function getAvailableMaterials(category?: string) {
     query = query.eq("categories", category)
   }
 
-  const { data, error } = await query
+  let { data, error } = await query
+
+  if (error && isMissingCategoriesColumnError(error)) {
+    let legacyQuery = supabase
+      .from("materials")
+      .select("id, name, patrimony_number, serial_number, internal_code, category")
+      .eq("status", "available")
+      .order("name")
+    if (category) {
+      legacyQuery = legacyQuery.eq("category", category)
+    }
+    const fallback = await legacyQuery
+    data = fallback.data as any
+    error = fallback.error
+  }
+
   if (error) return []
-  return data
+  return (data ?? []).map(normalizeSearchableMaterial)
 }
 
 // ===== BUSCAR MATERIAIS AGRUPADOS POR CATEGORIA =====
 export async function getAvailableMaterialsGrouped() {
   const supabase = await createClient()
-  const { data: materials } = await supabase
+  let { data: materials, error } = await supabase
     .from("materials")
     .select("id, name, patrimony_number, serial_number, internal_code, categories")
     .eq("status", "available")
     .order("name")
 
+  if (error && isMissingCategoriesColumnError(error)) {
+    const fallback = await supabase
+      .from("materials")
+      .select("id, name, patrimony_number, serial_number, internal_code, category")
+      .eq("status", "available")
+      .order("name")
+    materials = fallback.data as any
+    error = fallback.error
+  }
+
+  if (error) return []
   if (!materials) return []
 
   const grouped = materials.reduce((acc: Record<string, any[]>, material: any) => {
-    const key = typeof material.categories === "string" && material.categories.trim().length > 0
-      ? material.categories.trim()
-      : "Sem Categoria"
+    const key = normalizeMaterialCategoryValue(material.categories ?? material.category)
     if (!acc[key]) acc[key] = []
-    acc[key].push(material)
+    acc[key].push({
+      ...material,
+      categories: key,
+    })
     return acc
   }, {})
 
@@ -667,10 +732,7 @@ export type SearchableMaterial = {
 function normalizeSearchableMaterial(row: any): SearchableMaterial {
   return {
     ...row,
-    categories:
-      typeof row?.categories === "string" && row.categories.trim().length > 0
-        ? row.categories.trim()
-        : "Sem Categoria",
+    categories: normalizeMaterialCategoryValue(row?.categories ?? row?.category),
   }
 }
 
@@ -684,6 +746,7 @@ export async function searchMaterials(
 
   const supabase = await createClient()
   const select = "id, name, patrimony_number, serial_number, internal_code, categories"
+  const legacySelect = "id, name, patrimony_number, serial_number, internal_code, category"
   const normalizedCategoryNames =
     (categoryNames ?? []).map((name) => name.trim()).filter((name) => name.length > 0)
 
@@ -699,7 +762,21 @@ export async function searchMaterials(
     if (normalizedCategoryNames.length > 0) {
       queryBuilder = queryBuilder.in("categories", normalizedCategoryNames)
     }
-    const { data } = await queryBuilder.limit(5)
+    let { data, error } = await queryBuilder.limit(5)
+    if (error && isMissingCategoriesColumnError(error)) {
+      let legacyBuilder = supabase
+        .from("materials")
+        .select(legacySelect)
+        .eq("status", "available")
+        .eq("id", q)
+      if (normalizedCategoryNames.length > 0) {
+        legacyBuilder = legacyBuilder.in("category", normalizedCategoryNames)
+      }
+      const fallback = await legacyBuilder.limit(5)
+      data = fallback.data as any
+      error = fallback.error
+    }
+    if (error) return []
     return (data ?? []).map(normalizeSearchableMaterial)
   }
 
@@ -711,7 +788,21 @@ export async function searchMaterials(
   if (normalizedCategoryNames.length > 0) {
     queryBuilder = queryBuilder.in("categories", normalizedCategoryNames)
   }
-  const { data, error } = await queryBuilder.limit(25)
+  let { data, error } = await queryBuilder.limit(25)
+
+  if (error && isMissingCategoriesColumnError(error)) {
+    let legacyBuilder = supabase
+      .from("materials")
+      .select(legacySelect)
+      .eq("status", "available")
+      .or(`name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`)
+    if (normalizedCategoryNames.length > 0) {
+      legacyBuilder = legacyBuilder.in("category", normalizedCategoryNames)
+    }
+    const fallback = await legacyBuilder.limit(25)
+    data = fallback.data as any
+    error = fallback.error
+  }
 
   if (error) return []
   return (data ?? []).map(normalizeSearchableMaterial)

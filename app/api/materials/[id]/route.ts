@@ -29,7 +29,12 @@ export async function GET(
     return NextResponse.json({ error: "Material não encontrado" }, { status: 404 });
   }
 
-  return NextResponse.json({ material });
+  return NextResponse.json({
+    material: {
+      ...material,
+      categories: material.categories || material.category || "Sem Categoria",
+    },
+  });
 }
 
 export async function PATCH(

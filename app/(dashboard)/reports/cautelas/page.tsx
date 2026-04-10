@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 export default async function CautelasReportPage() {
   const supabase = await createClient()
 
-  const { data: openCautelas } = await supabase
+  let { data: openCautelas, error } = await supabase
     .from("cautelas")
     .select(`
       *,
@@ -21,6 +21,37 @@ export default async function CautelasReportPage() {
     `)
     .in("status", ["open", "partial"])
     .order("created_at", { ascending: false })
+
+  if (error && /column .*categories.* does not exist/i.test(error.message)) {
+    const fallback = await supabase
+      .from("cautelas")
+      .select(`
+        *,
+        persons(full_name, rg, function, registration_number),
+        profiles(name, email),
+        cautela_items(
+           id, returned, return_date, status, notes,
+           materials(name, patrimony_number, internal_code, category)
+        )
+      `)
+      .in("status", ["open", "partial"])
+      .order("created_at", { ascending: false })
+    openCautelas = fallback.data
+    error = fallback.error
+  }
+
+  const normalizedCautelas = (openCautelas || []).map((cautela: any) => ({
+    ...cautela,
+    cautela_items: (cautela.cautela_items || []).map((item: any) => ({
+      ...item,
+      materials: item.materials
+        ? {
+            ...item.materials,
+            categories: item.materials?.categories || item.materials?.category || "Sem Categoria",
+          }
+        : item.materials,
+    })),
+  }))
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -46,15 +77,14 @@ export default async function CautelasReportPage() {
         </div>
       </div>
 
-      {!openCautelas || openCautelas.length === 0 ? (
+      {!normalizedCautelas || normalizedCautelas.length === 0 ? (
         <div className="text-center py-20 bg-slate-900/50 rounded-2xl border border-slate-800">
           <ClipboardCheck className="h-12 w-12 text-slate-700 mx-auto mb-4" />
           <p className="text-slate-400">Nenhuma cautela ativa no momento.</p>
         </div>
       ) : (
-        <CautelasReportClient cautelas={openCautelas} />
+        <CautelasReportClient cautelas={normalizedCautelas} />
       )}
     </div>
   )
 }
-

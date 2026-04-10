@@ -6,6 +6,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { uuidSchema } from "@/lib/cautela-schemas";
 
+function isMissingCategoriesColumnError(error: { message?: string } | null) {
+  const message = error?.message ?? "";
+  return /column .*categories.* does not exist/i.test(message);
+}
+
+function normalizeCategory(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : "Sem Categoria";
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -35,7 +44,7 @@ export async function GET(
   }
 
   // Buscar itens com dados do material
-  const { data: items } = await supabase
+  let { data: items, error: itemsError } = await supabase
     .from("cautela_items")
     .select(`
       *,
@@ -44,9 +53,36 @@ export async function GET(
     `)
     .eq("cautela_id", id);
 
+  if (itemsError && isMissingCategoriesColumnError(itemsError)) {
+    const fallback = await supabase
+      .from("cautela_items")
+      .select(`
+        *,
+        materials(id, name, patrimony_number, serial_number, internal_code, 
+                  caliber, subcategoria, category)
+      `)
+      .eq("cautela_id", id);
+    items = fallback.data;
+    itemsError = fallback.error;
+  }
+
+  if (itemsError) {
+    return NextResponse.json({ error: itemsError.message }, { status: 500 });
+  }
+
+  const normalizedItems = (items || []).map((item: any) => ({
+    ...item,
+    materials: item.materials
+      ? {
+          ...item.materials,
+          categories: normalizeCategory(item.materials?.categories ?? item.materials?.category),
+        }
+      : item.materials,
+  }));
+
   return NextResponse.json({ 
     cautela,
-    items: items || [] 
+    items: normalizedItems 
   });
 }
 
