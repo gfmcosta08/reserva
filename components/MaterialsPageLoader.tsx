@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getMaterialsPagePayload } from "@/app/actions/materials-page";
 import MaterialsClient, { type MaterialsUrlQuery } from "@/components/MaterialsClient";
 
 type ApiPayload = {
@@ -35,43 +36,40 @@ export default function MaterialsPageLoader({
   const [data, setData] = useState<ApiPayload | null>(null);
 
   useEffect(() => {
-    const ctrl = new AbortController();
+    let cancelled = false;
     setState("loading");
     setErrorMsg("");
     setData(null);
 
-    const sp = new URLSearchParams();
-    for (const [k, v] of Object.entries(urlQuery)) {
-      if (v != null && String(v).length > 0) sp.set(k, String(v));
-    }
+    const filters = {
+      search: urlQuery.search,
+      name: urlQuery.name,
+      reservation_id: urlQuery.reservation_id,
+      category: urlQuery.category,
+      status: urlQuery.status,
+    };
 
-    fetch(`/api/materials-page?${sp.toString()}`, {
-      credentials: "same-origin",
-      signal: ctrl.signal,
-    })
-      .then(async (r) => {
-        const j = (await r.json().catch(() => ({}))) as { error?: string } & Partial<ApiPayload>;
-        if (!r.ok) {
-          throw new Error(j.error || `Falha ao carregar (${r.status})`);
+    getMaterialsPagePayload(filters)
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setData(result.data);
+          setState("ready");
+        } else {
+          setErrorMsg("error" in result ? result.error : "Erro ao carregar materiais");
+          setState("error");
         }
-        setData({
-          initialMaterials: j.initialMaterials ?? [],
-          categoryOptions: j.categoryOptions ?? [],
-          materialNames: j.materialNames ?? [],
-          locations: j.locations ?? [],
-          listTruncated: j.listTruncated ?? false,
-          materialsTotalCount: j.materialsTotalCount ?? 0,
-        });
-        setState("ready");
       })
       .catch((e: Error) => {
-        if (e.name === "AbortError") return;
-        console.error("[materials-page] client fetch", e);
+        if (cancelled) return;
+        console.error("[materials-page] getMaterialsPagePayload", e);
         setErrorMsg(e.message || "Erro desconhecido");
         setState("error");
       });
 
-    return () => ctrl.abort();
+    return () => {
+      cancelled = true;
+    };
   }, [urlQueryKey]);
 
   if (state === "loading" || (state === "ready" && !data)) {

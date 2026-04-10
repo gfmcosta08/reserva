@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase-server"
-import { MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit"
+import { MATERIALS_FILTER_META_ROW_LIMIT, MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit"
+
+/** Colunas necessárias na UI de materiais (evita `select *` pesado e problemas de serialização). */
+const MATERIAL_LIST_COLUMNS =
+  "id, name, patrimony_number, serial_number, internal_code, reservation_id, category, status, notes, created_at, updated_at"
 
 export type MaterialsPageFilters = {
   search?: string
@@ -26,7 +30,7 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
 
   let query = supabase
     .from("materials")
-    .select("*", { count: "exact" })
+    .select(MATERIAL_LIST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .limit(MATERIALS_LIST_ROW_LIMIT)
 
@@ -43,8 +47,11 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   const [{ data: materials, error: materialsError, count: materialsCount }, { data: catRows, error: catError }, { data: allMaterials, error: namesError }] =
     await Promise.all([
       query,
-      supabase.from("materials").select("category"),
-      supabase.from("materials").select("name, reservation_id"),
+      supabase.from("materials").select("category").limit(MATERIALS_FILTER_META_ROW_LIMIT),
+      supabase
+        .from("materials")
+        .select("name, reservation_id")
+        .limit(MATERIALS_FILTER_META_ROW_LIMIT),
     ])
 
   const rowCount = materials?.length ?? 0
