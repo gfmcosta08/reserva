@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import * as faceapi from "face-api.js"
+let faceapi: any
+// face-api.js loaded lazily to avoid bundling on non-biometrics pages
 import { Camera, Loader2, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 
 interface FaceVerificationProps {
@@ -25,7 +26,8 @@ export default function FaceVerification({ storedDescriptor, onResult, personNam
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/"
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/"
+        faceapi = await (await import("face-api.js")) as any
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -66,6 +68,11 @@ export default function FaceVerification({ storedDescriptor, onResult, personNam
 
   const verifyFace = async () => {
     if (!videoRef.current) return
+    if (!faceapi) {
+      setStatus("failed")
+      setError("Biometria ainda carregando. Tente novamente em alguns segundos.")
+      return
+    }
     setStatus("verifying")
 
     try {

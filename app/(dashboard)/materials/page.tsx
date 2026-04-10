@@ -3,13 +3,52 @@ import { getCategories } from "@/app/actions/categories";
 import MaterialsClient from "@/components/MaterialsClient";
 import { createClient } from "@/lib/supabase-server";
 
+export const dynamic = "force-dynamic";
+
+type MaterialsFilters = {
+  search?: string;
+  category_id?: string;
+  status?: string;
+  name?: string;
+  reservation_id?: string;
+};
+
+type RawSearchParams =
+  | Record<string, string | string[] | undefined>
+  | Promise<Record<string, string | string[] | undefined> | undefined>
+  | undefined;
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === "string" && value.length > 0) return value;
+  return undefined;
+}
+
 export default async function MaterialsPage({
   searchParams,
 }: {
-  searchParams: { search?: string; category_id?: string; status?: string; name?: string; reservation_id?: string };
+  searchParams?: RawSearchParams;
 }) {
-  const materials = await getMaterials(searchParams);
-  const categories = await getCategories();
+  const resolvedSearchParams = (await Promise.resolve(searchParams)) ?? {};
+
+  const filters: MaterialsFilters = {
+    search: firstParam(resolvedSearchParams.search),
+    name: firstParam(resolvedSearchParams.name),
+    reservation_id: firstParam(resolvedSearchParams.reservation_id),
+    category_id: firstParam(resolvedSearchParams.category_id),
+    status: firstParam(resolvedSearchParams.status),
+  };
+
+  const [materials, categories] = await Promise.all([
+    getMaterials(filters).catch((error) => {
+      console.error("[materials-page] getMaterials", error);
+      return [];
+    }),
+    getCategories().catch((error) => {
+      console.error("[materials-page] getCategories", error);
+      return [];
+    }),
+  ]);
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
