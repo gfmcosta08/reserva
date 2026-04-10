@@ -15,8 +15,30 @@ export async function getCategories() {
     .select("*")
     .order("name")
 
-  if (error) throw new Error(error.message)
-  return data
+  if (!error) {
+    return data ?? []
+  }
+
+  console.error("[categories] getCategories base query failed:", error.message)
+
+  const { data: materialRows, error: materialError } = await supabase
+    .from("materials")
+    .select("category")
+
+  if (materialError) {
+    console.error("[categories] getCategories fallback query failed:", materialError.message)
+    return []
+  }
+
+  const names = Array.from(
+    new Set(
+      (materialRows ?? [])
+        .map((row: any) => row?.category)
+        .filter((value: unknown): value is string => typeof value === "string" && value.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"))
+
+  return names.map((name) => ({ id: name, name }))
 }
 
 export async function createCategory(formData: FormData) {

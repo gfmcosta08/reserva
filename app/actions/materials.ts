@@ -22,31 +22,58 @@ export async function getMaterials(filters?: {
   reservation_id?: string;
 }) {
   const supabase = await createClient()
-  let query = supabase
-    .from("materials")
-    .select("*, categories(name)")
-    .order("created_at", { ascending: false })
-
-  if (filters?.status) {
-    query = query.eq("status", filters.status)
-  }
-  if (filters?.category_id) {
-    query = query.eq("category_id", filters.category_id)
-  }
-  if (filters?.name) {
-    query = query.eq("name", filters.name)
-  }
-  if (filters?.reservation_id) {
-    query = query.eq("reservation_id", filters.reservation_id)
-  }
-  if (filters?.search) {
-    query = query.or(`name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%`)
+  const applyFilters = (query: any) => {
+    if (filters?.status) {
+      query = query.eq("status", filters.status)
+    }
+    if (filters?.category_id) {
+      query = query.eq("category_id", filters.category_id)
+    }
+    if (filters?.name) {
+      query = query.eq("name", filters.name)
+    }
+    if (filters?.reservation_id) {
+      query = query.eq("reservation_id", filters.reservation_id)
+    }
+    if (filters?.search) {
+      query = query.or(`name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%`)
+    }
+    return query
   }
 
-  const { data, error } = await query
+  const { data, error } = await applyFilters(
+    supabase
+      .from("materials")
+      .select("*, categories(name)")
+      .order("created_at", { ascending: false })
+  )
 
-  if (error) throw new Error(error.message)
-  return data
+  if (!error) {
+    return data ?? []
+  }
+
+  console.error("[materials] getMaterials relational query failed:", error.message)
+
+  const { data: fallbackData, error: fallbackError } = await applyFilters(
+    supabase
+      .from("materials")
+      .select("*")
+      .order("created_at", { ascending: false })
+  )
+
+  if (fallbackError) {
+    console.error("[materials] getMaterials fallback query failed:", fallbackError.message)
+    return []
+  }
+
+  return (fallbackData ?? []).map((material: any) => ({
+    ...material,
+    categories:
+      material?.categories ??
+      (typeof material?.category === "string" && material.category.length > 0
+        ? { name: material.category }
+        : null),
+  }))
 }
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
