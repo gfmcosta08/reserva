@@ -1,18 +1,8 @@
-import { getMaterialCategoryOptions, getMaterials } from "@/app/actions/materials"
+import { getMaterialCategoryOptions, getMaterials, type MaterialsFilters } from "@/app/actions/materials"
 import MaterialsClient from "@/components/MaterialsClient"
 import { createClient } from "@/lib/supabase-server"
 
 export const dynamic = "force-dynamic"
-
-type MaterialsFilters = {
-  search?: string
-  categories?: string
-  category?: string
-  category_id?: string
-  status?: string
-  name?: string
-  reservation_id?: string
-}
 
 type RawSearchParams =
   | Record<string, string | string[] | undefined>
@@ -25,6 +15,17 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return undefined
 }
 
+function multiParam(value: string | string[] | undefined): string[] | undefined {
+  const list = (Array.isArray(value) ? value : [value])
+    .filter((item): item is string => typeof item === "string")
+    .flatMap((item) => item.split(","))
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+
+  const deduped = Array.from(new Set(list))
+  return deduped.length > 0 ? deduped : undefined
+}
+
 export default async function MaterialsPage({
   searchParams,
 }: {
@@ -34,12 +35,12 @@ export default async function MaterialsPage({
 
   const filters: MaterialsFilters = {
     search: firstParam(resolvedSearchParams.search),
-    name: firstParam(resolvedSearchParams.name),
-    reservation_id: firstParam(resolvedSearchParams.reservation_id),
-    categories: firstParam(resolvedSearchParams.categories),
-    category: firstParam(resolvedSearchParams.category),
-    category_id: firstParam(resolvedSearchParams.category_id),
-    status: firstParam(resolvedSearchParams.status),
+    name: multiParam(resolvedSearchParams.name),
+    reservation_id: multiParam(resolvedSearchParams.reservation_id),
+    categories: multiParam(resolvedSearchParams.categories),
+    category: multiParam(resolvedSearchParams.category),
+    category_id: multiParam(resolvedSearchParams.category_id),
+    status: multiParam(resolvedSearchParams.status),
   }
 
   const [materials, categoryOptions] = await Promise.all([
