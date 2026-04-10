@@ -1,23 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  X, 
-  Package, 
+import {
+  X,
+  Package,
   Save,
   Loader2,
   AlertCircle
 } from "lucide-react";
 import { createMaterial, updateMaterial } from "@/app/actions/materials";
 
-export default function MaterialForm({ 
-  categories, 
+export default function MaterialForm({
+  categories,
   material,
-  onClose 
-}: { 
-  categories: string[]; 
+  onClose
+}: {
+  categories: string[];
   material?: any;
-  onClose: () => void 
+  onClose: () => void
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +28,12 @@ export default function MaterialForm({
     setError(null);
 
     const formData = new FormData(e.currentTarget);
+    const rawQuantity = formData.get("quantity");
+    const parsedQuantity =
+      typeof rawQuantity === "string" && rawQuantity.trim().length > 0
+        ? Number(rawQuantity)
+        : undefined;
+
     const data = {
       name: formData.get("name") as string,
       categories: formData.get("categories") as string,
@@ -35,10 +41,14 @@ export default function MaterialForm({
       serial_number: formData.get("serial_number") as string,
       internal_code: formData.get("internal_code") as string,
       reservation_id: formData.get("reservation_id") as string,
+      size: formData.get("size") as string,
+      model: formData.get("model") as string,
+      quantity: parsedQuantity && parsedQuantity > 0 ? Math.floor(parsedQuantity) : undefined,
+      color: formData.get("color") as string,
       notes: formData.get("notes") as string,
     };
 
-    const result = material 
+    const result = material
       ? await updateMaterial(material.id, data)
       : await createMaterial(data as any);
 
@@ -71,7 +81,7 @@ export default function MaterialForm({
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nome do Equipamento</label>
-              <input 
+              <input
                 name="name"
                 defaultValue={material?.name}
                 required
@@ -82,7 +92,7 @@ export default function MaterialForm({
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Categoria</label>
-              <input 
+              <input
                 name="categories"
                 defaultValue={material?.categories}
                 required
@@ -98,8 +108,8 @@ export default function MaterialForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Patrimônio</label>
-              <input 
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Patrimonio</label>
+              <input
                 name="patrimony_number"
                 defaultValue={material?.patrimony_number}
                 required
@@ -109,8 +119,8 @@ export default function MaterialForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Série</label>
-              <input 
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Serie</label>
+              <input
                 name="serial_number"
                 defaultValue={material?.serial_number}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
@@ -119,8 +129,8 @@ export default function MaterialForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Código Interno / QR</label>
-              <input 
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Codigo Interno / QR</label>
+              <input
                 name="internal_code"
                 defaultValue={material?.internal_code}
                 required
@@ -130,23 +140,66 @@ export default function MaterialForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Identificação da Reserva</label>
-              <input 
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Identificacao da Reserva</label>
+              <input
                 name="reservation_id"
                 defaultValue={material?.reservation_id}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
-                placeholder="Ex: ARMARIO-A-01 ou Numeração antiga"
+                placeholder="Ex: ARMARIO-A-01 ou numeracao antiga"
               />
             </div>
 
-            <div className="md:col-span-1 space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Observações</label>
-              <textarea 
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tamanho</label>
+              <input
+                name="size"
+                defaultValue={material?.size}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: P, M, G ou 38"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Modelo</label>
+              <input
+                name="model"
+                defaultValue={material?.model}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: G17 Gen5"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantidade</label>
+              <input
+                name="quantity"
+                type="number"
+                min={1}
+                step={1}
+                defaultValue={material?.quantity ?? 1}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: 1"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cor</label>
+              <input
+                name="color"
+                defaultValue={material?.color}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: Preta"
+              />
+            </div>
+
+            <div className="md:col-span-2 space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Observacoes</label>
+              <textarea
                 name="notes"
                 defaultValue={material?.notes}
                 rows={2}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all resize-none"
-                placeholder="Detalhes técnicos, estado de conservação, etc."
+                placeholder="Detalhes tecnicos, estado de conservacao, etc."
               />
             </div>
           </div>
@@ -159,14 +212,14 @@ export default function MaterialForm({
           )}
 
           <div className="p-6 bg-slate-800/30 flex justify-end gap-3">
-            <button 
+            <button
               type="button"
               onClick={onClose}
               className="px-6 py-2 bg-slate-800 text-slate-300 rounded-xl font-bold hover:text-white transition-colors"
             >
               Cancelar
             </button>
-            <button 
+            <button
               type="submit"
               disabled={isLoading}
               className="flex items-center gap-2 px-8 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50 transition-all"

@@ -28,6 +28,10 @@ type MaterialImportPayload = {
   serial_number: string | null
   reservation_id: string | null
   categories: string
+  size: string | null
+  model: string | null
+  quantity: number
+  color: string | null
   notes: string | null
   statusCandidates: string[]
 }
@@ -62,6 +66,10 @@ const MATERIAL_COLUMN_ALIASES = {
     "armario",
   ],
   categories: ["categories", "category", "categoria", "categorias"],
+  size: ["size", "tamanho", "tam"],
+  model: ["model", "modelo"],
+  quantity: ["quantity", "quantidade", "qtd", "qtde"],
+  color: ["color", "cor"],
   status: ["status", "situacao"],
   notes: ["notes", "observacoes", "observacao", "nota", "notas"],
 } as const
@@ -84,6 +92,27 @@ function normalizeText(value: unknown): string | null {
 function normalizeCategory(value: string | null | undefined): string {
   const normalized = value?.trim()
   return normalized && normalized.length > 0 ? normalized : DEFAULT_CATEGORY
+}
+
+function normalizeOptionalText(value: string | null | undefined): string | null {
+  const normalized = value?.trim()
+  return normalized && normalized.length > 0 ? normalized : null
+}
+
+function normalizeQuantityInput(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const parsed = Math.floor(value)
+    return parsed > 0 ? parsed : 1
+  }
+
+  const normalized = normalizeText(value)
+  if (!normalized) return 1
+
+  const parsed = Number(normalized.replace(",", "."))
+  if (!Number.isFinite(parsed)) return 1
+
+  const integer = Math.floor(parsed)
+  return integer > 0 ? integer : 1
 }
 
 function normalizeHeader(value: string) {
@@ -145,6 +174,20 @@ function isStatusConstraintError(error: { message?: string } | null) {
   return /materials_status_check|violates check constraint/i.test(message)
 }
 
+function isMissingExtendedMaterialColumnError(error: { message?: string } | null) {
+  const message = error?.message ?? ""
+  return /column .*(size|model|quantity|color).* does not exist/i.test(message)
+}
+
+function stripExtendedMaterialFields(payload: Record<string, any>) {
+  const nextPayload = { ...payload }
+  delete nextPayload.size
+  delete nextPayload.model
+  delete nextPayload.quantity
+  delete nextPayload.color
+  return nextPayload
+}
+
 function findValueByAliases(row: MaterialImportRow, field: MaterialImportField): string | null {
   const aliasSet = MATERIAL_COLUMN_ALIAS_SETS[field]
 
@@ -176,6 +219,10 @@ function parseImportRow(row: MaterialImportRow, line: number): { payload?: Mater
   const serialNumber = findValueByAliases(row, "serial_number")
   const reservationId = findValueByAliases(row, "reservation_id")
   const categories = normalizeCategory(findValueByAliases(row, "categories"))
+  const size = normalizeOptionalText(findValueByAliases(row, "size"))
+  const model = normalizeOptionalText(findValueByAliases(row, "model"))
+  const quantity = normalizeQuantityInput(findValueByAliases(row, "quantity"))
+  const color = normalizeOptionalText(findValueByAliases(row, "color"))
   const notes = findValueByAliases(row, "notes")
   const statusCandidates = resolveStatusCandidates(findValueByAliases(row, "status"))
 
@@ -188,6 +235,10 @@ function parseImportRow(row: MaterialImportRow, line: number): { payload?: Mater
       serial_number: serialNumber,
       reservation_id: reservationId,
       categories,
+      size,
+      model,
+      quantity,
+      color,
       notes,
       statusCandidates,
     },
@@ -201,11 +252,39 @@ const materialSchema = z.object({
   serial_number: z.string().optional(),
   internal_code: z.string().min(1, "Codigo interno e obrigatorio"),
   reservation_id: z.string().optional(),
+  size: z.string().optional(),
+  model: z.string().optional(),
+  quantity: z.preprocess(
+    (value) => {
+      if (value === undefined || value === null) return undefined
+      if (typeof value === "string" && value.trim().length === 0) return undefined
+      return normalizeQuantityInput(value)
+    },
+    z.number().int().positive().optional()
+  ),
+  color: z.string().optional(),
   status: z.string().optional().transform((value) => normalizeStatus(value)),
   notes: z.string().optional(),
 })
 
-const updateMaterialSchema = materialSchema.partial()
+const createMaterialSchema = materialSchema.extend({
+  quantity: materialSchema.shape.quantity.transform((value) => value ?? 1),
+})
+
+const updateMaterialSchema = z.object({
+  name: z.string().min(2, "Nome e obrigatorio").optional(),
+  categories: z.string().min(1, "Categoria e obrigatoria").transform(normalizeCategory).optional(),
+  patrimony_number: z.string().min(1, "Patrimonio e obrigatorio").optional(),
+  serial_number: z.string().optional(),
+  internal_code: z.string().min(1, "Codigo interno e obrigatorio").optional(),
+  reservation_id: z.string().optional(),
+  size: z.string().optional(),
+  model: z.string().optional(),
+  quantity: materialSchema.shape.quantity,
+  color: z.string().optional(),
+  status: z.string().optional().transform((value) => normalizeStatus(value)),
+  notes: z.string().optional(),
+})
 
 async function resolveLegacyCategoryByIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -364,7 +443,7 @@ export async function getMaterialCategoryOptions() {
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
   const supabase = await createClient()
-  const result = materialSchema.safeParse(data)
+  const result = createMaterialSchema.safeParse(data)
 
   if (!result.success) {
     return { error: result.error.issues[0].message }
@@ -375,24 +454,39 @@ export async function createMaterial(data: z.infer<typeof materialSchema>) {
   const payload: Record<string, any> = {
     ...result.data,
     categories: normalizedCategory,
+    size: normalizeOptionalText(result.data.size),
+    model: normalizeOptionalText(result.data.model),
+    quantity: normalizeQuantityInput(result.data.quantity),
+    color: normalizeOptionalText(result.data.color),
   }
 
   if (!result.data.status) {
     delete payload.status
   }
 
-  let { error } = await supabase.from("materials").insert(payload)
+  let insertPayload = { ...payload }
+  let { error } = await supabase.from("materials").insert(insertPayload)
+
+  if (error && isMissingExtendedMaterialColumnError(error)) {
+    insertPayload = stripExtendedMaterialFields(insertPayload)
+    const retry = await supabase.from("materials").insert(insertPayload)
+    error = retry.error
+  }
 
   if (error && isMissingCategoriesColumnError(error)) {
     const legacyPayload = {
-      ...result.data,
+      ...insertPayload,
       category: normalizedCategory,
     } as Record<string, any>
     delete legacyPayload.categories
     if (!legacyPayload.status) {
       delete legacyPayload.status
     }
-    const legacyResult = await supabase.from("materials").insert(legacyPayload)
+    let legacyResult = await supabase.from("materials").insert(legacyPayload)
+    if (legacyResult.error && isMissingExtendedMaterialColumnError(legacyResult.error)) {
+      const legacyWithoutExtended = stripExtendedMaterialFields(legacyPayload)
+      legacyResult = await supabase.from("materials").insert(legacyWithoutExtended)
+    }
     error = legacyResult.error
   }
 
@@ -418,11 +512,31 @@ export async function updateMaterial(id: string, data: Partial<z.infer<typeof ma
     ...(normalizedCategory !== undefined ? { categories: normalizedCategory } : {}),
   } as Record<string, any>
 
+  if ("size" in payload) {
+    payload.size = normalizeOptionalText(payload.size)
+  }
+  if ("model" in payload) {
+    payload.model = normalizeOptionalText(payload.model)
+  }
+  if ("quantity" in payload) {
+    payload.quantity = normalizeQuantityInput(payload.quantity)
+  }
+  if ("color" in payload) {
+    payload.color = normalizeOptionalText(payload.color)
+  }
+
   if (!payload.status) {
     delete payload.status
   }
 
-  let { error } = await supabase.from("materials").update(payload).eq("id", id)
+  let updatePayload = { ...payload }
+  let { error } = await supabase.from("materials").update(updatePayload).eq("id", id)
+
+  if (error && isMissingExtendedMaterialColumnError(error)) {
+    updatePayload = stripExtendedMaterialFields(updatePayload)
+    const retry = await supabase.from("materials").update(updatePayload).eq("id", id)
+    error = retry.error
+  }
 
   if (error && isMissingCategoriesColumnError(error)) {
     const legacyPayload = {
@@ -430,13 +544,30 @@ export async function updateMaterial(id: string, data: Partial<z.infer<typeof ma
       ...(normalizedCategory !== undefined ? { category: normalizedCategory } : {}),
     } as Record<string, any>
 
+    if ("size" in legacyPayload) {
+      legacyPayload.size = normalizeOptionalText(legacyPayload.size)
+    }
+    if ("model" in legacyPayload) {
+      legacyPayload.model = normalizeOptionalText(legacyPayload.model)
+    }
+    if ("quantity" in legacyPayload) {
+      legacyPayload.quantity = normalizeQuantityInput(legacyPayload.quantity)
+    }
+    if ("color" in legacyPayload) {
+      legacyPayload.color = normalizeOptionalText(legacyPayload.color)
+    }
+
     delete legacyPayload.categories
 
     if (!legacyPayload.status) {
       delete legacyPayload.status
     }
 
-    const legacyResult = await supabase.from("materials").update(legacyPayload).eq("id", id)
+    let legacyResult = await supabase.from("materials").update(legacyPayload).eq("id", id)
+    if (legacyResult.error && isMissingExtendedMaterialColumnError(legacyResult.error)) {
+      const legacyWithoutExtended = stripExtendedMaterialFields(legacyPayload)
+      legacyResult = await supabase.from("materials").update(legacyWithoutExtended).eq("id", id)
+    }
     error = legacyResult.error
   }
 
@@ -468,6 +599,10 @@ async function upsertMaterialRow(
     serial_number: payload.serial_number,
     reservation_id: payload.reservation_id,
     categories: payload.categories,
+    size: payload.size,
+    model: payload.model,
+    quantity: payload.quantity,
+    color: payload.color,
     notes: payload.notes,
   }
 
@@ -475,22 +610,39 @@ async function upsertMaterialRow(
     nextPayload.status = payload.status
   }
 
-  let { error } = await supabase.from("materials").upsert(nextPayload, {
+  let upsertPayload = { ...nextPayload }
+  let { error } = await supabase.from("materials").upsert(upsertPayload, {
     onConflict: "internal_code",
     ignoreDuplicates: false,
   })
 
+  if (error && isMissingExtendedMaterialColumnError(error)) {
+    upsertPayload = stripExtendedMaterialFields(upsertPayload)
+    const retry = await supabase.from("materials").upsert(upsertPayload, {
+      onConflict: "internal_code",
+      ignoreDuplicates: false,
+    })
+    error = retry.error
+  }
+
   if (error && isMissingCategoriesColumnError(error)) {
     const legacyPayload: Record<string, any> = {
-      ...nextPayload,
+      ...upsertPayload,
       category: payload.categories,
     }
     delete legacyPayload.categories
 
-    const legacyResult = await supabase.from("materials").upsert(legacyPayload, {
+    let legacyResult = await supabase.from("materials").upsert(legacyPayload, {
       onConflict: "internal_code",
       ignoreDuplicates: false,
     })
+    if (legacyResult.error && isMissingExtendedMaterialColumnError(legacyResult.error)) {
+      const legacyWithoutExtended = stripExtendedMaterialFields(legacyPayload)
+      legacyResult = await supabase.from("materials").upsert(legacyWithoutExtended, {
+        onConflict: "internal_code",
+        ignoreDuplicates: false,
+      })
+    }
     error = legacyResult.error
   }
 

@@ -20,6 +20,10 @@ const TEMPLATE_COLUMNS = [
   "serial_number",
   "reservation_id",
   "categories",
+  "size",
+  "model",
+  "quantity",
+  "color",
   "status",
   "notes",
 ] as const
@@ -74,6 +78,10 @@ function buildTemplateWorkbook() {
       serial_number: "12345",
       reservation_id: "RESERVA-01",
       categories: "Armamento Menos Letal",
+      size: "M",
+      model: "Tatical 2026",
+      quantity: 1,
+      color: "Preta",
       status: "available",
       notes: "Opcional",
     },
@@ -84,6 +92,10 @@ function buildTemplateWorkbook() {
       serial_number: "",
       reservation_id: "RESERVA-02",
       categories: "Protecao Balistica",
+      size: "G",
+      model: "N3A",
+      quantity: 2,
+      color: "Azul Marinho",
       status: "available",
       notes: "Opcional",
     },
@@ -100,6 +112,10 @@ function buildTemplateWorkbook() {
       descricao: "Identificacao de local/reserva (armario, sala, base, etc).",
     },
     { coluna: "categories", obrigatorio: "Nao", descricao: "Categoria textual. Padrao: Sem Categoria." },
+    { coluna: "size", obrigatorio: "Nao", descricao: "Tamanho do material." },
+    { coluna: "model", obrigatorio: "Nao", descricao: "Modelo do material." },
+    { coluna: "quantity", obrigatorio: "Nao", descricao: "Quantidade. Padrao: 1." },
+    { coluna: "color", obrigatorio: "Nao", descricao: "Cor do material." },
     {
       coluna: "status",
       obrigatorio: "Nao",
@@ -126,6 +142,10 @@ function buildExportWorkbook(materials: any[]) {
     serial_number: material.serial_number || "",
     reservation_id: material.reservation_id || "",
     categories: material.categories || "Sem Categoria",
+    size: material.size || "",
+    model: material.model || "",
+    quantity: material.quantity ?? 1,
+    color: material.color || "",
     status: material.status || "available",
     notes: material.notes || "",
   }))
@@ -376,85 +396,95 @@ export default function MaterialsClient({
       </div>
 
       <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl shadow-blue-900/5">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-800/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
-              <th className="px-6 py-4">Equipamento</th>
-              <th className="px-6 py-4">Patrimonio / Codigo</th>
-              <th className="px-6 py-4">Categoria</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Acoes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/50">
-            {initialMaterials.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-20 text-center">
-                  <Package className="h-12 w-12 text-slate-800 mx-auto mb-4" />
-                  <p className="text-slate-500 font-medium text-sm">Nenhum material encontrado.</p>
-                  <p className="text-slate-600 text-xs mt-1">
-                    Tente ajustar seus filtros ou cadastre um novo material.
-                  </p>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1100px]">
+            <thead>
+              <tr className="bg-slate-800/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
+                <th className="px-6 py-4">Equipamento</th>
+                <th className="px-6 py-4">Patrimonio / Codigo</th>
+                <th className="px-6 py-4">Categoria</th>
+                <th className="px-6 py-4">Tamanho</th>
+                <th className="px-6 py-4">Modelo</th>
+                <th className="px-6 py-4">Quantidade</th>
+                <th className="px-6 py-4">Cor</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Acoes</th>
               </tr>
-            ) : (
-              initialMaterials.map((m: any) => (
-                <tr key={m.id} className="group hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                        <Package className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-200">{m.name}</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
-                          ID Reserva:{" "}
-                          <span className="text-blue-400 font-bold">{m.reservation_id || "Nao definido"}</span>
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-xs font-bold text-slate-300">{m.patrimony_number}</p>
-                      <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-tighter">
-                        Interno: {m.internal_code}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 capitalize">
-                      {m.categories}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={m.status} />
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setQrModalMaterial(m)}
-                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
-                        title="Gerar QR Code"
-                      >
-                        <QrCode className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingMaterial(m)
-                          setShowMaterialForm(true)
-                        }}
-                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </div>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {initialMaterials.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-20 text-center">
+                    <Package className="h-12 w-12 text-slate-800 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium text-sm">Nenhum material encontrado.</p>
+                    <p className="text-slate-600 text-xs mt-1">
+                      Tente ajustar seus filtros ou cadastre um novo material.
+                    </p>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                initialMaterials.map((m: any) => (
+                  <tr key={m.id} className="group hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                          <Package className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-200">{m.name}</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 font-mono">
+                            ID Reserva:{" "}
+                            <span className="text-blue-400 font-bold">{m.reservation_id || "Nao definido"}</span>
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-xs font-bold text-slate-300">{m.patrimony_number}</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-tighter">
+                          Interno: {m.internal_code}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 capitalize">
+                        {m.categories}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-300">{m.size || "-"}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-300">{m.model || "-"}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-300">{m.quantity ?? 1}</td>
+                    <td className="px-6 py-4 text-xs font-semibold text-slate-300">{m.color || "-"}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={m.status} />
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setQrModalMaterial(m)}
+                          className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
+                          title="Gerar QR Code"
+                        >
+                          <QrCode className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingMaterial(m)
+                            setShowMaterialForm(true)
+                          }}
+                          className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showMaterialForm && (
