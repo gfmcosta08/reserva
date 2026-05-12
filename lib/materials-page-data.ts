@@ -3,7 +3,7 @@ import { MATERIALS_FILTER_META_ROW_LIMIT, MATERIALS_LIST_ROW_LIMIT } from "@/lib
 
 /** Colunas necessárias na UI de materiais (evita `select *` pesado e problemas de serialização). */
 const MATERIAL_LIST_COLUMNS =
-  "id, name, patrimony_number, serial_number, internal_code, reservation_id, category, status, notes, created_at, updated_at"
+  "id, name, patrimony_number, serial_number, internal_code, reservation_id, category, status, notes, marca, modelo, calibre, created_at, updated_at"
 
 export type MaterialsPageFilters = {
   search?: string
@@ -11,6 +11,9 @@ export type MaterialsPageFilters = {
   status?: string
   name?: string
   reservation_id?: string
+  marca?: string
+  modelo?: string
+  calibre?: string
 }
 
 export type MaterialsPagePayload = {
@@ -38,9 +41,12 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   if (filters.category) query = query.eq("category", filters.category)
   if (filters.name) query = query.eq("name", filters.name)
   if (filters.reservation_id) query = query.eq("reservation_id", filters.reservation_id)
+  if (filters.marca) query = query.ilike("marca", `%${filters.marca}%`)
+  if (filters.modelo) query = query.ilike("modelo", `%${filters.modelo}%`)
+  if (filters.calibre) query = query.ilike("calibre", `%${filters.calibre}%`)
   if (filters.search) {
     query = query.or(
-      `name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%`
+      `name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%,marca.ilike.%${filters.search}%,modelo.ilike.%${filters.search}%,calibre.ilike.%${filters.search}%`
     )
   }
 

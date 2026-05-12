@@ -27,6 +27,9 @@ export type MaterialsUrlQuery = {
   reservation_id?: string;
   category?: string;
   status?: string;
+  marca?: string;
+  modelo?: string;
+  calibre?: string;
 };
 
 function pushMaterialsRoute(
@@ -67,10 +70,10 @@ export default function MaterialsClient({
   const router = useRouter();
 
   const handleDownloadTemplate = () => {
-    const headers = ["Nome", "Patrimonio", "CodigoInterno", "NumeroSerie", "IdentificacaoReserva", "Categoria", "Observacoes"];
-    const csv = headers.join(",") + "\n" + 
-                "Algema Tática,PAT-001,ALG-01,12345,RESERVA-01,Armamento Menos Letal,Opcional\n" +
-                "Colete Balístico,PAT-002,COL-01,,RESERVA-02,Proteção Balística,Opcional";
+    const headers = ["Nome", "Patrimonio", "CodigoInterno", "NumeroSerie", "IdentificacaoReserva", "Categoria", "Marca", "Modelo", "Calibre", "Observacoes"];
+    const csv = headers.join(",") + "\n" +
+                "Pistola Glock,PAT-001,ARM-01,ABC123,RESERVA-01,ARMA CURTA,Glock,G17 Gen5,9mm,Opcional\n" +
+                "Colete Balistico,PAT-002,COL-01,,RESERVA-02,COLETES,,,,Opcional";
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -109,14 +112,14 @@ export default function MaterialsClient({
 
   const exportFilteredCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Status,Observacoes\n";
+    csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Marca,Modelo,Calibre,Status,Observacoes\n";
 
     initialMaterials.forEach(m => {
       const catName = m.category || "";
-      const statusMap: any = { available: "Disponivel", cautelado: "Em Uso", maintenance: "Manutencao", unavailable: "Bloqueado/Indisponível" };
+      const statusMap: any = { available: "Disponivel", cautelado: "Em Uso", maintenance: "Manutencao", unavailable: "Bloqueado/Indisponivel" };
       const statusLabel = statusMap[m.status] || m.status;
 
-      csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${statusLabel}","${m.notes || ''}"\n`;
+      csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${m.marca || ''}","${m.modelo || ''}","${m.calibre || ''}","${statusLabel}","${m.notes || ''}"\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -259,7 +262,7 @@ export default function MaterialsClient({
               </option>
             ))}
           </select>
-          <select 
+          <select
             className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
             defaultValue={urlQuery.status || ""}
             onChange={(e) => handleFilter("status", e.target.value)}
@@ -270,6 +273,27 @@ export default function MaterialsClient({
             <option value="maintenance">Manutenção</option>
             <option value="unavailable">Indisponível</option>
           </select>
+          <input
+            type="text"
+            placeholder="Marca..."
+            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-24 placeholder-slate-500"
+            defaultValue={urlQuery.marca || ""}
+            onChange={(e) => handleFilter("marca", e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Modelo..."
+            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-24 placeholder-slate-500"
+            defaultValue={urlQuery.modelo || ""}
+            onChange={(e) => handleFilter("modelo", e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Calibre..."
+            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-20 placeholder-slate-500"
+            defaultValue={urlQuery.calibre || ""}
+            onChange={(e) => handleFilter("calibre", e.target.value)}
+          />
         </div>
       </div>
 
@@ -280,6 +304,8 @@ export default function MaterialsClient({
             <tr className="bg-slate-800/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
               <th className="px-6 py-4">Equipamento</th>
               <th className="px-6 py-4">Patrimônio / Código</th>
+              <th className="px-6 py-4">Marca / Modelo</th>
+              <th className="px-6 py-4">Calibre</th>
               <th className="px-6 py-4">Categoria</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4 text-right">Ações</th>
@@ -288,7 +314,7 @@ export default function MaterialsClient({
           <tbody className="divide-y divide-slate-800/50">
             {initialMaterials.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-20 text-center">
+                <td colSpan={7} className="px-6 py-20 text-center">
                   <Package className="h-12 w-12 text-slate-800 mx-auto mb-4" />
                   <p className="text-slate-500 font-medium text-sm">Nenhum material encontrado.</p>
                   <p className="text-slate-600 text-xs mt-1">Tente ajustar seus filtros ou cadastre um novo material.</p>
@@ -315,6 +341,21 @@ export default function MaterialsClient({
                       <p className="text-xs font-bold text-slate-300">{m.patrimony_number}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-tighter">Interno: {m.internal_code}</p>
                     </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="text-xs font-bold text-slate-300">{m.marca || <span className="text-slate-600">—</span>}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{m.modelo || ""}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {m.calibre ? (
+                      <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-blue-400">
+                        {m.calibre}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600 text-[10px]">—</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 capitalize">

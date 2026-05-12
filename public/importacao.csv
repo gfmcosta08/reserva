@@ -1,4 +1,4 @@
-Nome,Patrimonio,CodigoInterno,NumeroSerie,IdentificacaoReserva,Categoria,Observacoes
+Nome,Patrimonio,CodigoInterno,NumeroSerie,IdentificacaoReserva,Categoria,Marca,Modelo,Calibre,Observacoes
 METRALHADORA MTR 9MM,GEN-PAT-00021,GEN-INT-00021,00021,00021,METRALHADORA MTR 9MM,NORMAL
 METRALHADORA MTR 9MM,GEN-PAT-02960,GEN-INT-02960,02960,02960,METRALHADORA MTR 9MM,NORMAL
 METRALHADORA MTR 9MM,GEN-PAT-S/N,GEN-INT-S/N,S/N,S/N,METRALHADORA MTR 9MM,2

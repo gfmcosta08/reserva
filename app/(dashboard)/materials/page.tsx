@@ -26,6 +26,9 @@ export default async function MaterialsPage({
     reservation_id: firstParam(resolvedSearchParams.reservation_id),
     category: firstParam(resolvedSearchParams.category),
     status: firstParam(resolvedSearchParams.status),
+    marca: firstParam(resolvedSearchParams.marca),
+    modelo: firstParam(resolvedSearchParams.modelo),
+    calibre: firstParam(resolvedSearchParams.calibre),
   };
 
   const urlQueryKey = JSON.stringify(urlQuery);

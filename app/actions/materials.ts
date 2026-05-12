@@ -12,6 +12,9 @@ const materialSchema = z.object({
   internal_code: z.string().min(1, "Código interno é obrigatório"),
   reservation_id: z.string().optional(),
   notes: z.string().optional(),
+  marca: z.string().optional(),
+  modelo: z.string().optional(),
+  calibre: z.string().optional(),
 })
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
@@ -79,7 +82,7 @@ export async function importMaterialsCsv(csvText: string) {
       const vals = parseCSVLine(line)
       if (vals.length < 5) continue
 
-      const [nome, patrimonio, codigoInterno, numeroSerie, idReserva, categoria, observacoes] = vals
+      const [nome, patrimonio, codigoInterno, numeroSerie, idReserva, categoria, marca, modelo, calibre, observacoes] = vals
 
       if (!nome || !patrimonio || !codigoInterno) continue
 
@@ -93,6 +96,9 @@ export async function importMaterialsCsv(csvText: string) {
         serial_number: numeroSerie || null,
         reservation_id: idReserva || null,
         category,
+        marca: marca || null,
+        modelo: modelo || null,
+        calibre: calibre || null,
         notes: observacoes || null,
         status: "available",
       })

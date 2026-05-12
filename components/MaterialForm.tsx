@@ -30,6 +30,9 @@ export default function MaterialForm({
       serial_number: formData.get("serial_number") as string,
       internal_code: formData.get("internal_code") as string,
       reservation_id: formData.get("reservation_id") as string,
+      marca: formData.get("marca") as string,
+      modelo: formData.get("modelo") as string,
+      calibre: formData.get("calibre") as string,
       notes: formData.get("notes") as string,
     };
 
@@ -128,6 +131,36 @@ export default function MaterialForm({
                 defaultValue={material?.reservation_id}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
                 placeholder="Ex: ARMARIO-A-01 ou Numeração antiga"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Marca</label>
+              <input
+                name="marca"
+                defaultValue={material?.marca}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: Glock, Taurus, Imbel"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Modelo</label>
+              <input
+                name="modelo"
+                defaultValue={material?.modelo}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: G17 Gen 5, PT840, M964"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Calibre</label>
+              <input
+                name="calibre"
+                defaultValue={material?.calibre}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                placeholder="Ex: .40, 9mm, 5.56"
               />
             </div>
 

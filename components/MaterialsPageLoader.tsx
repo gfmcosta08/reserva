@@ -47,6 +47,9 @@ export default function MaterialsPageLoader({
       reservation_id: urlQuery.reservation_id,
       category: urlQuery.category,
       status: urlQuery.status,
+      marca: urlQuery.marca,
+      modelo: urlQuery.modelo,
+      calibre: urlQuery.calibre,
     };
 
     getMaterialsPagePayload(filters)
