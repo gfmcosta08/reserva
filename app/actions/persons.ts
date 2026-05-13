@@ -11,6 +11,7 @@ const personSchema = z.object({
   rg: z.string().min(4, "RG inválido"),
   registration_number: z.string().min(1, "Matrícula é obrigatória"),
   function: z.string().optional(),
+  phone: z.string().optional(),
   pin: z.string().length(4, "O PIN deve ter 4 dígitos"),
   face_descriptor: z.array(z.number()).optional(),
 })
@@ -85,6 +86,7 @@ export async function createPerson(data: z.infer<typeof personSchema> & {
     rg: cleanRg,
     registration_number: result.data.registration_number,
     function: result.data.function,
+    phone: result.data.phone || null,
     pin_hash,
     rg_front_url: data.rg_front_url || null,
     rg_back_url: data.rg_back_url || null,
@@ -177,4 +179,24 @@ export async function attachPhotos(personId: string, frontUrl?: string, backUrl?
 
   revalidatePath("/persons")
   return { success: true }
+}
+
+export async function getPersonCautelaHistory(personId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("cautelas")
+    .select(`
+      id, type, status, created_at, closed_at, notes,
+      profiles(name),
+      cautela_items(
+        id, status, quantity_delivered, quantity_returned,
+        materials(name, patrimony_number, category)
+      )
+    `)
+    .eq("person_id", personId)
+    .order("created_at", { ascending: false })
+
+  if (error) return { cautelas: [], error: error.message }
+  return { cautelas: data || [] }
 }

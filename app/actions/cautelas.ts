@@ -16,6 +16,88 @@ import {
   processBulkDevolutionInputSchema,
   uuidSchema,
 } from "@/lib/cautela-schemas"
+import { sendCautelaSummary } from "@/lib/whatsapp"
+import { generateCautelaPDF } from "@/lib/pdf-cautela"
+import { Resend } from "resend"
+
+async function dispatchCautelaNotifications(cautelaId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: cautela } = await supabase
+      .from("cautelas")
+      .select(`*, persons(full_name, rg, registration_number, function, phone, email), profiles(name, email), cautela_items(quantity_delivered, materials(name, patrimony_number, internal_code, category))`)
+      .eq("id", cautelaId)
+      .single()
+
+    if (!cautela) return
+
+    const person = cautela.persons as any
+    const operator = cautela.profiles as any
+    const items = (cautela.cautela_items as any[]) ?? []
+
+    // 1. Generate PDF
+    let pdfBuffer: Buffer | null = null
+    try {
+      pdfBuffer = await generateCautelaPDF({
+        cautela: { id: cautela.id, type: cautela.type, status: cautela.status, created_at: cautela.created_at, notes: cautela.notes },
+        person: { full_name: person?.full_name ?? "", rg: person?.rg ?? "", registration_number: person?.registration_number ?? "", function: person?.function },
+        operator: { name: operator?.name ?? "", email: operator?.email ?? "" },
+        items: items.map((i: any) => ({
+          name: i.materials?.name ?? "",
+          patrimony_number: i.materials?.patrimony_number ?? "",
+          internal_code: i.materials?.internal_code ?? "",
+          category: i.materials?.category,
+          quantity_delivered: i.quantity_delivered ?? 1,
+        })),
+      })
+    } catch (e) {
+      console.error("[PDF] Erro ao gerar PDF da cautela:", e)
+    }
+
+    // 2. Send email with PDF attachment
+    const resendKey = process.env.RESEND_API_KEY
+    const archiveEmail = process.env.ARCHIVE_EMAIL
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+    if (resendKey) {
+      try {
+        const resend = new Resend(resendKey)
+        const recipients: string[] = []
+        if (person?.email) recipients.push(person.email)
+        if (archiveEmail) recipients.push(archiveEmail)
+        if (recipients.length > 0) {
+          const itemsList = items.map((i: any) => `• ${i.materials?.name} (Pat: ${i.materials?.patrimony_number})`).join("\n")
+          const attachments = pdfBuffer
+            ? [{ filename: `cautela-${cautelaId.slice(0, 8)}.pdf`, content: pdfBuffer.toString("base64") }]
+            : []
+          await resend.emails.send({
+            from: fromEmail,
+            to: recipients,
+            subject: `Recibo de Cautela - ${new Date(cautela.created_at).toLocaleDateString("pt-BR")}`,
+            text: `Olá ${person?.full_name},\n\nSua cautela foi registrada.\n\nTipo: ${cautela.type === "daily" ? "Diária" : "Permanente"}\nData: ${new Date(cautela.created_at).toLocaleString("pt-BR")}\nOperador: ${operator?.name}\n\nMateriais:\n${itemsList}\n\n${cautela.notes ? `Observações: ${cautela.notes}\n\n` : ""}Sistema RESERVA`,
+            attachments,
+          })
+        }
+      } catch (e) {
+        console.error("[Email] Erro ao enviar email da cautela:", e)
+      }
+    }
+
+    // 3. Send WhatsApp summary
+    if (person?.phone) {
+      await sendCautelaSummary({
+        personName: person.full_name,
+        personPhone: person.phone,
+        operatorName: operator?.name ?? "Operador",
+        cautelaType: cautela.type,
+        createdAt: cautela.created_at,
+        items: items.map((i: any) => ({ name: i.materials?.name ?? "", patrimonyNumber: i.materials?.patrimony_number ?? "" })),
+        notes: cautela.notes,
+      })
+    }
+  } catch (e) {
+    console.error("[Notify] Erro nas notificações pós-cautela:", e)
+  }
+}
 
 function mapCreateCautelaRpcError(message: string): string {
   if (message.includes("EMPTY_MATERIALS")) {
@@ -158,6 +240,7 @@ export async function createCautela(data: {
   items: { material_id: string; quantity?: number }[]
   notes?: string
   pin: string
+  review_date?: string
 }) {
   const parsed = createCautelaInputSchema.safeParse(data)
   if (!parsed.success) {
@@ -211,6 +294,11 @@ export async function createCautela(data: {
     return { error: "Falha ao criar cautela" }
   }
 
+  // Save review_date if provided (permanent cautelas only)
+  if (data.review_date && cautelaId) {
+    await supabase.from("cautelas").update({ review_date: data.review_date }).eq("id", cautelaId)
+  }
+
   await logAudit({
     action: "cautela_created",
     entity: "cautelas",
@@ -223,6 +311,9 @@ export async function createCautela(data: {
       cautela_item_ids: result?.cautela_item_ids ?? [],
     },
   })
+
+  // Disparar notificações (email + WhatsApp) sem bloquear o retorno
+  dispatchCautelaNotifications(cautelaId).catch(console.error)
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")
@@ -752,6 +843,7 @@ export async function createCautelaFaceAuth(data: {
   type: "daily" | "permanent"
   items: { material_id: string; quantity?: number }[]
   notes?: string
+  review_date?: string
 }) {
   const parsed = createCautelaFaceAuthInputSchema.safeParse(data)
   if (!parsed.success) {
@@ -802,6 +894,11 @@ export async function createCautelaFaceAuth(data: {
     return { error: "Falha ao criar cautela" }
   }
 
+  // Save review_date if provided (permanent cautelas only)
+  if (data.review_date && cautelaIdFace) {
+    await supabase.from("cautelas").update({ review_date: data.review_date }).eq("id", cautelaIdFace)
+  }
+
   await logAudit({
     action: "cautela_created",
     entity: "cautelas",
@@ -815,6 +912,9 @@ export async function createCautelaFaceAuth(data: {
       auth: "face",
     },
   })
+
+  // Disparar notificações (email + WhatsApp) sem bloquear o retorno
+  dispatchCautelaNotifications(cautelaIdFace).catch(console.error)
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")

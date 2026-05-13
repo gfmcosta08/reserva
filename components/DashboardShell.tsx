@@ -14,7 +14,9 @@ import {
   Menu,
   X,
   AlertTriangle,
-  Settings
+  Settings,
+  Bell,
+  Crosshair
 } from "lucide-react"
 import NotificationsDropdown from "./NotificationsDropdown"
 import { createClient } from "@/lib/supabase-client"
@@ -61,6 +63,8 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
     { href: "/persons", label: "Pessoas", icon: Users },
     { href: "/cautelas", label: "Cautelas", icon: ClipboardList },
     { href: "/history", label: "Histórico", icon: History },
+    { href: "/alerts", label: "Central de Alertas", icon: Bell },
+    { href: "/ammo-batches", label: "Munição (Lotes)", icon: Crosshair },
     { href: "/reports/divergencias", label: "Divergências", icon: AlertTriangle },
   ]
 

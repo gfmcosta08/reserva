@@ -3,16 +3,18 @@
 import { useState, useEffect } from "react"
 import { getPersons, deletePerson } from "@/app/actions/persons"
 import PersonRegistrationWizard from "@/components/PersonRegistrationWizard"
-import { 
-  Users, 
-  Search, 
-  UserPlus, 
-  MoreVertical, 
-  Trash2, 
+import Link from "next/link"
+import {
+  Users,
+  Search,
+  UserPlus,
+  MoreVertical,
+  Trash2,
   Edit2,
   AlertCircle,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  History
 } from "lucide-react"
 
 export default function PersonsClient({ userRole = "operator" }: { userRole?: string }) {
@@ -149,8 +151,15 @@ export default function PersonsClient({ userRole = "operator" }: { userRole?: st
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link
+                          href={`/persons/${person.id}`}
+                          className="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-colors"
+                          title="Ver histórico de cautelas"
+                        >
+                          <History className="h-4 w-4" />
+                        </Link>
                         {userRole === "supervisor" && (
-                          <button 
+                          <button
                             onClick={() => handleDelete(person.id)}
                             className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                           >

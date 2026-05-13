@@ -70,6 +70,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   // Step 3: Resumo
   const [cautelaType, setCautelaType] = useState<"daily" | "permanent">("daily")
   const [notes, setNotes] = useState("")
+  const [reviewDate, setReviewDate] = useState("")
 
   // Sugestões de observações comuns
   const observationSuggestions = [
@@ -170,6 +171,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
         items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
         notes: buildNotesPayload(),
         pin,
+        review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
       })
       if (result.success) {
         // Enviar e-mail em background
@@ -196,6 +198,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
         type: cautelaType,
         items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
         notes: buildNotesPayload(),
+        review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
       })
       if (result.success) {
         // Enviar e-mail em background
@@ -567,6 +570,22 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     }`}>Permanente</button>
                 </div>
               </div>
+
+              {/* Data de Revisão (apenas para cautela permanente) */}
+              {cautelaType === "permanent" && (
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-2">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Data de Revisão (opcional)
+                  </label>
+                  <input
+                    type="date"
+                    value={reviewDate}
+                    onChange={(e) => setReviewDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="text-[9px] text-slate-500">Defina quando esta cautela deve ser revisada</p>
+                </div>
+              )}
 
               {/* Observações */}
               <div className="space-y-2">

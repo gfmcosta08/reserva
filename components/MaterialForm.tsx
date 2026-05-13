@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, Package, Save, Loader2, AlertCircle } from "lucide-react";
+import { useState, useRef } from "react";
+import { X, Package, Save, Loader2, AlertCircle, ScanLine, Camera } from "lucide-react";
 import { createMaterial, updateMaterial } from "@/app/actions/materials";
 
 export default function MaterialForm({
@@ -15,7 +15,47 @@ export default function MaterialForm({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [ocrSuccess, setOcrSuccess] = useState<string | null>(null);
   const listId = "material-category-datalist";
+  const ocrInputRef = useRef<HTMLInputElement>(null);
+  const patrimonyRef = useRef<HTMLInputElement>(null);
+  const serialRef = useRef<HTMLInputElement>(null);
+
+  async function handleOcrScan(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsOcrLoading(true);
+    setOcrSuccess(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ocr", { method: "POST", body: formData });
+      const json = await res.json();
+      if (json.success && json.extracted) {
+        const { rg, registration } = json.extracted;
+        // For material forms, OCR extracts serial/patrimony numbers from labels
+        // rg field maps to serial_number pattern, registration to patrimony
+        let filled = [];
+        if (rg && serialRef.current && !serialRef.current.value) {
+          serialRef.current.value = rg;
+          filled.push("Nº de Série");
+        }
+        if (registration && patrimonyRef.current && !patrimonyRef.current.value) {
+          patrimonyRef.current.value = registration;
+          filled.push("Patrimônio");
+        }
+        setOcrSuccess(filled.length > 0 ? `Preenchido: ${filled.join(", ")}` : "Nenhum campo extraído automaticamente");
+      } else {
+        setOcrSuccess("Não foi possível extrair dados da imagem");
+      }
+    } catch {
+      setOcrSuccess("Erro ao processar imagem");
+    } finally {
+      setIsOcrLoading(false);
+      if (ocrInputRef.current) ocrInputRef.current.value = "";
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -62,6 +102,21 @@ export default function MaterialForm({
             </button>
           </div>
 
+          {/* OCR scan button */}
+          <div className="px-8 pt-4 flex items-center gap-3">
+            <input ref={ocrInputRef} type="file" accept="image/*" capture="environment" onChange={handleOcrScan} className="hidden" />
+            <button
+              type="button"
+              onClick={() => ocrInputRef.current?.click()}
+              disabled={isOcrLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-700 hover:text-white transition-all disabled:opacity-50"
+            >
+              {isOcrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+              {isOcrLoading ? "Lendo etiqueta..." : "Escanear Etiqueta (OCR)"}
+            </button>
+            {ocrSuccess && <span className="text-xs text-emerald-400 font-semibold">{ocrSuccess}</span>}
+          </div>
+
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nome do Equipamento</label>
@@ -95,6 +150,7 @@ export default function MaterialForm({
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Patrimônio</label>
               <input
+                ref={patrimonyRef}
                 name="patrimony_number"
                 defaultValue={material?.patrimony_number}
                 required
@@ -106,6 +162,7 @@ export default function MaterialForm({
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nº de Série</label>
               <input
+                ref={serialRef}
                 name="serial_number"
                 defaultValue={material?.serial_number}
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"

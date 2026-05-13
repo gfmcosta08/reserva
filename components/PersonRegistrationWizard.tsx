@@ -275,10 +275,16 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
                   className={`mt-1 block w-full rounded-lg border bg-slate-900 px-4 py-2.5 text-white focus:ring-1 focus:ring-blue-500 ${errors.registration_number ? "border-red-500" : "border-slate-800"}`} />
                 {errors.registration_number && <p className="text-xs text-red-500 mt-1">{errors.registration_number}</p>}
               </div>
-              <div className="sm:col-span-2">
+              <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Posto/Graduação</label>
                 <input type="text" value={formData.function} onChange={e => setFormData({...formData, function: e.target.value})} placeholder="Ex: CABO QPPM"
                   className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-4 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">WhatsApp / Telefone</label>
+                <input type="tel" value={(formData as any).phone ?? ""} onChange={e => setFormData({...formData, phone: e.target.value} as any)} placeholder="Ex: 11999990000"
+                  className="mt-1 block w-full rounded-lg border border-slate-800 bg-slate-900 px-4 py-2.5 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
+                <p className="text-[10px] text-slate-500 mt-1">Usado para envio de resumo de cautela por WhatsApp</p>
               </div>
             </div>
             <div className="flex gap-3">

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server"
 import { ClipboardCheck, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import CautelasReportClient from "./CautelasReportClient"
+import ExcelExportButton from "@/components/ExcelExportButton"
 
 export const dynamic = "force-dynamic"
 
@@ -41,6 +42,11 @@ export default async function CautelasReportPage() {
             Listagem detalhada de todos os empréstimos em andamento no arsenal, incluindo minúcias sobre os operadores, armamentos e recebedores.
           </p>
         </div>
+        <ExcelExportButton
+          endpoint="/api/export/cautelas"
+          filename="cautelas.xlsx"
+          label="Exportar Excel"
+        />
       </div>
 
       {(!openCautelas || openCautelas.length === 0) ? (

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server"
 import { Package, ArrowLeft, Download } from "lucide-react"
 import Link from "next/link"
 import MaterialsReportClient from "./MaterialsReportClient"
+import ExcelExportButton from "@/components/ExcelExportButton"
 
 export const dynamic = "force-dynamic"
 
@@ -95,6 +96,11 @@ export default async function MaterialsReportPage() {
             Visão agrupada por categorias, permitindo fiscalização minuciosa de materiais em reserva e materiais atualmente cautelados.
           </p>
         </div>
+        <ExcelExportButton
+          endpoint="/api/export/materials"
+          filename="materiais.xlsx"
+          label="Exportar Excel"
+        />
       </div>
 
       {categoriesList.length === 0 ? (
