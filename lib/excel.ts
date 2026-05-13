@@ -222,7 +222,7 @@ export function exportDivergenciasToExcel(divergencias: any[]): Buffer {
 export function downloadExcel(buffer: Buffer | Uint8Array, filename: string): void {
   if (typeof window === 'undefined') return
 
-  const blob = new Blob([buffer], {
+  const blob = new Blob([new Uint8Array(buffer)], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   })
   const url = URL.createObjectURL(blob)
