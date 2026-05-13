@@ -1,5 +1,5 @@
 # PRD — RESERVA: Sistema de Controle de Materiais
-**Versão:** 1.1  
+**Versão:** 1.2  
 **Data:** 2026-05-13  
 **Status:** Documentação do estado atual (As-Is)
 
@@ -923,4 +923,65 @@ OPERADOR                              SISTEMA
 
 ---
 
-*Documento atualizado em 2026-05-13 — v1.1 com todas as novas funcionalidades.*
+## 18. Deploy em Produção (v1.2 — 2026-05-13)
+
+### 18.1 Processo de Deploy
+
+O deploy das funcionalidades da v1.1 foi realizado em 2026-05-13 com os seguintes passos:
+
+1. **Merge do worktree** `claude/gracious-ptolemy-a8a080` → `master` (fast-forward, sem conflitos)
+2. **Push para GitHub** → Vercel disparou build automaticamente
+3. **Migration do Supabase** → executada via GitHub Actions workflow (`.github/workflows/deploy.yml`) a cada push no master
+
+### 18.2 Correções de TypeScript Identificadas no Build
+
+O TypeScript strict do Vercel (mais rigoroso que o local) detectou três erros que foram corrigidos:
+
+| Arquivo | Erro | Correção |
+|---------|------|----------|
+| `app/actions/cautelas.ts:93` | Campos errados no call de `sendCautelaSummary` — passava `personPhone`, `cautelaType`, `createdAt`, `patrimonyNumber` em vez dos campos da interface `CautelaSummaryParams` | Corrigido para `phone`, `type`, `date`, `quantity_delivered` |
+| `app/api/export/cautelas/route.ts`, `materials/route.ts`, `divergencias/route.ts` | `Buffer<ArrayBufferLike>` não é `BodyInit` — `NextResponse` não aceita `Buffer` diretamente | Substituído por `new Uint8Array(buffer)` nas 3 rotas |
+| `lib/excel.ts:225` | `Buffer<ArrayBufferLike>` não é `BlobPart` — `new Blob([buffer])` recusa `Buffer` | Substituído por `new Blob([new Uint8Array(buffer)])` |
+
+> **Lição:** O Vercel usa `tsconfig` mais estrito (sem `allowJs` implícito, `lib` DOM exige `ArrayBuffer` puro em vez de `ArrayBufferLike`). Sempre rodar `npx tsc --noEmit` antes do push.
+
+### 18.3 Resultado Final
+
+- **Commits no master:** `52a2260` (implementação) → `2c271b8` (PRD v1.1) → `751dcb0` (fix WhatsApp params) → `c6df82f` (fix export routes) → `8100fa4` (fix downloadExcel)
+- **Deploy de produção:** `dpl_BTrWHSroBNoUZNDxiYe4KHXN1bZ5` — `state: READY`, `target: production`
+- **URL de produção:** https://reserva1bpm.vercel.app
+- **Migration aplicada:** `20260513000000_add_features.sql` — colunas `persons.phone`, `cautelas.review_date`, tabela `ammo_batches`
+
+### 18.4 Status das Funcionalidades em Produção
+
+| Funcionalidade | Rota | Status |
+|---|---|---|
+| Central de Alertas | `/alerts` | ✅ Ativo |
+| Histórico por Pessoa | `/persons/[id]` | ✅ Ativo |
+| QR Code por Material | (componente na listagem) | ✅ Ativo |
+| OCR no Cadastro de Materiais | (botão no formulário) | ✅ Ativo |
+| Controle de Lotes de Munição | `/ammo-batches` | ✅ Ativo |
+| Exportação Excel | `/api/export/*` | ✅ Ativo |
+| Revisão Periódica (campo) | Wizard de cautela permanente | ✅ Ativo |
+| Campo WhatsApp no Cadastro | Wizard de pessoa | ✅ Ativo |
+| PDF de Cautela por E-mail | (assíncrono) | 🕐 Aguarda `RESEND_API_KEY` |
+| Notificações WhatsApp | (assíncrono) | 🕐 Aguarda `UAZAPI_URL` + `UAZAPI_TOKEN` |
+
+### 18.5 Pendências de Configuração (produção)
+
+Para ativar as notificações, basta adicionar as variáveis de ambiente no painel do Vercel (Settings → Environment Variables):
+
+```
+RESEND_API_KEY=...          # Resend.com — envio de e-mail com PDF
+RESEND_FROM_EMAIL=...       # Ex: noreply@reserva.local
+ARCHIVE_EMAIL=...           # E-mail institucional de arquivo
+UAZAPI_URL=...              # Ex: https://api.uazapi.dev
+UAZAPI_TOKEN=...            # Token da instância uazapi.dev
+UAZAPI_INSTANCE=...         # Opcional — nome da instância
+```
+
+Após adicionar, o Vercel fará redeploy automático e as notificações passarão a funcionar sem nenhuma alteração de código.
+
+---
+
+*Documento atualizado em 2026-05-13 — v1.2 com deploy em produção documentado.*
