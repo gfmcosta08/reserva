@@ -1,7 +1,12 @@
 # PRD — RESERVA: Sistema de Controle de Materiais
-**Versão:** 1.0  
+**Versão:** 1.1  
 **Data:** 2026-05-13  
 **Status:** Documentação do estado atual (As-Is)
+
+> ⚠️ **Pendências de configuração — implementar futuramente:**
+> - **WhatsApp (uazapi.dev):** código implementado em `lib/whatsapp.ts`, aguardando configuração das variáveis `UAZAPI_URL`, `UAZAPI_TOKEN` e `UAZAPI_INSTANCE` no ambiente de produção.
+> - **E-mail de arquivo (Resend):** código implementado em `app/actions/cautelas.ts`, aguardando configuração de `RESEND_API_KEY`, `RESEND_FROM_EMAIL` e `ARCHIVE_EMAIL`. Sem essas vars, o envio é silenciosamente ignorado sem quebrar o sistema.
+> - **E-mail da pessoa:** o campo `email` já existe em `persons`. Quando configurado o Resend, o recibo PDF será enviado automaticamente para o e-mail da pessoa e para o e-mail de arquivo.
 
 ---
 
@@ -832,19 +837,24 @@ OPERADOR                              SISTEMA
 ## 17. Novas Funcionalidades Implementadas (v1.1 — 2026-05-13)
 
 ### 17.1 PDF de Cautela por E-mail
+> **🕐 Pendente de configuração** — código pronto, aguardando ativação das env vars.
+
 - Ao criar uma cautela, o sistema gera automaticamente um PDF profissional (`lib/pdf-cautela.ts` via jspdf)
 - O PDF é enviado por e-mail via Resend para:
   - E-mail da pessoa que cautelou (campo `persons.email`)
   - E-mail de arquivo institucional (`ARCHIVE_EMAIL` env var)
 - O envio é assíncrono — não bloqueia a criação da cautela
-- **Env vars:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ARCHIVE_EMAIL`
+- **Env vars a configurar:** `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ARCHIVE_EMAIL`
+- Sem as vars configuradas: sistema funciona normalmente, apenas sem envio de e-mail
 
 ### 17.2 Notificações WhatsApp via uazapi.dev
+> **🕐 Pendente de configuração** — código pronto, aguardando ativação das env vars.
+
 - Ao criar uma cautela, envia automaticamente resumo por WhatsApp para o número cadastrado na pessoa (`persons.phone`)
 - Formato da mensagem: emoji + nome + tipo + data + lista de materiais + operador
 - Campo `phone` adicionado ao cadastro de pessoas (wizard passo 1)
-- **Env vars:** `UAZAPI_URL`, `UAZAPI_TOKEN`, `UAZAPI_INSTANCE` (opcional)
-- Integração em `lib/whatsapp.ts` — nunca lança exceção, log de erro gracioso
+- **Env vars a configurar:** `UAZAPI_URL`, `UAZAPI_TOKEN`, `UAZAPI_INSTANCE` (opcional)
+- Integração em `lib/whatsapp.ts` — nunca lança exceção, sem as vars o envio é silencioso
 
 ### 17.3 Tela de Alertas (`/alerts`)
 - Substitui os alertas por e-mail de cautelas vencidas (decisão: tela dedicada é mais adequada)
