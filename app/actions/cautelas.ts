@@ -85,13 +85,12 @@ async function dispatchCautelaNotifications(cautelaId: string) {
     // 3. Send WhatsApp summary
     if (person?.phone) {
       await sendCautelaSummary({
+        phone: person.phone,
         personName: person.full_name,
-        personPhone: person.phone,
         operatorName: operator?.name ?? "Operador",
-        cautelaType: cautela.type,
-        createdAt: cautela.created_at,
-        items: items.map((i: any) => ({ name: i.materials?.name ?? "", patrimonyNumber: i.materials?.patrimony_number ?? "" })),
-        notes: cautela.notes,
+        type: cautela.type,
+        date: cautela.created_at,
+        items: items.map((i: any) => ({ name: i.materials?.name ?? "", quantity_delivered: i.quantity_delivered ?? 1 })),
       })
     }
   } catch (e) {
