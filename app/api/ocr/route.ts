@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
+import { requireApiCautelaOperator } from "@/lib/api-auth"
 
 /**
  * API Route para OCR server-side usando OCR.space (gratuito)
  * Muito mais preciso que Tesseract.js no navegador
  */
 export async function POST(req: NextRequest) {
+  const guard = await requireApiCautelaOperator()
+  if ("response" in guard) return guard.response
+
   try {
     const formData = await req.formData()
     const file = formData.get("file") as File

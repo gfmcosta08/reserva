@@ -61,9 +61,21 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Proteger rotas (exemplo: qualquer coisa fora de /auth)
   if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
+  }
+
+  if (user && !request.nextUrl.pathname.startsWith('/auth')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_active')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (!profile || profile.is_active === false) {
+      await supabase.auth.signOut()
+      return NextResponse.redirect(new URL('/auth/login?reason=inactive', request.url))
+    }
   }
 
   return response

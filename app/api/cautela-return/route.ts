@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/app/actions/audit"
+import { requireApiCautelaOperator } from "@/lib/api-auth"
 import {
   computeCautelaStatus,
   itemNeedsReturn,
@@ -12,13 +13,11 @@ import { computeMaterialAfterReturn } from "@/lib/material-stock"
 // ===== API: PROCESSAR DEVOLUÇÃO DE ITEM =====
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const guard = await requireApiCautelaOperator()
+    if ("response" in guard) return guard.response
 
-    // Obter operador logado
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: "Usuário não autenticado" }, { status: 401 })
-    }
+    const supabase = await createClient()
+    const { user } = guard.auth
 
     const body = await request.json()
     const { cautela_item_id, status, quantity_returned, notes } = body

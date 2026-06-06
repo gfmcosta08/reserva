@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase-client"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, Lock, Send } from "lucide-react"
@@ -16,21 +16,45 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false)
   const router = useRouter()
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("reason") === "inactive") {
+      setError("Sua conta está desativada. Contate um supervisor.")
+    }
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError("E-mail ou senha inválidos. Verifique seus dados e tente novamente.")
       setLoading(false)
-    } else {
-      router.push("/")
-      router.refresh()
+      return
     }
+
+    const userId = data.user?.id
+    if (userId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_active")
+        .eq("id", userId)
+        .maybeSingle()
+
+      if (!profile || profile.is_active === false) {
+        await supabase.auth.signOut()
+        setError("Sua conta está desativada. Contate um supervisor.")
+        setLoading(false)
+        return
+      }
+    }
+
+    router.push("/")
+    router.refresh()
   }
 
   const handleForgot = async (e: React.FormEvent) => {

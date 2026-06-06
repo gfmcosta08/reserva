@@ -55,6 +55,7 @@ export async function regularizePerson(
 
   if (parsed.data.pin) {
     update.pin_hash = await bcrypt.hash(parsed.data.pin, 10)
+    update.must_change_pin = false
   }
 
   if (parsed.data.face_descriptor && parsed.data.face_descriptor.length > 0) {
@@ -172,6 +173,7 @@ export async function updatePerson(id: string, data: Record<string, any>) {
 
   if (data.pin) {
     updateData.pin_hash = await bcrypt.hash(data.pin, 10)
+    updateData.must_change_pin = false
     delete updateData.pin
   }
 

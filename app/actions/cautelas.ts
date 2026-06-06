@@ -6,6 +6,10 @@ import bcrypt from "bcryptjs"
 import { logAudit } from "./audit"
 import { requireCautelaOperator } from "@/lib/auth-cautela"
 import {
+  PIN_CHANGE_REQUIRED_MESSAGE,
+  personRequiresPinChange,
+} from "@/lib/person-pin-policy"
+import {
   formatUnavailableMaterialsMessage,
   mergeCautelaItems,
   validateCautelaModifiable,
@@ -262,17 +266,38 @@ export async function getCautelaById(id: string) {
   return { cautela, items: items || [] }
 }
 
+async function assertPersonEligibleForCautela(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  personId: string
+): Promise<{ error?: string }> {
+  const { data: person, error } = await supabase
+    .from("persons")
+    .select("pin_hash, must_change_pin")
+    .eq("id", personId)
+    .single()
+
+  if (error || !person) return { error: "Pessoa não encontrada" }
+  if (await personRequiresPinChange(person)) {
+    return { error: PIN_CHANGE_REQUIRED_MESSAGE }
+  }
+  return {}
+}
+
 // ===== VALIDAR PIN =====
 export async function validatePin(personId: string, pin: string) {
   const supabase = await createClient()
 
   const { data: person, error } = await supabase
     .from("persons")
-    .select("id, pin_hash, failed_pin_attempts, pin_locked_until")
+    .select("id, pin_hash, must_change_pin, failed_pin_attempts, pin_locked_until")
     .eq("id", personId)
     .single()
 
   if (error || !person) return { valid: false, error: "Pessoa não encontrada" }
+
+  if (await personRequiresPinChange(person)) {
+    return { valid: false, error: PIN_CHANGE_REQUIRED_MESSAGE }
+  }
 
   // Verificar bloqueio
   if (person.pin_locked_until) {
@@ -336,6 +361,9 @@ export async function createCautela(data: {
   const payload = parsed.data
   const merged = mergeCautelaItems(payload.items)
   const distinctIds = merged.map((m) => m.material_id)
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
 
   const pinResult = await validatePin(payload.person_id, payload.pin)
   if (!pinResult.valid) return { error: pinResult.error }
@@ -1097,6 +1125,9 @@ export async function createCautelaFaceAuth(data: {
   const payload = parsed.data
   const merged = mergeCautelaItems(payload.items)
   const distinctIds = merged.map((m) => m.material_id)
+
+  const pinPolicyFace = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicyFace.error) return { error: pinPolicyFace.error }
 
   const { data: materials, error: matError } = await supabase
     .from("materials")

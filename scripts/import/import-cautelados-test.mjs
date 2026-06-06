@@ -220,6 +220,7 @@ async function main() {
         registration_number: reg,
         function: group.person.patente || null,
         pin_hash: pinHash,
+        must_change_pin: true,
         phone: null,
         rg_front_url: null,
         rg_back_url: null,
