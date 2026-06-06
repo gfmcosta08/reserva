@@ -3,16 +3,26 @@
  *   node scripts/qa/seed-partial-return-demo.mjs
  *   node scripts/qa/seed-partial-return-demo.mjs --apply
  */
-import { readFileSync, existsSync } from "fs"
+import { readFileSync, writeFileSync, existsSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
 import { createClient } from "@supabase/supabase-js"
 import { loadCloneEnv, assertTestOnly } from "../import/lib/env-clone.mjs"
+import { GLK_POOL_PATRIMONY_PREFIX } from "../import/lib/glock-9mm-inventory.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const QA_ENV_PATH = resolve(__dirname, "../.env.qa")
+
+function appendQaEnv(key, value) {
+  let content = existsSync(QA_ENV_PATH) ? readFileSync(QA_ENV_PATH, "utf8") : ""
+  const re = new RegExp(`^${key}=.*$`, "m")
+  const line = `${key}=${value}`
+  content = re.test(content) ? content.replace(re, line) : `${content.replace(/\s*$/, "")}\n${line}\n`
+  writeFileSync(QA_ENV_PATH, content, "utf8")
+}
 
 function qaOperatorId() {
-  const p = resolve(__dirname, "../.env.qa")
+  const p = QA_ENV_PATH
   if (!existsSync(p)) return null
   const m = readFileSync(p, "utf8").match(/QA_SUPERVISOR_USER_ID=(.+)/)
   return m?.[1]?.trim() || null
@@ -43,25 +53,29 @@ async function main() {
 
   const { data: pistol } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number")
+    .select("id, name, patrimony_number, status")
     .eq("patrimony_number", "PAT-00272")
     .maybeSingle()
 
-  const { data: charger } = await supabase
+  const { data: poolChargers } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number")
-    .eq("patrimony_number", "PAT-QA-CAR-002")
-    .maybeSingle()
+    .select("id, name, patrimony_number, status")
+    .like("patrimony_number", `${GLK_POOL_PATRIMONY_PREFIX}%`)
+    .eq("status", "available")
+    .order("patrimony_number")
+    .limit(1)
+
+  const charger = poolChargers?.[0] ?? null
 
   const { data: ammo } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number")
+    .select("id, name, patrimony_number, status")
     .eq("patrimony_number", "PAT-QA-MUN-001")
     .maybeSingle()
 
   if (!pistol || !charger || !ammo) {
     console.log("Materiais ausentes:", { pistol: !!pistol, charger: !!charger, ammo: !!ammo })
-    console.log("Execute antes: node scripts/qa/seed-pack-accessories.mjs --apply")
+    console.log("Execute antes: node scripts/qa/seed-pack-accessories.mjs --apply && sync-glock-charger-pool --apply")
     process.exit(1)
   }
 
@@ -88,9 +102,17 @@ async function main() {
 
   if (openCautelas?.length) {
     for (const c of openCautelas) {
+      const { data: ci } = await supabase.from("cautela_items").select("material_id").eq("cautela_id", c.id)
       await supabase.from("cautela_items").delete().eq("cautela_id", c.id)
       await supabase.from("cautelas").delete().eq("id", c.id)
+      if (ci?.length) {
+        await supabase.from("materials").update({ status: "available" }).in("id", ci.map((x) => x.material_id))
+      }
     }
+  }
+
+  if (pistol.status === "cautelado") {
+    await supabase.from("materials").update({ status: "available" }).eq("id", pistol.id)
   }
 
   const { data: cautela, error: cErr } = await supabase
@@ -134,6 +156,8 @@ async function main() {
       status: "pending",
     },
   ])
+
+  appendQaEnv("E2E_PARTIAL_RETURN_CAUTELA_ID", cautela.id)
 
   console.log(JSON.stringify({ ok: true, cautela_id: cautela.id, person: person.full_name }, null, 2))
 }
