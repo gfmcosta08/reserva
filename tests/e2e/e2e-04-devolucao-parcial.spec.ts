@@ -3,8 +3,8 @@ import { hasSupervisorCredentials, loginAsSupervisor } from "./helpers/auth"
 import {
   finalizeReturn,
   openCautelaById,
-  setPartialReturnQty,
-  setReturnModeOnItem,
+  setPartialReturnOnCardIndex,
+  setReturnModeOnCardIndex,
   startReturnFlow,
 } from "./helpers/cautela"
 import { runSeedScript } from "./helpers/seed"
@@ -24,10 +24,10 @@ test.describe("E2E-04 Devolução parcial (JHONNY)", () => {
     await openCautelaById(page, cautelaId)
 
     await startReturnFlow(page)
-    await setPartialReturnQty(page, /CARREGADOR GLOCK/i, 1)
-    await setReturnModeOnItem(page, /PISTOLA GLOCK/i, "Devolver total")
-    await setReturnModeOnItem(page, /MUNICAO 9MM/i, "Devolver total")
-    await finalizeReturn(page)
+    await setReturnModeOnCardIndex(page, 0, "Devolver total")
+    await setReturnModeOnCardIndex(page, 2, "Devolver total")
+    await setPartialReturnOnCardIndex(page, 1, 1)
+    await finalizeReturn(page, 3)
 
     await expect(page.getByRole("heading", { name: "Detalhes da Cautela" })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText("Parcial", { exact: true })).toBeVisible()

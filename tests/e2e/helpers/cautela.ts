@@ -111,19 +111,79 @@ export async function createDailyCautelaWithHt(
 export async function startReturnFlow(page: Page): Promise<void> {
   await page.getByRole("button", { name: /Continuar devolução/i }).click()
   await expect(page.getByRole("heading", { name: "Devolução de Itens" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: /Itens cautelados/i })).toBeVisible()
 }
 
-export async function finalizeReturn(page: Page): Promise<void> {
+export async function finalizeReturn(page: Page, expectedModes = 1): Promise<void> {
+  const conferidos = page
+    .locator("div.flex-1")
+    .filter({ has: page.getByText("Modo escolhido", { exact: true }) })
+    .locator("p.text-lg.font-bold.text-green-400")
+  await expect(conferidos).toHaveText(String(expectedModes), { timeout: 10_000 })
   await page.getByRole("button", { name: "Finalizar devolução" }).click()
   await expect(page.getByText(/Devolução registrada/i)).toBeVisible({ timeout: 20_000 })
 }
 
-function returnItemCard(page: Page, materialName: string | RegExp) {
-  const title =
-    typeof materialName === "string"
-      ? page.locator("p.text-sm.font-semibold.text-white", { hasText: materialName })
-      : page.locator("p.text-sm.font-semibold.text-white").filter({ hasText: materialName })
-  return page.locator("div.p-4.rounded-xl.border").filter({ has: title }).first()
+function returnCards(page: Page) {
+  return page.locator("div.p-4.rounded-xl.border")
+}
+
+function returnItemCard(page: Page, materialNamePattern: RegExp | string) {
+  const pattern =
+    typeof materialNamePattern === "string" ? materialNamePattern : materialNamePattern
+  return page.locator("div.p-4.rounded-xl.border").filter({ hasText: pattern }).first()
+}
+
+function bucketSection(page: Page, bucketHeading: RegExp) {
+  return page
+    .locator("p.text-\\[10px\\].font-bold.text-slate-500")
+    .filter({ hasText: bucketHeading })
+    .locator("xpath=..")
+}
+
+export async function setReturnModeOnCardIndex(
+  page: Page,
+  index: number,
+  mode: "Devolver total" | "Devolver parcial"
+): Promise<void> {
+  const card = returnCards(page).nth(index)
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.scrollIntoViewIfNeeded()
+  await card.getByRole("button", { name: mode, exact: true }).click()
+}
+
+export async function setPartialReturnOnCardIndex(page: Page, index: number, qty: number): Promise<void> {
+  const card = returnCards(page).nth(index)
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.scrollIntoViewIfNeeded()
+  await card.getByRole("button", { name: "Devolver parcial", exact: true }).click()
+  const input = card.locator('input[type="number"]')
+  await expect(input).toBeVisible({ timeout: 5_000 })
+  await input.fill(String(qty))
+  await expect(input).toHaveValue(String(qty))
+}
+
+export async function setPartialReturnInBucket(page: Page, bucketHeading: RegExp, qty: number): Promise<void> {
+  const section = bucketSection(page, bucketHeading)
+  const card = section.locator("div.p-4.rounded-xl.border").first()
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.scrollIntoViewIfNeeded()
+  await card.getByRole("button", { name: "Devolver parcial", exact: true }).click()
+  const input = card.locator('input[type="number"]')
+  await expect(input).toBeVisible({ timeout: 5_000 })
+  await input.fill(String(qty))
+  await expect(input).toHaveValue(String(qty))
+}
+
+export async function setReturnModeInBucket(
+  page: Page,
+  bucketHeading: RegExp,
+  mode: "Devolver total" | "Devolver parcial"
+): Promise<void> {
+  const section = bucketSection(page, bucketHeading)
+  const card = section.locator("div.p-4.rounded-xl.border").first()
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.getByRole("button", { name: mode, exact: true }).click()
 }
 
 export async function setReturnModeOnItem(
@@ -132,6 +192,8 @@ export async function setReturnModeOnItem(
   mode: "Devolver total" | "Devolver parcial"
 ): Promise<void> {
   const card = returnItemCard(page, materialNamePattern)
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.scrollIntoViewIfNeeded()
   await card.getByRole("button", { name: mode, exact: true }).click()
 }
 
@@ -141,6 +203,12 @@ export async function setPartialReturnQty(
   qty: number
 ): Promise<void> {
   const card = returnItemCard(page, materialNamePattern)
+  await expect(card).toBeVisible({ timeout: 10_000 })
+  await card.scrollIntoViewIfNeeded()
   await card.getByRole("button", { name: "Devolver parcial", exact: true }).click()
-  await card.locator('input[type="number"]').fill(String(qty))
+  const input = card.locator('input[type="number"]')
+  await expect(input).toBeVisible({ timeout: 5_000 })
+  await input.click()
+  await input.fill(String(qty))
+  await expect(input).toHaveValue(String(qty))
 }
