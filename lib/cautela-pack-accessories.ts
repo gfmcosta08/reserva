@@ -24,6 +24,7 @@ export type PackAccessoryCandidate = {
   calibre: string | null
   marca?: string | null
   modelo?: string | null
+  stock_quantity?: number | null
 }
 
 function weaponCaliber(weapon: PackWeaponContext): string | null {

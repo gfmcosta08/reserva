@@ -869,7 +869,7 @@ export async function resolvePackAccessoriesForWeapon(
   const { data: candidates, error: listError } = await supabase
     .from("materials")
     .select(
-      "id, name, patrimony_number, serial_number, internal_code, category, calibre, marca, modelo"
+      "id, name, patrimony_number, serial_number, internal_code, category, calibre, marca, modelo, stock_quantity"
     )
     .eq("status", "available")
     .or(accessoryFilter)
@@ -900,13 +900,22 @@ export async function resolvePackAccessoriesForWeapon(
         (candidates ?? []) as PackAccessoryCandidate[],
         "charger"
       )
-      if (count > poolCandidates.length) {
+      if (poolCandidates.length < count) {
+        const best = pickPackAccessoryForWeapon(weapon, poolCandidates, "charger")
+        const stock = Math.max(0, best?.stock_quantity ?? 0)
         const cal = weaponCaliberLabel(weapon)
         const calPart = cal ? ` (calibre ${cal})` : ""
-        return {
-          materials: [],
-          error: `Nenhum carregador disponível para ${weapon.name}${calPart}. Encontrados ${poolCandidates.length} de ${count} pedidos.`,
+        if (!best || stock < count) {
+          const avail = best ? stock : poolCandidates.length
+          return {
+            materials: [],
+            error: best
+              ? `Só há ${avail} carregador(es) em estoque compatível(is) com ${weapon.name}${calPart}. Pedido: ${count}.`
+              : `Nenhum carregador disponível para ${weapon.name}${calPart}.`,
+          }
         }
+        const stockLine = Array.from({ length: count }, () => best)
+        return { materials: stockLine.map(toSearchableMaterial) }
       }
     }
   } else {

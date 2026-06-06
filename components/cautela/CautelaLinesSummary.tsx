@@ -50,7 +50,9 @@ export function CautelaLinesSummary({ lines, onQtyChange, onRemove }: Props) {
                       {row.material.category ? ` • ${row.material.category}` : ""}
                       {row.packWeaponLabel ? ` • Pacote: ${row.packWeaponLabel}` : ""}
                       {row.poolMaterialIds && row.poolMaterialIds.length > 1
-                        ? ` • ${row.poolMaterialIds.length} unid. do pool`
+                        ? new Set(row.poolMaterialIds).size === 1
+                          ? ` • ${row.quantity} unid. em estoque`
+                          : ` • ${row.poolMaterialIds.length} unid. do pool`
                         : ""}
                     </span>
                   </div>

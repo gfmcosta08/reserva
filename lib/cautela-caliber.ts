@@ -8,14 +8,16 @@ export const CALIBER_PATTERNS = [
   { pattern: /\.357\b/i, caliber: ".357" },
   { pattern: /\.380\b/i, caliber: ".380" },
   { pattern: /5\.7/i, caliber: "5.7" },
-  { pattern: /7\.62/i, caliber: "7.62" },
-  { pattern: /7\.62x51/i, caliber: "7.62x51" },
+  { pattern: /7[,.]62x51/i, caliber: "7.62x51" },
+  { pattern: /7[,.]62/i, caliber: "7.62" },
+  { pattern: /\b762\b/i, caliber: "7.62" },
   { pattern: /12\s*gauge/i, caliber: "12" },
   { pattern: /\b12\b(?!mm)/i, caliber: "12" },
   { pattern: /16\s*gauge/i, caliber: "16" },
   { pattern: /20\s*gauge/i, caliber: "20" },
   { pattern: /\.223/i, caliber: ".223" },
-  { pattern: /5\.56/i, caliber: "5.56" },
+  { pattern: /5[,.]56/i, caliber: "5.56" },
+  { pattern: /\b556\b/i, caliber: "5.56" },
   { pattern: /6\.35/i, caliber: "6.35" },
   { pattern: /\.25\b/i, caliber: ".25" },
   { pattern: /\b9\.3\b/i, caliber: "9.3" },
@@ -54,7 +56,7 @@ export function extractCaliber(text: string): string | null {
   return null
 }
 
-/** Chave de comparação: minúsculas, sem espaços, sem `.` nem `,` (ex. 5.56 = 556). */
+/** Chave de comparação: minúsculas, sem espaços, sem `.` nem `,` (5.56 = 556 = 5,56; 7.62 = 762 = 7,62). */
 export function normalizeCaliberKey(caliber: string): string {
   return caliber.toLowerCase().replace(/[\s.,]/g, "")
 }
