@@ -12,6 +12,7 @@ import { defineConfig, devices } from "@playwright/test"
  * CI: configure secrets E2E_SUPERVISOR_EMAIL, E2E_SUPERVISOR_PASSWORD e opcionalmente E2E_BASE_URL.
  */
 const baseURL = process.env.E2E_BASE_URL || "http://localhost:3000"
+const vercelBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -24,6 +25,14 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    ...(vercelBypass
+      ? {
+          extraHTTPHeaders: {
+            "x-vercel-protection-bypass": vercelBypass,
+            "x-vercel-set-bypass-cookie": "true",
+          },
+        }
+      : {}),
   },
   projects: [
     {

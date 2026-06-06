@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase-server"
 import { MATERIALS_FILTER_META_ROW_LIMIT, MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit"
+import { buildActiveMaterialMap, type MaterialActiveDetail } from "@/lib/material-active-detail"
+
+export type { MaterialActiveDetail }
 
 /** Colunas necessárias na UI de materiais (evita `select *` pesado e problemas de serialização). */
 const MATERIAL_LIST_COLUMNS =
@@ -16,8 +19,12 @@ export type MaterialsPageFilters = {
   calibre?: string
 }
 
+export type MaterialListRow = Record<string, unknown> & {
+  activeDetail?: MaterialActiveDetail
+}
+
 export type MaterialsPagePayload = {
-  materials: Record<string, unknown>[]
+  materials: MaterialListRow[]
   categoryOptions: { name: string }[]
   materialNames: string[]
   locations: string[]
@@ -50,15 +57,17 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
     )
   }
 
-  const [{ data: materials, error: materialsError, count: materialsCount }, { data: catRows, error: catError }, { data: allMaterials, error: namesError }] =
-    await Promise.all([
-      query,
-      supabase.from("materials").select("category").limit(MATERIALS_FILTER_META_ROW_LIMIT),
-      supabase
-        .from("materials")
-        .select("name, reservation_id")
-        .limit(MATERIALS_FILTER_META_ROW_LIMIT),
-    ])
+  const [
+    { data: materials, error: materialsError, count: materialsCount },
+    { data: catRows, error: catError },
+    { data: allMaterials, error: namesError },
+    activeMap,
+  ] = await Promise.all([
+    query,
+    supabase.from("materials").select("category").limit(MATERIALS_FILTER_META_ROW_LIMIT),
+    supabase.from("materials").select("name, reservation_id").limit(MATERIALS_FILTER_META_ROW_LIMIT),
+    buildActiveMaterialMap(supabase),
+  ])
 
   const rowCount = materials?.length ?? 0
   const total = materialsCount ?? rowCount
@@ -100,8 +109,14 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   const materialNames = Array.from(new Set(rows.map((m) => m.name))).filter(Boolean).sort() as string[]
   const locations = Array.from(new Set(rows.map((m) => m.reservation_id))).filter(Boolean).sort() as string[]
 
+  const enrichedMaterials: MaterialListRow[] = (materials ?? []).map((m) => {
+    const row = m as Record<string, unknown>
+    const detail = activeMap.get(row.id as string)
+    return detail ? { ...row, activeDetail: detail } : row
+  })
+
   return {
-    materials: (materials ?? []) as Record<string, unknown>[],
+    materials: enrichedMaterials,
     categoryOptions,
     materialNames,
     locations,

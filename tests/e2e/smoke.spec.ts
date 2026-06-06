@@ -21,9 +21,10 @@ test.describe("Smoke RESERVA", () => {
     await page.getByRole("button", { name: "Acessar Sistema" }).click()
 
     await expect(page).not.toHaveURL(/\/auth\/login/, { timeout: 15_000 })
+    await page.getByRole("navigation").waitFor({ state: "visible" })
 
-    await page.getByRole("link", { name: "Cautelas" }).click()
-    await expect(page).toHaveURL(/\/cautelas/)
+    await page.getByRole("navigation").getByRole("link", { name: "Cautelas", exact: true }).click()
+    await expect(page).toHaveURL(/\/cautelas/, { timeout: 15_000 })
     await expect(page.getByRole("heading", { name: "Cautelas" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Nova Cautela" })).toBeVisible()
   })

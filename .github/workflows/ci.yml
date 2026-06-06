@@ -71,6 +71,8 @@ jobs:
         if: steps.e2e.outputs.skip != 'true'
         run: npm run test:e2e
         env:
+          CI: "true"
           E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
           E2E_SUPERVISOR_EMAIL: ${{ secrets.E2E_SUPERVISOR_EMAIL }}
           E2E_SUPERVISOR_PASSWORD: ${{ secrets.E2E_SUPERVISOR_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

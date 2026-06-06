@@ -16,10 +16,28 @@ import {
 } from "lucide-react";
 import CategoryManager from "./CategoryManager";
 import MaterialForm from "./MaterialForm";
+import MaterialCautelaDetailModal from "./MaterialCautelaDetailModal";
 import QRCodeModal from "./QRCodeModal";
 import { useRouter } from "next/navigation";
 import { importMaterialsCsv } from "@/app/actions/materials";
 import { MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit";
+import type { MaterialActiveDetail } from "@/lib/material-active-detail";
+
+export type MaterialRow = {
+  id: string;
+  name: string;
+  patrimony_number: string;
+  serial_number?: string;
+  internal_code: string;
+  reservation_id?: string;
+  category?: string;
+  status: string;
+  notes?: string;
+  marca?: string;
+  modelo?: string;
+  calibre?: string;
+  activeDetail?: MaterialActiveDetail;
+};
 
 export type MaterialsUrlQuery = {
   search?: string;
@@ -54,7 +72,7 @@ export default function MaterialsClient({
   listTruncated = false,
   materialsTotalCount,
 }: {
-  initialMaterials: any[];
+  initialMaterials: MaterialRow[];
   categoryOptions: { name: string }[];
   materialNames?: string[];
   locations?: string[];
@@ -64,10 +82,20 @@ export default function MaterialsClient({
 }) {
   const [showCategories, setShowCategories] = useState(false);
   const [showMaterialForm, setShowMaterialForm] = useState(false);
-  const [editingMaterial, setEditingMaterial] = useState<any>(null);
-  const [qrModalMaterial, setQrModalMaterial] = useState<any>(null);
+  const [editingMaterial, setEditingMaterial] = useState<MaterialRow | null>(null);
+  const [qrModalMaterial, setQrModalMaterial] = useState<MaterialRow | null>(null);
+  const [cautelaDetailMaterial, setCautelaDetailMaterial] = useState<MaterialRow | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
+
+  function openCautelaDetail(m: MaterialRow) {
+    if (m.status !== "cautelado") return;
+    if (m.activeDetail) {
+      setCautelaDetailMaterial(m);
+    } else {
+      alert("Cautela ativa não encontrada para este material.");
+    }
+  }
 
   const handleDownloadTemplate = () => {
     const headers = ["Nome", "Patrimonio", "CodigoInterno", "NumeroSerie", "IdentificacaoReserva", "Categoria", "Marca", "Modelo", "Calibre", "Observacoes"];
@@ -140,7 +168,7 @@ export default function MaterialsClient({
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
       {listTruncated && (
         <div
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/95"
@@ -213,7 +241,7 @@ export default function MaterialsClient({
       </div>
 
       {/* Filters Bar */}
-      <div className="flex min-h-14 py-2 items-center flex-wrap gap-4 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm">
+      <div className="flex min-h-14 py-2 items-center flex-wrap gap-4 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm overflow-x-auto">
         <div className="flex-1 relative flex items-center min-w-[200px]">
           <Search className="absolute left-3 h-4 w-4 text-slate-500" />
           <input 
@@ -297,8 +325,31 @@ export default function MaterialsClient({
         </div>
       </div>
 
-      {/* Table Section */}
-      <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl shadow-blue-900/5">
+      {/* Mobile / tablet cards */}
+      <div className="md:hidden space-y-3">
+        {initialMaterials.length === 0 ? (
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl px-6 py-16 text-center">
+            <Package className="h-12 w-12 text-slate-800 mx-auto mb-4" />
+            <p className="text-slate-500 font-medium text-sm">Nenhum material encontrado.</p>
+          </div>
+        ) : (
+          initialMaterials.map((m) => (
+            <MaterialCard
+              key={m.id}
+              material={m}
+              onEdit={() => {
+                setEditingMaterial(m);
+                setShowMaterialForm(true);
+              }}
+              onQr={() => setQrModalMaterial(m)}
+              onCautelaDetail={() => openCautelaDetail(m)}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-2xl shadow-blue-900/5">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-800/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
@@ -321,7 +372,7 @@ export default function MaterialsClient({
                 </td>
               </tr>
             ) : (
-              initialMaterials.map((m: any) => (
+              initialMaterials.map((m) => (
                 <tr key={m.id} className="group hover:bg-slate-800/30 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -363,13 +414,16 @@ export default function MaterialsClient({
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <StatusBadge status={m.status} />
+                    <StatusBadge
+                      status={m.status}
+                      onCautelaClick={m.status === "cautelado" ? () => openCautelaDetail(m) : undefined}
+                    />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => setQrModalMaterial(m)}
-                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
+                        className="p-2.5 min-h-[44px] min-w-[44px] hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-400 transition-colors"
                         title="Gerar QR Code"
                       >
                         <QrCode className="h-4 w-4" />
@@ -379,7 +433,8 @@ export default function MaterialsClient({
                           setEditingMaterial(m);
                           setShowMaterialForm(true);
                         }}
-                        className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        className="p-2.5 min-h-[44px] min-w-[44px] hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors"
+                        title="Editar material"
                       >
                         <Edit2 className="h-4 w-4" />
                       </button>
@@ -412,15 +467,92 @@ export default function MaterialsClient({
 
       {qrModalMaterial && (
         <QRCodeModal
-          material={qrModalMaterial}
+          material={{
+            id: qrModalMaterial.id,
+            name: qrModalMaterial.name,
+            patrimony_number: qrModalMaterial.patrimony_number ?? null,
+            internal_code: qrModalMaterial.internal_code ?? null,
+            serial_number: qrModalMaterial.serial_number ?? null,
+            status: qrModalMaterial.status,
+            category: qrModalMaterial.category,
+          }}
           onClose={() => setQrModalMaterial(null)}
+        />
+      )}
+
+      {cautelaDetailMaterial?.activeDetail && (
+        <MaterialCautelaDetailModal
+          material={cautelaDetailMaterial}
+          activeDetail={cautelaDetailMaterial.activeDetail}
+          onClose={() => setCautelaDetailMaterial(null)}
         />
       )}
     </div>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function MaterialCard({
+  material: m,
+  onEdit,
+  onQr,
+  onCautelaDetail,
+}: {
+  material: MaterialRow;
+  onEdit: () => void;
+  onQr: () => void;
+  onCautelaDetail: () => void;
+}) {
+  return (
+    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 space-y-3">
+      <div className="flex items-start gap-3">
+        <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-500 shrink-0">
+          <Package className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-slate-200 truncate">{m.name}</p>
+          <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+            {m.patrimony_number} • {m.internal_code}
+          </p>
+          {(m.marca || m.modelo || m.calibre) && (
+            <p className="text-[10px] text-slate-500 mt-1">
+              {[m.marca, m.modelo, m.calibre].filter(Boolean).join(" • ")}
+            </p>
+          )}
+        </div>
+        <StatusBadge
+          status={m.status}
+          onCautelaClick={m.status === "cautelado" ? onCautelaDetail : undefined}
+        />
+      </div>
+      <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/60">
+        <button
+          type="button"
+          onClick={onQr}
+          className="flex items-center justify-center gap-2 px-3 py-2.5 min-h-[44px] min-w-[44px] rounded-lg bg-slate-800 text-slate-400 hover:text-blue-400 transition-colors"
+          title="Gerar QR Code"
+        >
+          <QrCode className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg bg-slate-800 text-slate-300 hover:text-white font-bold text-xs transition-colors"
+        >
+          <Edit2 className="h-4 w-4" />
+          Editar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({
+  status,
+  onCautelaClick,
+}: {
+  status: string;
+  onCautelaClick?: () => void;
+}) {
   const configs: any = {
     available: { color: "bg-green-500/10 text-green-500", label: "Disponível" },
     cautelado: { color: "bg-blue-500/10 text-blue-500", label: "Em Uso" },
@@ -429,6 +561,19 @@ function StatusBadge({ status }: { status: string }) {
   };
 
   const config = configs[status] || configs.available;
+
+  if (onCautelaClick) {
+    return (
+      <button
+        type="button"
+        onClick={onCautelaClick}
+        title="Ver quem está com este material"
+        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.color} hover:ring-2 hover:ring-blue-500/40 transition-all cursor-pointer`}
+      >
+        {config.label}
+      </button>
+    );
+  }
 
   return (
     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${config.color}`}>

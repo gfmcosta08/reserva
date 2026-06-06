@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import { getCautelas } from "@/app/actions/cautelas"
 import CautelaWizard from "./CautelaWizard"
 import CautelaDetail from "./CautelaDetail"
@@ -32,12 +33,18 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function CautelasClient() {
+  const searchParams = useSearchParams()
   const [cautelas, setCautelas] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [showWizard, setShowWizard] = useState(false)
   const [selectedCautelaId, setSelectedCautelaId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const id = searchParams.get("id")
+    if (id) setSelectedCautelaId(id)
+  }, [searchParams])
 
   const loadCautelas = useCallback(async () => {
     setLoading(true)
