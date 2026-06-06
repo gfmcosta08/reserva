@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { canonicalizeMaterialCategory } from "@/lib/material-filter-categories"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -15,7 +16,15 @@ const materialSchema = z.object({
   marca: z.string().optional(),
   modelo: z.string().optional(),
   calibre: z.string().optional(),
+  stock_quantity: z.coerce.number().int().min(1, "Quantidade mínima é 1").default(1),
 })
+
+function normalizeMaterialPayload(data: z.infer<typeof materialSchema>) {
+  return {
+    ...data,
+    category: canonicalizeMaterialCategory(data.category),
+  }
+}
 
 export async function createMaterial(data: z.infer<typeof materialSchema>) {
   const supabase = await createClient()
@@ -25,7 +34,7 @@ export async function createMaterial(data: z.infer<typeof materialSchema>) {
     return { error: result.error.issues[0].message }
   }
 
-  const { error } = await supabase.from("materials").insert(result.data)
+  const { error } = await supabase.from("materials").insert(normalizeMaterialPayload(result.data))
 
   if (error) return { error: error.message }
 
@@ -35,7 +44,9 @@ export async function createMaterial(data: z.infer<typeof materialSchema>) {
 
 export async function updateMaterial(id: string, data: Partial<z.infer<typeof materialSchema>>) {
   const supabase = await createClient()
-  const { error } = await supabase.from("materials").update(data).eq("id", id)
+  const payload = { ...data }
+  if (payload.category) payload.category = canonicalizeMaterialCategory(payload.category)
+  const { error } = await supabase.from("materials").update(payload).eq("id", id)
 
   if (error) return { error: error.message }
 

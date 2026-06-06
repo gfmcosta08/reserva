@@ -4,7 +4,6 @@ export const CANONICAL_MATERIAL_CATEGORIES = [
   "ARMA LONGA",
   "PISTOLA",
   "CARREGADOR",
-  "MUNICAO",
   "MUNIÇÃO",
   "COLETE",
   "CAPACETE",
@@ -16,21 +15,49 @@ export const CANONICAL_MATERIAL_CATEGORIES = [
   "TASER",
 ] as const
 
-/** Une categorias do banco com lista canônica, sem duplicatas (case-insensitive). */
+/** Chave de deduplicação: sem acento, minúsculas, singular simples (…s → …). */
+export function categoryDedupeKey(name: string): string {
+  let key = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+  if (key.length > 4 && key.endsWith("s")) key = key.slice(0, -1)
+  return key
+}
+
+/** Rótulo preferido por chave de deduplicação. */
+const PREFERRED_CATEGORY_LABEL: Record<string, string> = {
+  municao: "MUNIÇÃO",
+  capacete: "CAPACETE",
+  colete: "COLETE",
+  pistola: "PISTOLA",
+  carregador: "CARREGADOR",
+}
+
+/** Normaliza categoria para gravação no banco (evita MUNICAO vs MUNIÇÃO, plural, etc.). */
+export function canonicalizeMaterialCategory(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return trimmed
+  const key = categoryDedupeKey(trimmed)
+  return PREFERRED_CATEGORY_LABEL[key] ?? trimmed.toUpperCase()
+}
+
+/** Une categorias do banco com lista canônica, sem duplicatas (acento/plural). */
 export function mergeMaterialCategoryOptions(dbNames: string[]): { name: string }[] {
-  const seen = new Set<string>()
-  const out: string[] = []
+  const byKey = new Map<string, string>()
 
   const add = (name: string) => {
-    const key = name.trim().toLowerCase()
-    if (!key || seen.has(key)) return
-    seen.add(key)
-    out.push(name.trim())
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const key = categoryDedupeKey(trimmed)
+    const preferred = PREFERRED_CATEGORY_LABEL[key] ?? trimmed
+    if (!byKey.has(key)) byKey.set(key, preferred)
   }
 
   for (const c of CANONICAL_MATERIAL_CATEGORIES) add(c)
   for (const c of dbNames) add(c)
 
-  out.sort((a, b) => a.localeCompare(b, "pt-BR"))
+  const out = [...byKey.values()].sort((a, b) => a.localeCompare(b, "pt-BR"))
   return out.map((name) => ({ name }))
 }

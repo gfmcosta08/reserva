@@ -85,6 +85,7 @@ export default function MaterialForm({
       modelo: formData.get("modelo") as string,
       calibre: formData.get("calibre") as string,
       notes: formData.get("notes") as string,
+      stock_quantity: Number(formData.get("stock_quantity") || 1),
     };
 
     const result = material ? await updateMaterial(material.id, data) : await createMaterial(data as any);
@@ -255,6 +256,23 @@ export default function MaterialForm({
                   className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
                   placeholder="Ex: .40, 9mm, 5.56"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantidade em estoque</label>
+                <input
+                  name="stock_quantity"
+                  type="number"
+                  min={1}
+                  step={1}
+                  required
+                  defaultValue={material?.stock_quantity ?? 1}
+                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                  placeholder="Ex: 1 para arma, 500 para munição"
+                />
+                <p className="text-[11px] text-slate-500">
+                  Use 1 para equipamentos unitários. Para munição, informe o total de projéteis em estoque.
+                </p>
               </div>
 
               <div className="md:col-span-2 space-y-2">

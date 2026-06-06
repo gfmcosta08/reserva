@@ -7,7 +7,7 @@ export type { MaterialActiveDetail }
 
 /** Colunas necessárias na UI de materiais (evita `select *` pesado e problemas de serialização). */
 const MATERIAL_LIST_COLUMNS =
-  "id, name, patrimony_number, serial_number, internal_code, reservation_id, category, status, notes, marca, modelo, calibre, created_at, updated_at"
+  "id, name, patrimony_number, serial_number, internal_code, reservation_id, category, status, notes, marca, modelo, calibre, stock_quantity, created_at, updated_at"
 
 export type MaterialsPageFilters = {
   search?: string
