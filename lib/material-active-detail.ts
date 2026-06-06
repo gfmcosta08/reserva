@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { itemNeedsReturn } from "@/lib/cautela-return-status"
 
 export type MaterialActiveDetail = {
   cautelaId: string
@@ -22,7 +23,12 @@ type OpenCautelaRow = {
     registration_number?: string
   } | null
   profiles: { name?: string } | null
-  cautela_items: { material_id: string; returned: boolean }[] | null
+  cautela_items: {
+    material_id: string
+    status: string
+    quantity_delivered?: number | null
+    quantity_returned?: number | null
+  }[] | null
 }
 
 /** Mapa material_id → cautela ativa (item não devolvido em cautela open/partial). */
@@ -37,7 +43,7 @@ export async function buildActiveMaterialMap(
       id, created_at, type,
       persons(full_name, rg, function, registration_number),
       profiles(name),
-      cautela_items(material_id, returned)
+      cautela_items(material_id, status, quantity_delivered, quantity_returned)
     `)
     .in("status", ["open", "partial"])
 
@@ -48,7 +54,7 @@ export async function buildActiveMaterialMap(
 
   for (const c of (openCautelas ?? []) as OpenCautelaRow[]) {
     for (const item of c.cautela_items ?? []) {
-      if (item.returned) continue
+      if (!itemNeedsReturn(item)) continue
       map.set(item.material_id, {
         cautelaId: c.id,
         personName: c.persons?.full_name || "Desconhecido",

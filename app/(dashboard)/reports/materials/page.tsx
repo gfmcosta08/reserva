@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server"
+import { buildActiveMaterialMap } from "@/lib/material-active-detail"
 import { Package, ArrowLeft, Download } from "lucide-react"
 import Link from "next/link"
 import MaterialsReportClient from "./MaterialsReportClient"
@@ -15,35 +16,21 @@ export default async function MaterialsReportPage() {
     .select("*")
     .order("name")
 
-  // 2. Cautelas Abertas e seus Itens
-  const { data: openCautelas, error: cautErr } = await supabase
-    .from("cautelas")
-    .select(`
-      id, created_at, type,
-      persons(full_name, rg, function),
-      profiles(name),
-      cautela_items(material_id, returned)
-    `)
-    .in("status", ["open", "partial"])
-
-  const activeMaterialMap = new Map()
-  if (openCautelas) {
-    openCautelas.forEach((c: any) => {
-      c.cautela_items?.forEach((item: any) => {
-        if (!item.returned) {
-          activeMaterialMap.set(item.material_id, {
-            cautela_id: c.id,
-            person: c.persons?.full_name || "Desconhecido",
-            rg: c.persons?.rg || "-",
-            personFunction: c.persons?.function || "-",
-            operator: c.profiles?.name || "Sistema",
-            date: c.created_at,
-            type: c.type
-          })
-        }
-      })
-    })
-  }
+  const activeMap = await buildActiveMaterialMap(supabase)
+  const activeMaterialMap = new Map(
+    [...activeMap.entries()].map(([materialId, d]) => [
+      materialId,
+      {
+        cautela_id: d.cautelaId,
+        person: d.personName,
+        rg: d.personRg || "-",
+        personFunction: d.personFunction || "-",
+        operator: d.operatorName,
+        date: d.cautelaCreatedAt,
+        type: d.cautelaType,
+      },
+    ])
+  )
 
   // 3. Agrupar por categoria e anexar detalhes da cautela
   const grouped: Record<string, { available: any[], cautelados: any[], other: any[] }> = {}
