@@ -1,4 +1,4 @@
-# Sync pool carregadores Glock 9mm — apply
+# Sync pool carregadores Glock 9mm — dry-run
 
 > **Somente QA (teste_db).** Total alvo = 3 × pistolas Glock 9mm. **Não** é regra da Nova Cautela em runtime.
 
@@ -6,10 +6,10 @@
 |---------|-------|
 | Pistolas Glock 9mm (N) | 90 |
 | Alvo total carregadores (3×N) | 270 |
-| Pool total antes | 13 |
-| Disponíveis | 12 |
+| Pool total antes | 270 |
+| Disponíveis | 269 |
 | Em uso (cautelado) | 1 |
-| Inserir | 257 |
+| Inserir | 0 |
 | Retirar (available POOL) | 0 |
 | Cautelas Glock sem carregador | 57 |
 

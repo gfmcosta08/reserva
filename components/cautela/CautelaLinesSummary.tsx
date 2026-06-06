@@ -48,6 +48,7 @@ export function CautelaLinesSummary({ lines, onQtyChange, onRemove }: Props) {
                     <span className="text-[10px] text-slate-500">
                       Pat {row.material.patrimony_number}
                       {row.material.category ? ` • ${row.material.category}` : ""}
+                      {row.packWeaponLabel ? ` • Pacote: ${row.packWeaponLabel}` : ""}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">

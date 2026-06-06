@@ -1,4 +1,4 @@
-import { areCalibersCompatible, extractCaliber } from "@/lib/cautela-caliber"
+import { areCalibersCompatible, extractCaliber, isAmmunitionCategory } from "@/lib/cautela-caliber"
 import { categoryNameMatchesGroup } from "@/lib/cautela-material-groups"
 
 export type PackAccessoryCandidate = {
@@ -40,6 +40,29 @@ export function packAccessoryAvailabilityFilter(kind: "charger" | "ammunition"):
   return "category.ilike.%municao%,category.ilike.%muni%,name.ilike.%municao%,name.ilike.%muni%,name.ilike.%cartucho%,name.ilike.%projetil%"
 }
 
+export type PackAccessoryLineMergeTarget = {
+  materialId: string
+  category: string
+  materialName: string
+  packWeaponId?: string
+}
+
+/** Índice da linha que pode receber qty extra (munição de pacotes distintos não funde). */
+export function findPackAccessoryMergeLineIndex(
+  prev: PackAccessoryLineMergeTarget[],
+  next: PackAccessoryLineMergeTarget
+): number {
+  const isAmmo =
+    isAmmunitionCategory(next.category) || isAmmunitionCategory(next.materialName)
+  return prev.findIndex((x) => {
+    if (x.materialId !== next.materialId) return false
+    if (isAmmo) {
+      return (x.packWeaponId ?? "") === (next.packWeaponId ?? "")
+    }
+    return true
+  })
+}
+
 /** Escolhe o primeiro acessório disponível mais compatível com a arma (calibre / nome). */
 export function pickPackAccessoryForWeapon(
   weapon: { name: string; category: string; calibre?: string | null },
@@ -48,10 +71,18 @@ export function pickPackAccessoryForWeapon(
   excludeIds: string[] = []
 ): PackAccessoryCandidate | null {
   const exclude = new Set(excludeIds)
-  const pool = candidates.filter((m) => matchesGroup(m, kind) && !exclude.has(m.id))
+  let pool = candidates.filter((m) => matchesGroup(m, kind) && !exclude.has(m.id))
   if (pool.length === 0) return null
 
   const wCal = weaponCaliber(weapon)
+  if (kind === "ammunition" && wCal) {
+    const compatible = pool.filter((m) => {
+      const mCal = materialCaliber(m)
+      return mCal != null && areCalibersCompatible(wCal, mCal)
+    })
+    if (compatible.length === 0) return null
+    pool = compatible
+  }
   const weaponTokens = weapon.name.toLowerCase().split(/\s+/).filter((t) => t.length > 2)
 
   const scored = pool.map((m) => {

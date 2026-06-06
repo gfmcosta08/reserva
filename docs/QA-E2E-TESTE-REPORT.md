@@ -3,7 +3,7 @@
 **Data:** 06/06/2026  
 **Ambiente remoto:** https://reserva-teste.vercel.app  
 **Supabase:** `ajyvznrmbuistlcfckuh` (teste_db)  
-**Commit deploy:** `b9a5c547bfcbd829803c9536e7fe2cf83d748d07` (master)
+**Commit deploy:** `8cad1d0` (master — inclui `f1181fc` pool Glock + filtros materiais)
 
 ---
 
@@ -193,6 +193,24 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 | `node scripts/qa/sync-glock-charger-pool.mjs` | Dry-run: N pistolas Glock 9mm → alvo `3×N` carregadores `PAT-GLK-POOL-*` |
 | `node scripts/qa/sync-glock-charger-pool.mjs --apply` | Aplica inserts/retires no teste_db |
 | Relatório | `scripts/qa/sync-glock-charger-pool-report.md` |
+
+### Validação automática (06/06/2026)
+
+| Verificação | Resultado |
+|-------------|-----------|
+| `npx tsc --noEmit` | ✅ sem erros |
+| Sync dry-run (`scripts/.env.clone`) | ✅ pool alinhado: **90** pistolas → **270** carregadores (`PAT-GLK-POOL-*`) |
+| Disponíveis / em uso | **269** disponíveis, **1** cautelado (insert/retire = 0) |
+| Nova Cautela (código) | ✅ `resolvePackAccessoriesForWeapon` + N linhas qty 1 em `CautelaMaterialsStep` |
+| Devolução parcial (código) | ✅ `cautela-return` usa `materialStatusAfterReturn` — linha qty 1 liberada ao devolver 1 unidade |
+| Legado import | ⚠️ **57** cautelas abertas com Glock **sem** linha de carregador (flag no relatório sync) |
+
+### Checklist manual (reserva-teste)
+
+- [ ] Nova Cautela → pistola Glock 9mm → QTD carregadores = 3 → **3 linhas distintas** no pacote
+- [ ] QTD > disponível → alerta *"Só há X carregador(es) disponível(is) no pool"*
+- [ ] Devolução parcial de 1 carregador (linha qty 1) → +1 disponível em `/materials` (filtro CARREGADOR)
+- [ ] Cautela permanece `partial` até encerrar saldo
 
 ---
 

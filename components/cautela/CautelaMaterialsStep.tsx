@@ -6,6 +6,7 @@ import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchFi
 import { PackQtyInput, type PackQtyInputHandle } from "./PackQtyInput"
 import { CautelaLinesSummary } from "./CautelaLinesSummary"
 import { resolvePackAccessoriesForWeapon, resolvePackAccessoryForWeapon, type SearchableMaterial } from "@/app/actions/cautelas"
+import { findPackAccessoryMergeLineIndex } from "@/lib/cautela-pack-accessories"
 import { getMaterialCategoryOptions } from "@/app/actions/categories"
 import {
   resolveCategoryNamesForGroup,
@@ -24,6 +25,9 @@ export type MaterialLine = {
   rowId: string
   material: WizardMaterial
   quantity: number
+  /** Arma do pacote (pistola/arma longa) — evita fundir munição entre pacotes. */
+  packWeaponId?: string
+  packWeaponLabel?: string
 }
 
 type Props = {
@@ -48,19 +52,48 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 const inputNoSpinner =
   "mt-1 w-full py-2 px-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
 
+type MergeLineOpts = {
+  packWeaponId?: string
+  packWeaponLabel?: string
+}
+
 function mergeLines(
   prev: MaterialLine[],
   m: SearchableMaterial,
-  qty: number
+  qty: number,
+  opts?: MergeLineOpts
 ): MaterialLine[] {
   const norm = normalizeWizardMaterial(m)
-  const i = prev.findIndex((x) => x.material.id === m.id)
+  const mergeTarget = {
+    materialId: m.id,
+    category: norm.category,
+    materialName: norm.name,
+    packWeaponId: opts?.packWeaponId,
+  }
+  const i = findPackAccessoryMergeLineIndex(
+    prev.map((row) => ({
+      materialId: row.material.id,
+      category: row.material.category,
+      materialName: row.material.name,
+      packWeaponId: row.packWeaponId,
+    })),
+    mergeTarget
+  )
   if (i >= 0) {
     return prev.map((row, idx) =>
       idx === i ? { ...row, quantity: row.quantity + qty } : row
     )
   }
-  return [...prev, { rowId: crypto.randomUUID(), material: norm, quantity: qty }]
+  return [
+    ...prev,
+    {
+      rowId: crypto.randomUUID(),
+      material: norm,
+      quantity: qty,
+      packWeaponId: opts?.packWeaponId,
+      packWeaponLabel: opts?.packWeaponLabel,
+    },
+  ]
 }
 
 export function CautelaMaterialsStep({
@@ -190,7 +223,12 @@ export function CautelaMaterialsStep({
       for (const ch of chargerMats) {
         next = mergeLines(next, ch, 1)
       }
-      if (aq > 0 && ammoMat) next = mergeLines(next, ammoMat, aq)
+      if (aq > 0 && ammoMat) {
+        next = mergeLines(next, ammoMat, aq, {
+          packWeaponId: pistolWeapon.id,
+          packWeaponLabel: pistolWeapon.name,
+        })
+      }
       onLinesChange(next)
     } finally {
       setPackApplying(false)
@@ -235,7 +273,12 @@ export function CautelaMaterialsStep({
       for (const ch of chargerMats) {
         next = mergeLines(next, ch, 1)
       }
-      if (aq > 0 && ammoMat) next = mergeLines(next, ammoMat, aq)
+      if (aq > 0 && ammoMat) {
+        next = mergeLines(next, ammoMat, aq, {
+          packWeaponId: longWeapon.id,
+          packWeaponLabel: longWeapon.name,
+        })
+      }
       onLinesChange(next)
     } finally {
       setPackApplying(false)
