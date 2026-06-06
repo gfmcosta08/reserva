@@ -269,8 +269,10 @@
 **/.storybook-out
 **/storybook-static
 
-# Angular
+# Angular (exceto Playwright RESERVA)
 **/e2e/
+!tests/e2e/
+!tests/e2e/**
 **/.angular/
 
 # React Native
@@ -836,8 +838,9 @@
 # ==============================================================================
 # npm
 **/node_modules/
-**/package-lock.json
 **/.npm/
+# Lockfile na raiz é necessário para `npm ci` no GitHub Actions
+!package-lock.json
 
 # Yarn
 **/yarn.lock
@@ -891,9 +894,23 @@
 # ==============================================================================
 # PROJECT SPECIFIC
 # ==============================================================================
+# Junction local para o vault Obsidian (caminho D:\cofre obsidian\...)
+docs/obsidian-prd/
+
+# Clone Supabase (credenciais e dumps)
+scripts/.env.clone
+scripts/.env.qa
+scripts/dumps/
+.env.local.production.bak
+
+# Workspace multi-root (versionado no repo)
+!controle-material.code-workspace
+
 # Add your project-specific ignores here
 # workspace/
 # data/
+playwright-report/
+test-results/
 # uploads/
 # downloads/
 **/.minimax

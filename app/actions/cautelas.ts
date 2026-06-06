@@ -17,7 +17,22 @@ import {
   uuidSchema,
 } from "@/lib/cautela-schemas"
 import { sendCautelaSummary } from "@/lib/whatsapp"
+import {
+  computeCautelaStatus,
+  itemBalance,
+  itemIsFullyReturned,
+  itemNeedsReturn,
+  materialStatusAfterReturn,
+  qtyDelivered,
+  qtyReturned,
+  resolveItemStatusAfterReturn,
+} from "@/lib/cautela-return-status"
 import { generateCautelaPDF } from "@/lib/pdf-cautela"
+import {
+  packAccessoryAvailabilityFilter,
+  pickPackAccessoryForWeapon,
+} from "@/lib/cautela-pack-accessories"
+import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
 import { Resend } from "resend"
 
 async function dispatchCautelaNotifications(cautelaId: string) {
@@ -143,11 +158,13 @@ export async function getCautelas(filters?: { status?: string; search?: string }
 
     return data.map(cautela => {
       const cautelaItems = items?.filter(i => i.cautela_id === cautela.id) || []
+      const withBalance = cautelaItems.filter((i) => itemNeedsReturn(i))
       return {
         ...cautela,
         items_count: cautelaItems.length,
-        items_returned: cautelaItems.filter(i => i.status === "returned").length,
-        items_pending: cautelaItems.filter(i => i.status === "pending").length,
+        items_returned: cautelaItems.filter((i) => itemIsFullyReturned(i)).length,
+        items_pending: cautelaItems.filter((i) => i.status === "pending").length,
+        items_with_balance: withBalance.length,
       }
     })
   }
@@ -319,6 +336,48 @@ export async function createCautela(data: {
   return { success: true, cautelaId }
 }
 
+async function syncCautelaStatusFromItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  cautelaId: string,
+  operatorId: string,
+  now: string
+) {
+  const { data: updatedItems } = await supabase
+    .from("cautela_items")
+    .select("status, quantity_delivered, quantity_returned")
+    .eq("cautela_id", cautelaId)
+
+  const rows = updatedItems || []
+  const cautelaStatus = computeCautelaStatus(rows)
+  const closedAt = cautelaStatus === "closed" || cautelaStatus === "divergent" ? now : null
+
+  await supabase
+    .from("cautelas")
+    .update({ status: cautelaStatus, closed_at: closedAt })
+    .eq("id", cautelaId)
+
+  if (cautelaStatus === "closed" || cautelaStatus === "divergent") {
+    const { data: operatorProfile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", operatorId)
+      .single()
+
+    await logAudit({
+      action: "cautela_closed",
+      entity: "cautelas",
+      entity_id: cautelaId,
+      after_state: {
+        status: cautelaStatus,
+        closed_at: closedAt,
+        operator_id: operatorId,
+        operator_name: operatorProfile?.name || operatorProfile?.email,
+        items_total: rows.length,
+      },
+    })
+  }
+}
+
 // ===== DEVOLVER ITEM (com suporte a quantidade) =====
 export async function returnItem(
   cautelaItemId: string,
@@ -340,102 +399,54 @@ export async function returnItem(
   // 1. Buscar item e material_id
   const { data: item, error: itemError } = await supabase
     .from("cautela_items")
-    .select("id, material_id, cautela_id, status, quantity_delivered")
+    .select("id, material_id, cautela_id, status, quantity_delivered, quantity_returned")
     .eq("id", cautelaItemId)
     .single()
 
   if (itemError || !item) return { error: "Item não encontrado" }
-  if (item.status !== "pending") return { error: "Este item já foi processado" }
-
-  // Determinar quantidade devolvida
-  const qtyDelivered = item.quantity_delivered || 1
-  const qtyReturn = (status === "damaged" || status === "missing")
-    ? 0
-    : (quantityReturned ?? qtyDelivered)
-
-  // Validar quantidade
-  if (qtyReturn < 0 || qtyReturn > qtyDelivered) {
-    return { error: `Quantidade inválida. Deve estar entre 0 e ${qtyDelivered}` }
+  if (!itemNeedsReturn(item)) {
+    return { error: "Este item já foi processado ou não possui saldo pendente" }
   }
 
-  // 2. Atualizar status do item
+  const delivered = qtyDelivered(item)
+  const now = new Date().toISOString()
+
+  let itemStatus: "pending" | "returned" | "damaged" | "missing" = status
+  let qtyReturn = 0
+
+  if (status === "damaged" || status === "missing") {
+    qtyReturn = 0
+  } else {
+    qtyReturn = quantityReturned ?? delivered
+    const previousReturned = qtyReturned(item)
+    if (qtyReturn < previousReturned) {
+      return {
+        error: `Quantidade devolvida não pode ser menor que o já registrado (${previousReturned})`,
+      }
+    }
+    if (qtyReturn < 0 || qtyReturn > delivered) {
+      return { error: `Quantidade inválida. Deve estar entre 0 e ${delivered}` }
+    }
+    itemStatus = resolveItemStatusAfterReturn(qtyReturn, delivered)
+  }
+
   const { error: updateItemError } = await supabase
     .from("cautela_items")
     .update({
-      status,
+      status: itemStatus,
       notes: notes || null,
       quantity_returned: qtyReturn,
-      returned_at: new Date().toISOString(),
-      returned_by: operatorId
+      returned_at: now,
+      returned_by: operatorId,
     })
     .eq("id", cautelaItemId)
 
   if (updateItemError) return { error: updateItemError.message }
 
-  // 3. Atualizar status do material
-  let materialStatus: string
-  if (status === "returned") {
-    materialStatus = qtyReturn === qtyDelivered ? "available" : "pending_return"
-  } else if (status === "damaged") {
-    materialStatus = "maintenance"
-  } else {
-    materialStatus = "unavailable"
-  }
+  const materialStatus = materialStatusAfterReturn(itemStatus, qtyReturn, delivered)
+  await supabase.from("materials").update({ status: materialStatus }).eq("id", item.material_id)
 
-  await supabase
-    .from("materials")
-    .update({ status: materialStatus })
-    .eq("id", item.material_id)
-
-  // 4. Verificar se todos os itens da cautela foram processados
-  const { data: allItems } = await supabase
-    .from("cautela_items")
-    .select("status, quantity_delivered, quantity_returned")
-    .eq("cautela_id", item.cautela_id)
-
-  const allDone = allItems?.every(i => i.status !== "pending")
-  const hasDivergence = allItems?.some(i =>
-    i.status === "damaged" ||
-    i.status === "missing" ||
-    (i.quantity_returned !== undefined && i.quantity_returned < (i.quantity_delivered || 1))
-  )
-
-  if (allDone) {
-    const cautelaStatus = hasDivergence ? "divergent" : "closed"
-    const closedAt = new Date().toISOString()
-    await supabase
-      .from("cautelas")
-      .update({ status: cautelaStatus, closed_at: closedAt })
-      .eq("id", item.cautela_id)
-
-    const { data: operatorProfile } = await supabase
-      .from("profiles")
-      .select("name, email")
-      .eq("id", operatorId)
-      .single()
-
-    await logAudit({
-      action: "cautela_closed",
-      entity: "cautelas",
-      entity_id: item.cautela_id,
-      after_state: {
-        status: cautelaStatus,
-        closed_at: closedAt,
-        operator_id: operatorId,
-        operator_name: operatorProfile?.name || operatorProfile?.email,
-        items_total: allItems?.length,
-      },
-    })
-  } else {
-    // Marcar como parcial se pelo menos um foi devolvido
-    const someReturned = allItems?.some(i => i.status !== "pending")
-    if (someReturned) {
-      await supabase
-        .from("cautelas")
-        .update({ status: "partial" })
-        .eq("id", item.cautela_id)
-    }
-  }
+  await syncCautelaStatusFromItems(supabase, item.cautela_id, operatorId, now)
 
   // Audit log
   const auditAction = status === "returned" ? "item_returned" : status === "damaged" ? "item_damaged" : "item_missing"
@@ -461,11 +472,10 @@ export async function returnItem(
 // Tipos de dados para o novo fluxo
 export interface DevolutionItemData {
   cautelaItemId: string
-  // Opção 1: Devolução completa via tick
-  confirmed: boolean
-  // Opção 2: Devolução parcial via quantidade
+  confirmed?: boolean
   quantityReturned?: number
   notes?: string
+  disposition?: "return" | "damaged" | "missing"
 }
 
 export interface ProcessDevolutionResult {
@@ -492,116 +502,136 @@ export async function processBulkDevolution(
   const operatorId = auth.user.id
   const supabase = await createClient()
 
-  // 1. Validar que todos os itens precisam de ação
-  const { data: cautelaItems, error: itemsError } = await supabase
+  const { data: allCautelaItems, error: itemsError } = await supabase
     .from("cautela_items")
     .select(`
-      id, material_id, status, quantity_delivered,
-      materials(id, name, patrimony_number)
+      id, material_id, status, quantity_delivered, quantity_returned,
+      materials(name, patrimony_number)
     `)
     .eq("cautela_id", cautelaId)
-    .eq("status", "pending")
 
   if (itemsError) return { success: false, error: itemsError.message }
-  if (!cautelaItems || cautelaItems.length === 0) {
-    return { success: false, error: "Nenhum item pendente encontrado nesta cautela" }
+
+  const actionableItems = (allCautelaItems || []).filter((i) => itemNeedsReturn(i))
+  if (actionableItems.length === 0) {
+    return { success: false, error: "Nenhum item com saldo pendente nesta cautela" }
   }
 
-  // 2. Validar que todos os itens pendentes foram processados
-  const pendingIds = cautelaItems.map(i => i.id)
-  const processedIds = items.map(i => i.cautelaItemId)
-  const unprocessedItems = pendingIds.filter(id => !processedIds.includes(id))
+  const actionableIds = actionableItems.map((i) => i.id)
+  const processedIds = items.map((i) => i.cautelaItemId)
+  const unprocessedItems = actionableIds.filter((id) => !processedIds.includes(id))
 
   if (unprocessedItems.length > 0) {
-    const unprocessedNames = cautelaItems
-      .filter(i => unprocessedItems.includes(i.id))
-      .map(i => i.materials?.[0]?.name || i.materials?.[0]?.patrimony_number || "Item")
+    const unprocessedNames = actionableItems
+      .filter((i) => unprocessedItems.includes(i.id))
+      .map((i) => {
+        const m = i.materials as { name?: string; patrimony_number?: string } | null
+        return m?.name || m?.patrimony_number || "Item"
+      })
     return {
       success: false,
       error: `Existem itens que não foram conferidos: ${unprocessedNames.join(", ")}`,
-      pendingItems: unprocessedItems
+      pendingItems: unprocessedItems,
     }
   }
 
-  // 3. Validar cada item
+  const materialName = (ci: (typeof allCautelaItems)[0]) => {
+    const m = ci?.materials as { name?: string; patrimony_number?: string } | null
+    return m?.name || m?.patrimony_number || "Item"
+  }
+
   for (const item of items) {
-    const cautelaItem = cautelaItems.find(ci => ci.id === item.cautelaItemId)
+    const cautelaItem = allCautelaItems?.find((ci) => ci.id === item.cautelaItemId)
     if (!cautelaItem) {
       return { success: false, error: `Item ${item.cautelaItemId} não encontrado` }
     }
 
-    const quantityDelivered = cautelaItem.quantity_delivered || 1
+    const delivered = qtyDelivered(cautelaItem)
+    const disposition = item.disposition ?? "return"
 
-    // Validar que tick OU quantidade foi preenchida
+    if (disposition === "damaged" || disposition === "missing") {
+      if (!item.notes?.trim()) {
+        return {
+          success: false,
+          error: `Justificativa obrigatória para "${materialName(cautelaItem)}"`,
+        }
+      }
+      continue
+    }
+
     if (!item.confirmed && (item.quantityReturned === undefined || item.quantityReturned === null)) {
       return {
         success: false,
-        error: `Item "${cautelaItem.materials?.[0]?.name || cautelaItem.materials?.[0]?.patrimony_number}" não possui confirmação nem quantidade preenchida`
+        error: `Item "${materialName(cautelaItem)}" não possui devolução total nem quantidade informada`,
       }
     }
 
-    // Validar quantidade não seja negativa
-    if (item.quantityReturned !== undefined && item.quantityReturned < 0) {
+    const totalReturned = item.confirmed ? delivered : (item.quantityReturned as number)
+    if (totalReturned < qtyReturned(cautelaItem)) {
       return {
         success: false,
-        error: `Quantidade não pode ser negativa para "${cautelaItem.materials?.[0]?.name}"`
+        error: `Quantidade devolvida não pode ser menor que o já registrado em "${materialName(cautelaItem)}"`,
       }
     }
-
-    // Validar quantidade não seja maior que entregue
-    if (item.quantityReturned !== undefined && item.quantityReturned > quantityDelivered) {
+    if (totalReturned < 0 || totalReturned > delivered) {
       return {
         success: false,
-        error: `Quantidade devolvida não pode ser maior que a entregue para "${cautelaItem.materials?.[0]?.name}"`
+        error: `Quantidade inválida para "${materialName(cautelaItem)}" (0 a ${delivered})`,
       }
     }
   }
 
-  // 4. Processar cada item
   const now = new Date().toISOString()
   let processedCount = 0
 
   for (const item of items) {
-    const cautelaItem = cautelaItems.find(ci => ci.id === item.cautelaItemId)
-    if (!cautelaItem) continue
+    const cautelaItem = allCautelaItems!.find((ci) => ci.id === item.cautelaItemId)!
+    const delivered = qtyDelivered(cautelaItem)
+    const disposition = item.disposition ?? "return"
 
-    const quantityDelivered = cautelaItem.quantity_delivered || 1
-    let finalStatus: "returned" | "partial" = "returned"
-    let quantityReturned = quantityDelivered
+    if (disposition === "damaged" || disposition === "missing") {
+      const { error: updateError } = await supabase
+        .from("cautela_items")
+        .update({
+          status: disposition,
+          quantity_returned: 0,
+          returned_at: now,
+          returned_by: operatorId,
+          notes: item.notes || null,
+        })
+        .eq("id", item.cautelaItemId)
 
-    if (item.confirmed) {
-      // Opção 1: Tick marcado = devolução completa
-      finalStatus = "returned"
-      quantityReturned = quantityDelivered
-    } else if (item.quantityReturned !== undefined) {
-      // Opção 2: Devolução parcial
-      quantityReturned = item.quantityReturned
-      if (quantityReturned < quantityDelivered) {
-        finalStatus = "partial"
-      } else {
-        finalStatus = "returned"
+      if (updateError) {
+        return { success: false, error: `Erro ao processar item: ${updateError.message}` }
       }
+
+      await supabase
+        .from("materials")
+        .update({ status: materialStatusAfterReturn(disposition, 0, delivered) })
+        .eq("id", cautelaItem.material_id)
+
+      await logAudit({
+        action: disposition === "damaged" ? "item_damaged" : "item_missing",
+        entity: "cautela_items",
+        entity_id: item.cautelaItemId,
+        after_state: { status: disposition, cautela_id: cautelaId },
+      })
+      processedCount++
+      continue
     }
 
-    // Determinar status do material
-    let materialStatus = "available"
-    if (quantityReturned === 0) {
-      // Extravio: material fica indisponível
-      materialStatus = "unavailable"
-    } else if (quantityReturned < quantityDelivered) {
-      // Devolução parcial: material fica em manutenção até devolução completa
-      materialStatus = "maintenance"
-    }
+    const totalReturned = item.confirmed ? delivered : (item.quantityReturned as number)
+    const newStatus = resolveItemStatusAfterReturn(totalReturned, delivered)
+    const matStatus = materialStatusAfterReturn(newStatus, totalReturned, delivered)
 
-    // Atualizar item
     const { error: updateError } = await supabase
       .from("cautela_items")
       .update({
-        status: finalStatus === "partial" ? "returned" : finalStatus,
-        quantity_returned: quantityReturned,
+        status: newStatus,
+        quantity_returned: totalReturned,
         returned_at: now,
         returned_by: operatorId,
-        notes: item.notes || null
+        notes: item.notes || null,
       })
       .eq("id", item.cautelaItemId)
 
@@ -609,74 +639,26 @@ export async function processBulkDevolution(
       return { success: false, error: `Erro ao processar item: ${updateError.message}` }
     }
 
-    // Atualizar material
-    await supabase
-      .from("materials")
-      .update({ status: materialStatus })
-      .eq("id", cautelaItem.material_id)
+    await supabase.from("materials").update({ status: matStatus }).eq("id", cautelaItem.material_id)
 
-    // Audit log
     await logAudit({
       action: "item_returned",
       entity: "cautela_items",
       entity_id: item.cautelaItemId,
       after_state: {
-        status: finalStatus,
-        quantity_delivered: quantityDelivered,
-        quantity_returned: quantityReturned,
+        status: newStatus,
+        quantity_delivered: delivered,
+        quantity_returned: totalReturned,
+        balance: delivered - totalReturned,
         material_id: cautelaItem.material_id,
-        cautela_id: cautelaId
+        cautela_id: cautelaId,
       },
     })
 
     processedCount++
   }
 
-  // 6. Atualizar status da cautela
-  const { data: updatedItems } = await supabase
-    .from("cautela_items")
-    .select("status, quantity_delivered, quantity_returned")
-    .eq("cautela_id", cautelaId)
-
-  const hasPartial = updatedItems?.some(i => i.status === "returned" && i.quantity_returned < i.quantity_delivered)
-  const allDone = updatedItems?.every(i => i.status !== "pending")
-
-  let cautelaStatus: "open" | "partial" | "closed" | "divergent" = "open"
-  if (allDone) {
-    cautelaStatus = hasPartial ? "divergent" : "closed"
-  } else {
-    cautelaStatus = "partial"
-  }
-
-  await supabase
-    .from("cautelas")
-    .update({
-      status: cautelaStatus,
-      closed_at: cautelaStatus === "closed" || cautelaStatus === "divergent" ? now : null
-    })
-    .eq("id", cautelaId)
-
-  if (cautelaStatus === "closed" || cautelaStatus === "divergent") {
-    const { data: operatorProfile } = await supabase
-      .from("profiles")
-      .select("name, email")
-      .eq("id", operatorId)
-      .single()
-
-    await logAudit({
-      action: "cautela_closed",
-      entity: "cautelas",
-      entity_id: cautelaId,
-      after_state: {
-        status: cautelaStatus,
-        closed_at: now,
-        operator_id: operatorId,
-        operator_name: operatorProfile?.name || operatorProfile?.email,
-        bulk_devolution: true,
-        items_total: updatedItems?.length,
-      },
-    })
-  }
+  await syncCautelaStatusFromItems(supabase, cautelaId, operatorId, now)
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")
@@ -686,16 +668,24 @@ export async function processBulkDevolution(
 
 // ===== BUSCAR PESSOAS (para autocomplete no wizard) =====
 export async function searchPersons(query: string) {
+  const q = sanitizeIlikeFragment(query.trim(), 80)
+  if (q.length < 2) return []
+
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("persons")
-    .select("id, full_name, rg, registration_number, function, status, rg_front_url, rg_back_url, face_descriptor")
+    .select(
+      "id, full_name, rg, registration_number, function, status, rg_front_url, rg_back_url, face_descriptor, pin_hash"
+    )
     .eq("status", "active")
-    .or(`full_name.ilike.%${query}%,rg.ilike.%${query}%,registration_number.ilike.%${query}%`)
+    .or(`full_name.ilike.%${q}%,rg.ilike.%${q}%,registration_number.ilike.%${q}%`)
     .limit(10)
 
   if (error) return []
-  return data
+  return (data ?? []).map(({ pin_hash, ...person }) => ({
+    ...person,
+    has_registered_pin: typeof pin_hash === "string" && pin_hash.length > 0,
+  }))
 }
 
 // ===== BUSCAR MATERIAIS DISPONÍVEIS =====
@@ -755,8 +745,8 @@ export async function searchMaterials(
   query: string,
   categoryNames?: string[]
 ): Promise<SearchableMaterial[]> {
-  const q = query.trim()
-  if (q.length < 1) return []
+  const raw = query.trim()
+  if (raw.length < 1) return []
 
   const supabase = await createClient()
   const select = "id, name, patrimony_number, serial_number, internal_code, category"
@@ -764,14 +754,17 @@ export async function searchMaterials(
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-  if (uuidPattern.test(q)) {
-    let qUuid = supabase.from("materials").select(select).eq("status", "available").eq("id", q).limit(5)
+  if (uuidPattern.test(raw)) {
+    let qUuid = supabase.from("materials").select(select).eq("status", "available").eq("id", raw).limit(5)
     if (categoryNames && categoryNames.length > 0) {
       qUuid = qUuid.in("category", categoryNames)
     }
     const { data } = await qUuid
     return (data ?? []) as SearchableMaterial[]
   }
+
+  const q = sanitizeIlikeFragment(raw, 80)
+  if (q.length < 1) return []
 
   let qText = supabase
     .from("materials")
@@ -788,6 +781,60 @@ export async function searchMaterials(
 
   if (error) return []
   return (data ?? []) as SearchableMaterial[]
+}
+
+/** Resolve carregador ou munição disponível compatível com a arma (pacote pistola/arma longa). */
+export async function resolvePackAccessoryForWeapon(
+  weaponId: string,
+  kind: "charger" | "ammunition"
+): Promise<{ material: SearchableMaterial | null; error?: string }> {
+  const idParsed = uuidSchema.safeParse(weaponId)
+  if (!idParsed.success) {
+    return { material: null, error: "Arma inválida" }
+  }
+
+  const supabase = await createClient()
+  const { data: weapon, error: weaponError } = await supabase
+    .from("materials")
+    .select("id, name, category, calibre")
+    .eq("id", weaponId)
+    .single()
+
+  if (weaponError || !weapon) {
+    return { material: null, error: "Arma não encontrada" }
+  }
+
+  const { data: candidates, error: listError } = await supabase
+    .from("materials")
+    .select("id, name, patrimony_number, serial_number, internal_code, category, calibre")
+    .eq("status", "available")
+    .or(packAccessoryAvailabilityFilter(kind))
+    .order("name")
+    .limit(50)
+
+  if (listError) {
+    return { material: null, error: listError.message }
+  }
+
+  const picked = pickPackAccessoryForWeapon(weapon, candidates ?? [], kind)
+  if (!picked) {
+    const label = kind === "charger" ? "carregador" : "munição"
+    return {
+      material: null,
+      error: `Não há ${label} disponível no cadastro compatível com esta arma. Cadastre ou libere o material em Materiais.`,
+    }
+  }
+
+  return {
+    material: {
+      id: picked.id,
+      name: picked.name,
+      patrimony_number: picked.patrimony_number ?? "",
+      serial_number: picked.serial_number,
+      internal_code: picked.internal_code ?? "",
+      category: picked.category ?? "",
+    },
+  }
 }
 
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====

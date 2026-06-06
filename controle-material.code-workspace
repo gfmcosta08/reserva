@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "RESERVA (código)",
+      "path": "."
+    },
+    {
+      "name": "PRD Obsidian",
+      "path": "docs/obsidian-prd"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.git": true
+    }
+  }
+}

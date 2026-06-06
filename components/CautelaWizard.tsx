@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
 import FaceVerification from "./FaceVerification"
 import { CautelaMaterialsStep, type MaterialLine } from "./cautela/CautelaMaterialsStep"
@@ -57,6 +57,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [searchResults, setSearchResults] = useState<Person[]>([])
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [searching, setSearching] = useState(false)
+  const personSearchSeq = useRef(0)
   const [photoWarning, setPhotoWarning] = useState(false)
   const [pendingCautelas, setPendingCautelas] = useState<any[]>([])
   const [loadingPending, setLoadingPending] = useState(false)
@@ -89,19 +90,26 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [pinError, setPinError] = useState("")
   const [useFace, setUseFace] = useState(true)
 
-  // Buscar pessoas
-  const handleSearch = async () => {
-    if (searchQuery.length < 2) return
-    setSearching(true)
-    try {
-      const results = await searchPersons(searchQuery)
-      setSearchResults(results)
-    } catch { /* ignore */ }
-    finally { setSearching(false) }
-  }
-
+  // Buscar pessoas (seq evita resposta antiga sobrescrever busca por matrícula/RG)
   useEffect(() => {
-    const timer = setTimeout(() => { if (searchQuery.length >= 2) handleSearch() }, 400)
+    const q = searchQuery.trim()
+    if (q.length < 2) {
+      setSearchResults([])
+      setSearching(false)
+      return
+    }
+    const seq = ++personSearchSeq.current
+    const timer = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const results = await searchPersons(q)
+        if (seq === personSearchSeq.current) setSearchResults(results)
+      } catch {
+        if (seq === personSearchSeq.current) setSearchResults([])
+      } finally {
+        if (seq === personSearchSeq.current) setSearching(false)
+      }
+    }, 400)
     return () => clearTimeout(timer)
   }, [searchQuery])
 

@@ -20,10 +20,10 @@ const GROUP_KEYWORDS: Record<CautelaMaterialGroup, string[]> = {
   charger: ["carregador", "pente"],
   ammunition: ["munição", "municao", "cartucho", "projétil", "projetil", "balote"],
   vest_plate: ["colete", "placa", "balístico", "balistico"],
-  radio_ht: ["rádio", "radio", "ht ", " ht", "comunicação", "comunicacao"],
+  radio_ht: ["rádio", "radio", "ht ", " ht", "comunicação", "comunicacao", "mobile"],
+  cellphone: ["celular", "smartphone", "telefone", "mobile"],
   taser_equipment: ["taser", "eletrochoque"],
   taser_ammo: ["cartucho taser", "munição taser", "municao taser", "taser cartucho"],
-  cellphone: ["celular", "smartphone", "telefone"],
   printer: ["impressora"],
 }
 

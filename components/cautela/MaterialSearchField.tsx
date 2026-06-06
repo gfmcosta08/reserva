@@ -34,6 +34,7 @@ export function MaterialSearchField({
   const [results, setResults] = useState<SearchableMaterial[]>([])
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const searchSeq = useRef(0)
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
@@ -44,16 +45,23 @@ export function MaterialSearchField({
   }, [])
 
   useEffect(() => {
-    if (q.trim().length < 1) {
+    const term = q.trim()
+    if (term.length < 1) {
       setResults([])
+      setLoading(false)
       return
     }
-    const t = setTimeout(() => {
+    const seq = ++searchSeq.current
+    const t = setTimeout(async () => {
       setLoading(true)
-      searchMaterials(q.trim(), categoryNames)
-        .then(setResults)
-        .catch(() => setResults([]))
-        .finally(() => setLoading(false))
+      try {
+        const rows = await searchMaterials(term, categoryNames)
+        if (seq === searchSeq.current) setResults(rows)
+      } catch {
+        if (seq === searchSeq.current) setResults([])
+      } finally {
+        if (seq === searchSeq.current) setLoading(false)
+      }
     }, 280)
     return () => clearTimeout(t)
   }, [q, categoryNames])

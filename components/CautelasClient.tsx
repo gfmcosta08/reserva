@@ -195,8 +195,10 @@ export default function CautelasClient() {
                     <Package className="h-3 w-3" />
                     {cautela.items_count || 0} ite{(cautela.items_count || 0) === 1 ? "m" : "ns"}
                   </span>
-                  {cautela.items_pending > 0 && (
-                    <span className="text-yellow-500">{cautela.items_pending} pendente(s)</span>
+                  {(cautela.items_with_balance ?? cautela.items_pending) > 0 && (
+                    <span className="text-yellow-500">
+                      {cautela.items_with_balance ?? cautela.items_pending} com saldo
+                    </span>
                   )}
                   {cautela.items_returned > 0 && (
                     <span className="text-green-500">{cautela.items_returned} devolvido(s)</span>

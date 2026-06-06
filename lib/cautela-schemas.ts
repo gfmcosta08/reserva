@@ -26,9 +26,10 @@ export const createCautelaFaceAuthInputSchema = z.object({
 
 const devolutionItemSchema = z.object({
   cautelaItemId: uuidSchema,
-  confirmed: z.boolean(),
+  confirmed: z.boolean().optional(),
   quantityReturned: z.number().optional(),
   notes: z.string().max(2000).optional(),
+  disposition: z.enum(["return", "damaged", "missing"]).optional(),
 })
 
 export const processBulkDevolutionInputSchema = z.object({

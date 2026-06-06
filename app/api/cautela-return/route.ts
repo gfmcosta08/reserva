@@ -1,6 +1,13 @@
 import { createClient } from "@/lib/supabase-server"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/app/actions/audit"
+import {
+  computeCautelaStatus,
+  itemNeedsReturn,
+  materialStatusAfterReturn,
+  qtyReturned,
+  resolveItemStatusAfterReturn,
+} from "@/lib/cautela-return-status"
 
 // ===== API: PROCESSAR DEVOLUÇÃO DE ITEM =====
 export async function POST(request: NextRequest) {
@@ -33,7 +40,7 @@ export async function POST(request: NextRequest) {
     // Buscar item
     const { data: item, error: itemError } = await supabase
       .from("cautela_items")
-      .select("id, material_id, cautela_id, status, quantity_delivered")
+      .select("id, material_id, cautela_id, status, quantity_delivered, quantity_returned")
       .eq("id", cautela_item_id)
       .single()
 
@@ -41,33 +48,51 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Item não encontrado" }, { status: 404 })
     }
 
-    if (item.status !== "pending") {
-      return NextResponse.json({ error: "Este item já foi processado" }, { status: 400 })
+    if (!itemNeedsReturn(item)) {
+      return NextResponse.json(
+        { error: "Este item já foi processado ou não possui saldo pendente" },
+        { status: 400 }
+      )
     }
 
-    // Validar quantidade
-    const qtyReturned = quantity_returned ?? item.quantity_delivered ?? 1
     const qtyDelivered = item.quantity_delivered || 1
+    const previousReturned = qtyReturned(item)
+    const qtyReturnedNew =
+      status === "damaged" || status === "missing"
+        ? 0
+        : (quantity_returned ?? qtyDelivered)
 
-    if (qtyReturned < 0 || qtyReturned > qtyDelivered) {
+    if (qtyReturnedNew < previousReturned) {
+      return NextResponse.json(
+        {
+          error: `Quantidade devolvida não pode ser menor que o já registrado (${previousReturned})`,
+        },
+        { status: 400 }
+      )
+    }
+
+    if (qtyReturnedNew < 0 || qtyReturnedNew > qtyDelivered) {
       return NextResponse.json(
         { error: `Quantidade inválida. Deve estar entre 0 e ${qtyDelivered}` },
         { status: 400 }
       )
     }
 
-    // Para danificado/extraviado, quantidade devolvida é 0
-    const finalQtyReturned = (status === "damaged" || status === "missing") ? 0 : qtyReturned
+    const finalQtyReturned = status === "damaged" || status === "missing" ? 0 : qtyReturnedNew
+    const itemStatus =
+      status === "damaged" || status === "missing"
+        ? status
+        : resolveItemStatusAfterReturn(finalQtyReturned, qtyDelivered)
+    const now = new Date().toISOString()
 
-    // Atualizar item
     const { error: updateItemError } = await supabase
       .from("cautela_items")
       .update({
-        status,
+        status: itemStatus,
         quantity_returned: finalQtyReturned,
         notes: notes || null,
-        returned_at: new Date().toISOString(),
-        returned_by: user.id
+        returned_at: now,
+        returned_by: user.id,
       })
       .eq("id", cautela_item_id)
 
@@ -75,65 +100,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateItemError.message }, { status: 500 })
     }
 
-    // Atualizar status do material
-    let materialStatus: string
-    switch (status) {
-      case "returned":
-        if (finalQtyReturned === qtyDelivered) {
-          materialStatus = "available"
-        } else {
-          materialStatus = "pending_return" // Devolução parcial - aguarda conferência
-        }
-        break
-      case "damaged":
-        materialStatus = "maintenance"
-        break
-      case "missing":
-        materialStatus = "unavailable"
-        break
-      default:
-        materialStatus = "available"
-    }
+    const materialStatus = materialStatusAfterReturn(
+      itemStatus as "pending" | "returned" | "damaged" | "missing",
+      finalQtyReturned,
+      qtyDelivered
+    )
+    await supabase.from("materials").update({ status: materialStatus }).eq("id", item.material_id)
 
-    await supabase
-      .from("materials")
-      .update({ status: materialStatus })
-      .eq("id", item.material_id)
-
-    // Verificar se todos os itens da cautela foram processados
     const { data: allItems } = await supabase
       .from("cautela_items")
       .select("status, quantity_delivered, quantity_returned")
       .eq("cautela_id", item.cautela_id)
 
-    const allDone = allItems?.every(i => i.status !== "pending")
+    const cautelaStatus = computeCautelaStatus(allItems || [])
+    const closedAt = cautelaStatus === "closed" || cautelaStatus === "divergent" ? now : null
 
-    if (allDone) {
-      // Verificar se há divergências
-      const hasDivergence = allItems?.some(i =>
-        i.status === "damaged" ||
-        i.status === "missing" ||
-        (i.quantity_returned !== undefined && i.quantity_returned < (i.quantity_delivered || 1))
-      )
-
-      const cautelaStatus = hasDivergence ? "divergent" : "closed"
-      await supabase
-        .from("cautelas")
-        .update({
-          status: cautelaStatus,
-          closed_at: new Date().toISOString()
-        })
-        .eq("id", item.cautela_id)
-    } else {
-      // Marcar como parcial se pelo menos um foi devolvido
-      const someReturned = allItems?.some(i => i.status !== "pending")
-      if (someReturned) {
-        await supabase
-          .from("cautelas")
-          .update({ status: "partial" })
-          .eq("id", item.cautela_id)
-      }
-    }
+    await supabase
+      .from("cautelas")
+      .update({ status: cautelaStatus, closed_at: closedAt })
+      .eq("id", item.cautela_id)
 
     // Audit log
     const auditAction = status === "returned" ? "item_returned" : status === "damaged" ? "item_damaged" : "item_missing"

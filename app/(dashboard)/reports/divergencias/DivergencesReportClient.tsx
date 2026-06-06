@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { getDivergenceReport, getDivergenceStats, type DivergenceReport } from "@/app/actions/divergences"
-import DashboardShell from "@/components/DashboardShell"
-import { Download, ShieldAlert, AlertTriangle, Package, XCircle, RotateCcw, Calendar, User, Clock, Filter } from "lucide-react"
+import { Download, ShieldAlert, AlertTriangle, Package, XCircle, RotateCcw, Calendar, Clock, Filter } from "lucide-react"
 
-export default function DivergencesReportClient({ user }: { user: { email: string; role: string } }) {
+export default function DivergencesReportClient() {
   const [report, setReport] = useState<DivergenceReport[]>([])
   const [stats, setStats] = useState<{
     totalDivergences: number
@@ -67,8 +66,7 @@ export default function DivergencesReportClient({ user }: { user: { email: strin
   }
 
   return (
-    <DashboardShell user={user}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -337,7 +335,6 @@ export default function DivergencesReportClient({ user }: { user: { email: strin
             ))}
           </div>
         )}
-      </div>
-    </DashboardShell>
+    </div>
   )
 }

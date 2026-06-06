@@ -1,0 +1,37 @@
+# Migrations no projeto teste_db — disparo manual (não afeta produção).
+# Configure secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_TEST_DB_PASSWORD
+# Opcional: SUPABASE_TEST_PROJECT_REF (default abaixo).
+
+name: Deploy Test DB
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - "supabase/migrations/**"
+
+env:
+  SUPABASE_TEST_PROJECT_REF: ajyvznrmbuistlcfckuh
+
+jobs:
+  migrate-test:
+    name: Supabase Migrations (teste_db)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply migrations to teste_db
+        run: |
+          REF="${{ secrets.SUPABASE_TEST_PROJECT_REF }}"
+          if [ -z "$REF" ]; then REF="${{ env.SUPABASE_TEST_PROJECT_REF }}"; fi
+          if [ -z "$REF" ]; then echo "Defina SUPABASE_TEST_PROJECT_REF (secret ou env do workflow)"; exit 1; fi
+          supabase db push --project-ref "$REF" --password "$SUPABASE_TEST_DB_PASSWORD"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_TEST_DB_PASSWORD: ${{ secrets.SUPABASE_TEST_DB_PASSWORD }}

@@ -1,13 +1,27 @@
-name: Deploy
+# Migrations em PRODUÇÃO (reserva1bpmto — ref mxlgkpfiugbodocyleij).
+#
+# GATE M0: não aplica migrations automaticamente no push.
+# Fluxo recomendado:
+#   1. Aplicar migrations em teste_db → workflow "Deploy Test DB" (ou push manual)
+#   2. Validar CI (build + test + E2E opcional)
+#   3. Disparar ESTE workflow manualmente com confirmação explícita
+#
+# Teste: ref ajyvznrmbuistlcfckuh — ver docs/AMBIENTE-TESTE.md
+
+name: Deploy Production Migrations
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Digite MIGRATE para aplicar db push em PRODUÇÃO"
+        required: true
+        type: string
 
 jobs:
   migrate:
-    name: Supabase Migrations
+    name: Supabase Migrations (produção)
+    if: github.event.inputs.confirm == 'MIGRATE'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +30,18 @@ jobs:
         with:
           version: latest
 
-      - name: Apply migrations
-        run: supabase db push --project-ref chguaozitzwfsmqyhreb --password "$SUPABASE_DB_PASSWORD"
+      - name: Apply migrations to production
+        run: supabase db push --project-ref mxlgkpfiugbodocyleij --password "$SUPABASE_DB_PASSWORD"
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+  gate-rejected:
+    name: Confirmação inválida
+    if: github.event.inputs.confirm != 'MIGRATE'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Abort
+        run: |
+          echo "::error::Confirmação incorreta. Digite exatamente MIGRATE para aplicar em produção."
+          exit 1

@@ -1,13 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getCautelaById, returnItem } from "@/app/actions/cautelas"
+import { getCautelaById } from "@/app/actions/cautelas"
 import CautelaReturnFlow from "./CautelaReturnFlow"
 import RenewalModal from "./RenewalModal"
 import {
-  X, Package, Check, AlertTriangle, Loader2,
-  RotateCcw, Ban, Clock, CheckCircle, User, ArrowRight, RefreshCw
+  X, Loader2,
+  RotateCcw, User, ArrowRight, RefreshCw
 } from "lucide-react"
+import { CautelaDetailItemByBucket, type CautelaItemLineBase } from "@/components/cautela/CautelaItemBucketList"
+import { formatPendingBucketSummary, hasOnlyWeaponInventory } from "@/lib/cautela-summary-buckets"
+import { itemBalance, itemNeedsReturn } from "@/lib/cautela-return-status"
 
 interface CautelaDetailProps {
   cautelaId: string
@@ -21,7 +24,6 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   const [loading, setLoading] = useState(true)
   const [showReturnFlow, setShowReturnFlow] = useState(false)
   const [showRenewal, setShowRenewal] = useState(false)
-  const [returning, setReturning] = useState<string | null>(null)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -40,29 +42,10 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     setLoading(false)
   }
 
-  const handleReturn = async (itemId: string, status: "returned" | "damaged" | "missing") => {
-    setReturning(itemId)
-    const result = await returnItem(itemId, status)
-    if (result.error) {
-      alert(result.error)
-    } else {
-      await loadData()
-      onUpdate()
-    }
-    setReturning(null)
-  }
-
   const handleReturnFlowComplete = () => {
     setShowReturnFlow(false)
     loadData()
     onUpdate()
-  }
-
-  const statusMap: Record<string, { label: string; color: string; icon: any }> = {
-    pending: { label: "Pendente", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20", icon: Clock },
-    returned: { label: "Devolvido", color: "text-green-400 bg-green-500/10 border-green-500/20", icon: CheckCircle },
-    damaged: { label: "Danificado", color: "text-red-400 bg-red-500/10 border-red-500/20", icon: AlertTriangle },
-    missing: { label: "Extraviado", color: "text-red-500 bg-red-500/10 border-red-500/20", icon: Ban },
   }
 
   const cautelaStatusMap: Record<string, { label: string; color: string }> = {
@@ -72,9 +55,29 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     divergent: { label: "Divergente", color: "text-red-400 bg-red-500/10" },
   }
 
-  // Contadores
-  const pendingItems = items.filter(i => i.status === "pending")
-  const processedItems = items.filter(i => i.status !== "pending")
+  const actionableItems = items.filter((i) => itemNeedsReturn(i))
+
+  const itemLines: CautelaItemLineBase[] = items.map((item: any) => ({
+    id: item.id,
+    material_name: item.materials?.name || "Material",
+    patrimony_number: item.materials?.patrimony_number || "—",
+    serial_number: item.materials?.serial_number || "—",
+    internal_code: item.materials?.internal_code || "—",
+    category_name: item.materials?.category || "",
+    quantity_delivered: item.quantity_delivered || 1,
+    quantity_returned: item.quantity_returned || 0,
+    status: item.status,
+  }))
+
+  const showLegacyWeaponHint = hasOnlyWeaponInventory(itemLines)
+  const balanceSummary = items
+    .filter((i) => itemNeedsReturn(i))
+    .map((i) => {
+      const name = i.materials?.name || "Item"
+      const bal = itemBalance(i)
+      return `${name} (${bal} un.)`
+    })
+    .join(", ")
 
   if (loading) {
     return (
@@ -93,12 +96,19 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
     )
   }
 
-  // Se estiver no fluxo de devolução, mostrar componente de retorno
-  if (showReturnFlow && pendingItems.length > 0) {
+  if (showReturnFlow && actionableItems.length > 0) {
     return (
       <CautelaReturnFlow
         cautelaId={cautelaId}
         items={items}
+        context={{
+          personName: cautela.persons?.full_name || "Cautelado",
+          personRg: cautela.persons?.rg,
+          personMatricula: cautela.persons?.registration_number,
+          cautelaType: cautela.type === "permanent" ? "permanent" : "daily",
+          cautelaNotes: cautela.notes,
+          cautelaCreatedAt: cautela.created_at,
+        }}
         onClose={() => setShowReturnFlow(false)}
         onUpdate={handleReturnFlowComplete}
       />
@@ -109,7 +119,6 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
 
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-2xl w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto">
-      {/* Header */}
       <div className="px-5 py-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold text-white">Detalhes da Cautela</h2>
@@ -119,7 +128,6 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
       </div>
 
       <div className="p-5 space-y-5">
-        {/* Info da Pessoa */}
         <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
@@ -140,10 +148,18 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
             Aberta em: {new Date(cautela.created_at).toLocaleString("pt-BR")}
             {cautela.closed_at && <span> • Fechada em: {new Date(cautela.closed_at).toLocaleString("pt-BR")}</span>}
           </p>
-          {cautela.notes && <p className="mt-2 text-xs text-slate-400 italic">"{cautela.notes}"</p>}
+          {cautela.notes && <p className="mt-2 text-xs text-slate-400 italic">&quot;{cautela.notes}&quot;</p>}
         </div>
 
-        {/* Actions */}
+        {cautela.status === "divergent" && (
+          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-xs text-red-300">
+              Cautela <strong>divergente</strong>: há item(ns) danificado(s) ou extraviado(s). Itens com saldo
+              ainda podem ser devolvidos pelo botão abaixo.
+            </p>
+          </div>
+        )}
+
         {(cautela.status === "open" || cautela.status === "partial") && (
           <button
             onClick={() => setShowRenewal(true)}
@@ -154,105 +170,53 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
           </button>
         )}
 
-        {/* Itens */}
         <div>
           <div className="flex justify-between items-center mb-3">
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Itens ({items.length})
             </p>
-            {pendingItems.length > 0 && (
+            {actionableItems.length > 0 && (
               <button
                 onClick={() => setShowReturnFlow(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors"
               >
                 <RotateCcw className="h-3 w-3" />
-                Devolver ({pendingItems.length})
+                Continuar devolução ({actionableItems.length})
                 <ArrowRight className="h-3 w-3" />
               </button>
             )}
           </div>
 
-          <div className="space-y-2">
-            {items.map((item: any) => {
-              const s = statusMap[item.status] || statusMap.pending
-              const Icon = s.icon
-              const isPending = item.status === "pending"
-              const isReturning = returning === item.id
+          {balanceSummary && (
+            <p className="text-xs text-yellow-400/90 mb-2">
+              Saldo pendente: {balanceSummary}
+            </p>
+          )}
 
-              // Calcular pendência se houver
-              const qtyDelivered = item.quantity_delivered || 1
-              const qtyReturned = item.quantity_returned || 0
-              const hasPartialReturn = qtyReturned > 0 && qtyReturned < qtyDelivered
+          <p className="text-xs text-slate-500 mb-2">
+            Resumo: <span className="text-slate-300">{formatPendingBucketSummary(itemLines)}</span>
+          </p>
 
-              return (
-                <div key={item.id} className={`p-3 rounded-xl border transition-all ${
-                  isPending ? "bg-slate-950 border-slate-800" : `bg-slate-950/50 border-slate-800/50`
-                }`}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <Package className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-white">{item.materials?.name}</p>
-                        <p className="text-[10px] text-slate-500">
-                          Pat: {item.materials?.patrimony_number} • Cód: {item.materials?.internal_code}
-                          {item.materials?.category && <span> • {item.materials.category}</span>}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border flex items-center gap-1 ${s.color}`}>
-                        <Icon className="h-3 w-3" />
-                        {s.label}
-                      </span>
-                      {/* Mostrar quantidade se > 1 */}
-                      {(qtyDelivered > 1 || qtyReturned > 0) && (
-                        <p className="text-[9px] text-slate-500 mt-1">
-                          {qtyReturned}/{qtyDelivered} devolvidos
-                          {hasPartialReturn && <span className="text-yellow-400"> (pendência: {qtyDelivered - qtyReturned})</span>}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+          {showLegacyWeaponHint && (
+            <div className="p-3 mb-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p className="text-xs text-amber-300">
+                Só uma arma listada — verifique carregadores/munição no cadastro.
+              </p>
+            </div>
+          )}
 
-                  {/* Ações rápidas para item pendente (via velho fluxo) */}
-                  {isPending && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-slate-800/50">
-                      <button
-                        onClick={() => handleReturn(item.id, "returned")}
-                        disabled={isReturning}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold border border-green-500/20 hover:bg-green-500/20 disabled:opacity-50"
-                      >
-                        {isReturning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                        OK
-                      </button>
-                      <button
-                        onClick={() => handleReturn(item.id, "damaged")}
-                        disabled={isReturning}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs font-bold border border-yellow-500/20 hover:bg-yellow-500/20 disabled:opacity-50"
-                      >
-                        <AlertTriangle className="h-3 w-3" />
-                        Danif.
-                      </button>
-                      <button
-                        onClick={() => handleReturn(item.id, "missing")}
-                        disabled={isReturning}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-bold border border-red-500/20 hover:bg-red-500/20 disabled:opacity-50"
-                      >
-                        <Ban className="h-3 w-3" />
-                        Extra.
-                      </button>
-                    </div>
-                  )}
-
-                  {item.notes && <p className="mt-2 text-[10px] text-slate-500 italic">Obs: {item.notes}</p>}
-                </div>
-              )
-            })}
-          </div>
+          <CautelaDetailItemByBucket
+            lines={itemLines}
+            renderActions={(line) => {
+              const item = items.find((i: any) => i.id === line.id)
+              return item?.notes ? (
+                <p className="mt-2 text-[10px] text-slate-500 italic">Obs: {item.notes}</p>
+              ) : null
+            }}
+          />
         </div>
       </div>
 
-      {/* Modal de Renovação */}
       {showRenewal && cautela && (
         <RenewalModal
           cautela={cautela}
