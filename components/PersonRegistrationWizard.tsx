@@ -1,7 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { createPerson, uploadRgPhoto } from "@/app/actions/persons"
+import { useState, useEffect, useMemo } from "react"
+import { createPerson, regularizePerson, uploadRgPhoto } from "@/app/actions/persons"
+import {
+  personMissingFace,
+  personMissingRgPhotos,
+} from "@/lib/person-registration-status"
 import imageCompression from "browser-image-compression"
 import { 
   Check, X, UserPlus, Fingerprint, Loader2,
@@ -10,10 +14,25 @@ import {
 } from "lucide-react"
 import FaceRegistration from "./FaceRegistration"
 
+export type PersonWizardEditTarget = {
+  id: string
+  full_name: string
+  email: string
+  rg: string
+  registration_number: string
+  function?: string | null
+  phone?: string | null
+  rg_front_url?: string | null
+  rg_back_url?: string | null
+  face_descriptor?: number[] | null
+}
+
 interface PersonWizardProps {
   onSuccess: () => void
   onCancel: () => void
   initialData?: { rg?: string; name?: string }
+  /** Quando informado, abre em modo regularização (cadastro existente). */
+  person?: PersonWizardEditTarget
 }
 
 const STEPS = [
@@ -32,8 +51,17 @@ async function compressImage(file: File): Promise<File> {
   })
 }
 
-export default function PersonRegistrationWizard({ onSuccess, onCancel, initialData }: PersonWizardProps) {
-  const [step, setStep] = useState(1)
+export default function PersonRegistrationWizard({ onSuccess, onCancel, initialData, person }: PersonWizardProps) {
+  const isRegularize = !!person
+
+  const initialStep = useMemo(() => {
+    if (!person) return 1
+    if (personMissingRgPhotos(person)) return 1
+    if (personMissingFace(person)) return 4
+    return 2
+  }, [person])
+
+  const [step, setStep] = useState(initialStep)
   const [loading, setLoading] = useState(false)
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrStatus, setOcrStatus] = useState("")
@@ -51,6 +79,23 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
     face_descriptor: [] as number[],
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!person) return
+    setStep(initialStep)
+    setFormData({
+      full_name: person.full_name || "",
+      email: person.email || "",
+      rg: person.rg || "",
+      registration_number: person.registration_number || "",
+      function: person.function || "",
+      pin: "",
+      face_descriptor: person.face_descriptor?.length ? [...person.face_descriptor] : [],
+      phone: person.phone || "",
+    } as typeof formData & { phone: string })
+    setFrontPreview(person.rg_front_url || "")
+    setBackPreview(person.rg_back_url || "")
+  }, [person, initialStep])
 
   // ===== OCR VIA API SERVER-SIDE =====
   const runServerOCR = async (file: File) => {
@@ -129,7 +174,7 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
 
   const handleNextStep = () => {
     if (step === 1) setStep(2)
-    else if (step === 2 && validateData()) setStep(3)
+    else if (step === 2 && validateData()) setStep(isRegularize ? 4 : 3)
     else if (step === 3 && formData.pin.length === 4) setStep(4)
   }
 
@@ -154,9 +199,29 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
         if (r.error) { alert(r.error); setLoading(false); return }
         backUrl = r.url
       }
-      const result = await createPerson({ ...formData, rg_front_url: frontUrl, rg_back_url: backUrl })
-      if (result.success) onSuccess()
-      else alert(result.error)
+      if (isRegularize && person) {
+        const result = await regularizePerson(person.id, {
+          full_name: formData.full_name,
+          email: formData.email,
+          function: formData.function || undefined,
+          phone: (formData as { phone?: string }).phone || undefined,
+          pin: formData.pin.length === 4 ? formData.pin : undefined,
+          face_descriptor: formData.face_descriptor.length ? formData.face_descriptor : undefined,
+          rg_front_url: frontUrl,
+          rg_back_url: backUrl,
+        })
+        if (result.success) onSuccess()
+        else alert(result.error)
+      } else {
+        if (formData.pin.length !== 4) {
+          alert("Informe um PIN de 4 dígitos")
+          setLoading(false)
+          return
+        }
+        const result = await createPerson({ ...formData, rg_front_url: frontUrl, rg_back_url: backUrl })
+        if (result.success) onSuccess()
+        else alert(result.error)
+      }
     } catch (err: any) {
       alert("Erro: " + err.message)
     } finally {
@@ -191,7 +256,10 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden max-w-2xl w-full mx-auto shadow-2xl max-h-[90vh] overflow-y-auto">
       <div className="px-5 py-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 sticky top-0 z-10">
-        <h2 className="text-lg font-bold text-white flex items-center gap-2"><UserPlus className="h-5 w-5 text-blue-500" /> Novo Cadastro</h2>
+        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          <UserPlus className="h-5 w-5 text-blue-500" />
+          {isRegularize ? "Regularizar Cadastro" : "Novo Cadastro"}
+        </h2>
         <button onClick={onCancel} className="text-slate-400 hover:text-white p-1"><X className="h-5 w-5" /></button>
       </div>
 
@@ -214,7 +282,11 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
           <div className="space-y-5">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-white">Documento de Identificação</h3>
-              <p className="text-slate-400 text-sm">Fotografe frente e verso do documento em qualquer ordem. <span className="text-yellow-500 font-medium">Opcional agora, alertado na cautela.</span></p>
+              <p className="text-slate-400 text-sm">
+                {isRegularize
+                  ? "Anexe as fotos que ainda faltam. As já cadastradas permanecem no sistema."
+                  : <>Fotografe frente e verso do documento em qualquer ordem. <span className="text-yellow-500 font-medium">Opcional agora, alertado na cautela.</span></>}
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <PhotoUploadBox side="front" preview={frontPreview} label="📄 Imagem 1 do Documento" />
@@ -240,6 +312,11 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
             <button onClick={handleNextStep} disabled={loading}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50"
             >Próximo: Dados Pessoais <ChevronRight className="h-4 w-4" /></button>
+            {isRegularize && person?.rg_front_url && person?.rg_back_url && (
+              <button type="button" onClick={() => setStep(2)} className="w-full text-xs text-slate-500 hover:text-slate-300 underline">
+                Fotos já completas — ir para dados
+              </button>
+            )}
           </div>
         )}
 
@@ -265,14 +342,14 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">RG (números) *</label>
-                <input type="text" value={formData.rg} onChange={e => setFormData({...formData, rg: e.target.value})}
-                  className={`mt-1 block w-full rounded-lg border bg-slate-900 px-4 py-2.5 text-white focus:ring-1 focus:ring-blue-500 ${errors.rg ? "border-red-500" : "border-slate-800"}`} />
+                <input type="text" value={formData.rg} readOnly={isRegularize} onChange={e => setFormData({...formData, rg: e.target.value})}
+                  className={`mt-1 block w-full rounded-lg border bg-slate-900 px-4 py-2.5 text-white focus:ring-1 focus:ring-blue-500 ${errors.rg ? "border-red-500" : "border-slate-800"} ${isRegularize ? "opacity-70 cursor-not-allowed" : ""}`} />
                 {errors.rg && <p className="text-xs text-red-500 mt-1">{errors.rg}</p>}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Matrícula *</label>
-                <input type="text" value={formData.registration_number} onChange={e => setFormData({...formData, registration_number: e.target.value})}
-                  className={`mt-1 block w-full rounded-lg border bg-slate-900 px-4 py-2.5 text-white focus:ring-1 focus:ring-blue-500 ${errors.registration_number ? "border-red-500" : "border-slate-800"}`} />
+                <input type="text" value={formData.registration_number} readOnly={isRegularize} onChange={e => setFormData({...formData, registration_number: e.target.value})}
+                  className={`mt-1 block w-full rounded-lg border bg-slate-900 px-4 py-2.5 text-white focus:ring-1 focus:ring-blue-500 ${errors.registration_number ? "border-red-500" : "border-slate-800"} ${isRegularize ? "opacity-70 cursor-not-allowed" : ""}`} />
                 {errors.registration_number && <p className="text-xs text-red-500 mt-1">{errors.registration_number}</p>}
               </div>
               <div>
@@ -290,14 +367,14 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
               <button onClick={handleNextStep} className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500">
-                Próximo: PIN <ChevronRight className="h-4 w-4" />
+                {isRegularize ? <>Próximo: Biometria <ChevronRight className="h-4 w-4" /></> : <>Próximo: PIN <ChevronRight className="h-4 w-4" /></>}
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3: PIN */}
-        {step === 3 && (
+        {/* STEP 3: PIN (somente cadastro novo) */}
+        {step === 3 && !isRegularize && (
           <div className="space-y-6 text-center max-w-xs mx-auto">
             <div className="flex justify-center">
               <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500/20">
@@ -330,14 +407,18 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
           <div className="space-y-5">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-white">Biometria Facial</h3>
-              <p className="text-slate-400 text-sm">Capture o rosto para usar como <span className="text-blue-400 font-medium">assinatura nas cautelas</span>.</p>
+              <p className="text-slate-400 text-sm">
+                {isRegularize
+                  ? "Cadastre ou atualize a biometria para assinar cautelas com reconhecimento facial."
+                  : <>Capture o rosto para usar como <span className="text-blue-400 font-medium">assinatura nas cautelas</span>.</>}
+              </p>
             </div>
             <FaceRegistration onCapture={d => setFormData({...formData, face_descriptor: d})} />
             <div className="flex gap-3">
-              <button onClick={() => setStep(3)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
+              <button onClick={() => setStep(isRegularize ? 2 : 3)} className="flex-1 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-bold text-slate-400 hover:text-white">Voltar</button>
               <button onClick={handleSubmit} disabled={loading}
                 className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50">
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />} Concluir Cadastro
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle className="h-5 w-5" />} {isRegularize ? "Salvar regularização" : "Concluir Cadastro"}
               </button>
             </div>
             {formData.face_descriptor.length === 0 && (

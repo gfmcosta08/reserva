@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-05-22T16:29:12.200Z",
-  "sourceFile": "D:\\Sistemas\\Controle de material\\scripts\\import\\cautelados-1bpm-source.csv",
-  "format": "csv",
-  "importableCount": 145,
-  "skippedCount": 33,
+  "generatedAt": "2026-06-06T15:43:40.536Z",
+  "sourceFile": "D:\\Sistemas\\Controle de material\\scripts\\import\\cautelados-1bpm-atualizada-2026-06-06.docx",
+  "format": "docx",
+  "importableCount": 141,
+  "skippedCount": 104,
   "rows": [
     {
       "skip": false,
-      "lineNo": 2,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 3,
+      "categoria": "Geral",
       "patente": "TC",
       "rgRaw": "04.665/1",
       "registration_number": "046651",
@@ -23,17 +23,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "16/12/2021",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 3,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 4,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.953/2",
       "registration_number": "049532",
@@ -48,17 +50,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "17/12/2021",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 4,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 5,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.310/2",
       "registration_number": "053102",
@@ -73,18 +77,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "06/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 5,
-      "categoria": "PISTOLAS GLOCK 9MM",
-      "patente": "1º SGT",
+      "lineNo": 6,
+      "categoria": "Geral",
+      "patente": "1� SGT",
       "rgRaw": "06.121/2",
       "registration_number": "061212",
       "rg": "06121",
@@ -98,18 +104,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "06/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 6,
-      "categoria": "PISTOLAS GLOCK 9MM",
-      "patente": "3º SGT",
+      "lineNo": 7,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.551/2",
       "registration_number": "065512",
       "rg": "06551",
@@ -123,18 +131,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "06/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 7,
-      "categoria": "PISTOLAS GLOCK 9MM",
-      "patente": "3º SGT",
+      "lineNo": 8,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.427/3",
       "registration_number": "064273",
       "rg": "06427",
@@ -148,17 +158,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "06/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 8,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 9,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "06.026/2",
       "registration_number": "060262",
@@ -172,18 +184,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "16/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 9,
-      "categoria": "PISTOLAS GLOCK 9MM",
-      "patente": "3º SGT",
+      "lineNo": 10,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.383/3",
       "registration_number": "063833",
       "rg": "06383",
@@ -197,17 +211,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "06/01/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 10,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 11,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "06.841/4",
       "registration_number": "068414",
@@ -221,17 +237,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "09/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 11,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 12,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.151/4",
       "registration_number": "071514",
@@ -245,22 +263,24 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "14/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 12,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 13,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.133/2",
       "registration_number": "071332",
       "rg": "07133",
-      "full_name": "FELÍCIO",
+      "full_name": "FEL�CIO",
       "serial_raw": "55",
       "serial_variants": [
         "55",
@@ -270,17 +290,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "02/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 13,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 14,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.234/4",
       "registration_number": "072344",
@@ -295,17 +317,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "31/03/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 14,
-      "categoria": "PISTOLAS GLOCK 9MM",
+      "lineNo": 15,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "06.890/4",
       "registration_number": "068904",
@@ -319,18 +343,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "11/08/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 15,
-      "categoria": "PISTOLAS GLOCK 9MM",
-      "patente": "3º SGT",
+      "lineNo": 16,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.421/2",
       "registration_number": "064212",
       "rg": "06421",
@@ -344,17 +370,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "ALI",
       "data": "19/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 17,
-      "categoria": "CAUTELADA",
+      "lineNo": 21,
+      "categoria": "Geral",
       "patente": "TEN",
       "rgRaw": "04.886/2",
       "registration_number": "048862",
@@ -373,12 +401,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "20/09/2021",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 18,
-      "categoria": "CAUTELADA",
+      "lineNo": 22,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.793/2",
       "registration_number": "047932",
@@ -397,17 +427,19 @@
       "tamanho": null,
       "destino": "FT",
       "data": "19/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 19,
-      "categoria": "CAUTELADA",
-      "patente": "3º SGT",
+      "lineNo": 23,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.621/2",
       "registration_number": "066212",
       "rg": "06621",
-      "full_name": "FRANÇA",
+      "full_name": "FRAN�A",
       "serial_raw": "363",
       "serial_variants": [
         "363",
@@ -421,12 +453,14 @@
       "tamanho": null,
       "destino": "FT ADM",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 20,
-      "categoria": "CAUTELADA",
+      "lineNo": 24,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "06.009/2",
       "registration_number": "060092",
@@ -445,13 +479,15 @@
       "tamanho": null,
       "destino": "FT",
       "data": "08/02/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 21,
-      "categoria": "CAUTELADA",
-      "patente": "3ºSGT",
+      "lineNo": 25,
+      "categoria": "Geral",
+      "patente": "3�SGT",
       "rgRaw": "06.615/2",
       "registration_number": "066152",
       "rg": "06615",
@@ -469,12 +505,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "18/11/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 22,
-      "categoria": "CAUTELADA",
+      "lineNo": 26,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.253/4",
       "registration_number": "072534",
@@ -493,12 +531,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "09/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 23,
-      "categoria": "CAUTELADA",
+      "lineNo": 27,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.087/4",
       "registration_number": "070874",
@@ -517,12 +557,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "09/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 24,
-      "categoria": "CAUTELADA",
+      "lineNo": 28,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.376/4",
       "registration_number": "073764",
@@ -541,12 +583,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "09/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 25,
-      "categoria": "CAUTELADA",
+      "lineNo": 29,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.071/4",
       "registration_number": "070714",
@@ -565,12 +609,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "01/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 26,
-      "categoria": "CAUTELADA",
+      "lineNo": 30,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.052/4",
       "registration_number": "070524",
@@ -589,12 +635,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "02/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 27,
-      "categoria": "CAUTELADA",
+      "lineNo": 31,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.053/4",
       "registration_number": "070534",
@@ -613,12 +661,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "02/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 28,
-      "categoria": "CAUTELADA",
+      "lineNo": 32,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.067/4",
       "registration_number": "070674",
@@ -637,12 +687,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "20/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 29,
-      "categoria": "CAUTELADA",
+      "lineNo": 33,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.244/4",
       "registration_number": "072444",
@@ -661,12 +713,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "21/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 30,
-      "categoria": "CAUTELADA",
+      "lineNo": 34,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.516/4",
       "registration_number": "075164",
@@ -685,12 +739,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "07/11/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 31,
-      "categoria": "CAUTELADA",
+      "lineNo": 35,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.126/4",
       "registration_number": "071264",
@@ -709,12 +765,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "26/03/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 32,
-      "categoria": "CAUTELADA",
+      "lineNo": 36,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "06.964",
       "registration_number": "06964",
@@ -733,12 +791,14 @@
       "tamanho": null,
       "destino": "FT",
       "data": "11/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 33,
-      "categoria": "CAUTELADA",
+      "lineNo": 40,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.971/2",
       "registration_number": "059712",
@@ -757,12 +817,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 34,
-      "categoria": "CAUTELADA",
+      "lineNo": 41,
+      "categoria": "Geral",
       "patente": "SGT",
       "rgRaw": "05.821/2",
       "registration_number": "058212",
@@ -781,12 +843,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 35,
-      "categoria": "CAUTELADA",
+      "lineNo": 42,
+      "categoria": "Geral",
       "patente": "SGT",
       "rgRaw": "06.203/2",
       "registration_number": "062032",
@@ -805,12 +869,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 36,
-      "categoria": "CAUTELADA",
+      "lineNo": 43,
+      "categoria": "Geral",
       "patente": "SGT",
       "rgRaw": "06.134/2",
       "registration_number": "061342",
@@ -829,12 +895,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "12/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 37,
-      "categoria": "CAUTELADA",
+      "lineNo": 44,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.905/2",
       "registration_number": "049052",
@@ -853,12 +921,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "14/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 38,
-      "categoria": "CAUTELADA",
+      "lineNo": 45,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "06.014/2",
       "registration_number": "060142",
@@ -877,13 +947,15 @@
       "tamanho": null,
       "destino": "RP",
       "data": "15/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 39,
-      "categoria": "CAUTELADA",
-      "patente": "1º SGT",
+      "lineNo": 46,
+      "categoria": "Geral",
+      "patente": "1� SGT",
       "rgRaw": "06.217/2",
       "registration_number": "062172",
       "rg": "06217",
@@ -903,12 +975,14 @@
       "tamanho": null,
       "destino": "GDA",
       "data": "16/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 40,
-      "categoria": "CAUTELADA",
+      "lineNo": 47,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.872/2",
       "registration_number": "058722",
@@ -927,12 +1001,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "13/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 41,
-      "categoria": "CAUTELADA",
+      "lineNo": 48,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.494/2",
       "registration_number": "044942",
@@ -951,13 +1027,15 @@
       "tamanho": null,
       "destino": "RP",
       "data": "14/02/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 46,
-      "categoria": "CAUTELADA",
-      "patente": "3ºSGT",
+      "lineNo": 53,
+      "categoria": "Geral",
+      "patente": "3�SGT",
       "rgRaw": "06.771/2",
       "registration_number": "067712",
       "rg": "06771",
@@ -973,14 +1051,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "17/07/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 47,
-      "categoria": "CAUTELADA",
+      "lineNo": 54,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.870",
       "registration_number": "05870",
@@ -997,14 +1077,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "05/01/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 48,
-      "categoria": "CAUTELADA",
+      "lineNo": 58,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.929/2",
       "registration_number": "059292",
@@ -1023,12 +1105,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 49,
-      "categoria": "CAUTELADA",
+      "lineNo": 59,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.882/2",
       "registration_number": "058822",
@@ -1049,12 +1133,14 @@
       "tamanho": null,
       "destino": "RP",
       "data": "12/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 50,
-      "categoria": "CAUTELADA",
+      "lineNo": 60,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.472/2",
       "registration_number": "044722",
@@ -1073,12 +1159,14 @@
       "tamanho": null,
       "destino": "GDA",
       "data": "14/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 51,
-      "categoria": "CAUTELADA",
+      "lineNo": 61,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.989/2",
       "registration_number": "059892",
@@ -1097,12 +1185,14 @@
       "tamanho": null,
       "destino": "GDA",
       "data": "14/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 52,
-      "categoria": "CAUTELADA",
+      "lineNo": 62,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.368/2",
       "registration_number": "043682",
@@ -1123,12 +1213,14 @@
       "tamanho": null,
       "destino": "GDA",
       "data": "19/04/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 55,
-      "categoria": "CAUTALADA",
+      "lineNo": 68,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.952/2",
       "registration_number": "059522",
@@ -1147,12 +1239,14 @@
       "tamanho": null,
       "destino": "P RURAL",
       "data": "13/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 56,
-      "categoria": "CAUTALADA",
+      "lineNo": 69,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.569/4",
       "registration_number": "075694",
@@ -1171,12 +1265,14 @@
       "tamanho": null,
       "destino": "P RURAL",
       "data": "05/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 57,
-      "categoria": "CAUTALADA",
+      "lineNo": 70,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.271/2",
       "registration_number": "052712",
@@ -1195,12 +1291,14 @@
       "tamanho": null,
       "destino": "P RURAL",
       "data": "07/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 58,
-      "categoria": "CAUTALADA",
+      "lineNo": 71,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.009/4",
       "registration_number": "070094",
@@ -1219,17 +1317,19 @@
       "tamanho": null,
       "destino": "PTRAM",
       "data": "21/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 59,
-      "categoria": "CAUTALADA",
+      "lineNo": 72,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "06.142/4",
       "registration_number": "061424",
       "rg": "06142",
-      "full_name": "DE FRANÇA",
+      "full_name": "DE FRAN�A",
       "serial_raw": "302",
       "serial_variants": [
         "302",
@@ -1243,12 +1343,14 @@
       "tamanho": null,
       "destino": "PTRAM",
       "data": "21/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 60,
-      "categoria": "CAUTALADA",
+      "lineNo": 73,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.015/4",
       "registration_number": "070154",
@@ -1267,12 +1369,14 @@
       "tamanho": null,
       "destino": "PTRAM",
       "data": "04/09/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 61,
-      "categoria": "CAUTALADA",
+      "lineNo": 74,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.200/4",
       "registration_number": "072004",
@@ -1291,12 +1395,14 @@
       "tamanho": null,
       "destino": "P RURAL",
       "data": "21/01/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 62,
-      "categoria": "CAUTALADA",
+      "lineNo": 75,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.272",
       "registration_number": "07272",
@@ -1315,12 +1421,14 @@
       "tamanho": null,
       "destino": "P.RURAL",
       "data": "20/10/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 63,
-      "categoria": "CAUTELADA",
+      "lineNo": 79,
+      "categoria": "Geral",
       "patente": "TC",
       "rgRaw": "05.127",
       "registration_number": "05127",
@@ -1337,14 +1445,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "CMT 1º",
+      "destino": "CMT 1�",
       "data": "16/12/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 65,
-      "categoria": "CAUTELADA",
+      "lineNo": 81,
+      "categoria": "Geral",
       "patente": "MAJ",
       "rgRaw": "06.056/1",
       "registration_number": "060561",
@@ -1361,14 +1471,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "13/02/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 66,
-      "categoria": "CAUTELADA",
+      "lineNo": 82,
+      "categoria": "Geral",
       "patente": "MAJ",
       "rgRaw": "05.560",
       "registration_number": "05560",
@@ -1385,14 +1497,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "16/10/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 67,
-      "categoria": "CAUTELADA",
+      "lineNo": 83,
+      "categoria": "Geral",
       "patente": "TEN",
       "rgRaw": "04.355/1",
       "registration_number": "043551",
@@ -1409,14 +1523,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "15/02/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 68,
-      "categoria": "CAUTELADA",
+      "lineNo": 84,
+      "categoria": "Geral",
       "patente": "TEN",
       "rgRaw": "03.652/1",
       "registration_number": "036521",
@@ -1435,17 +1551,19 @@
       "tamanho": null,
       "destino": "CPU",
       "data": "13/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 69,
-      "categoria": "CAUTELADA",
+      "lineNo": 85,
+      "categoria": "Geral",
       "patente": "TEN",
       "rgRaw": "04.871/1",
       "registration_number": "048711",
       "rg": "04871",
-      "full_name": "REGIS MÁRCIO",
+      "full_name": "REGIS M�RCIO",
       "serial_raw": "353",
       "serial_variants": [
         "353",
@@ -1457,19 +1575,21 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "11/09/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 70,
-      "categoria": "CAUTELADA",
+      "lineNo": 86,
+      "categoria": "Geral",
       "patente": "SGT",
       "rgRaw": "06.719/2",
       "registration_number": "067192",
       "rg": "06719",
-      "full_name": "BADARÓ",
+      "full_name": "BADAR�",
       "serial_raw": "341",
       "serial_variants": [
         "341",
@@ -1481,14 +1601,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "24/03/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 72,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 95,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.779/2",
       "registration_number": "047792",
@@ -1502,18 +1624,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 73,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
-      "patente": "3º SGT",
+      "lineNo": 97,
+      "categoria": "Geral",
+      "patente": "3� SGT",
       "rgRaw": "06.392/3",
       "registration_number": "063923",
       "rg": "06392",
@@ -1528,17 +1652,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 74,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 98,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.951/2",
       "registration_number": "059512",
@@ -1554,17 +1680,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "11/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 75,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 99,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "05.327/2",
       "registration_number": "053272",
@@ -1578,18 +1706,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "12/01/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 76,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
-      "patente": "3ºSGT",
+      "lineNo": 100,
+      "categoria": "Geral",
+      "patente": "3�SGT",
       "rgRaw": "06.623/3",
       "registration_number": "066233",
       "rg": "06623",
@@ -1602,17 +1732,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "04/02/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 77,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 101,
+      "categoria": "Geral",
       "patente": "CAP",
       "rgRaw": "04.038",
       "registration_number": "04038",
@@ -1626,17 +1758,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "DGP",
       "data": "17/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 78,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 102,
+      "categoria": "Geral",
       "patente": "MAJ",
       "rgRaw": "05.822/1",
       "registration_number": "058221",
@@ -1650,17 +1784,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "C.MILITAR",
       "data": "27/11/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 79,
-      "categoria": "PISTOLAS GLOCK 9MM CAUTELADAS PARA OUTRAS UNIDADES",
+      "lineNo": 103,
+      "categoria": "Geral",
       "patente": "TC",
       "rgRaw": "04.720",
       "registration_number": "04720",
@@ -1674,22 +1810,24 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "CPC",
       "data": "28/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 80,
-      "categoria": "PISTOLAS TAURUS PT 840",
+      "lineNo": 107,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "04.727/2",
       "registration_number": "047272",
       "rg": "04727",
-      "full_name": "JOSUÉ",
+      "full_name": "JOSU�",
       "serial_raw": "SJS62760",
       "serial_variants": [
         "SJS62760",
@@ -1697,17 +1835,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "23/07/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 81,
-      "categoria": "PISTOLAS BERETTA APX 9MM",
+      "lineNo": 111,
+      "categoria": "Geral",
       "patente": "SD",
       "rgRaw": "07.006/4",
       "registration_number": "070064",
@@ -1722,17 +1862,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 4,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "18/09/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 82,
-      "categoria": "CARABINA CAL. 5.56  M-15",
+      "lineNo": 115,
+      "categoria": "Geral",
       "patente": "ST",
       "rgRaw": "06.009/2",
       "registration_number": "060092",
@@ -1746,17 +1888,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "06/05/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "Geral"
     },
     {
       "skip": false,
-      "lineNo": 93,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 129,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "05.814/2",
       "registration_number": "058142",
@@ -1768,17 +1912,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 2,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "05/06/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 94,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 130,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.711/4",
       "registration_number": "077114",
@@ -1790,18 +1936,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "09/01/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 95,
-      "categoria": "PISTOLAS TAURUS PT 100",
-      "patente": "3º SGT",
+      "lineNo": 131,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
+      "patente": "3� SGT",
       "rgRaw": "06.433/2",
       "registration_number": "064332",
       "rg": "06433",
@@ -1812,17 +1960,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "13/08/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 96,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 132,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.468",
       "registration_number": "07468",
@@ -1834,17 +1984,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "17/11/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 97,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 133,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "06.864",
       "registration_number": "06864",
@@ -1856,17 +2008,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "08/12/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 98,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 134,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.707",
       "registration_number": "07707",
@@ -1878,18 +2032,20 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "16/01/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 99,
-      "categoria": "PISTOLAS TAURUS PT 100",
-      "patente": "3ºSGT",
+      "lineNo": 135,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
+      "patente": "3�SGT",
       "rgRaw": "06.478",
       "registration_number": "06478",
       "rg": "06478",
@@ -1900,17 +2056,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 2,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "26/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 100,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 137,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "05.253/2",
       "registration_number": "052532",
@@ -1922,17 +2080,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "28/03/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 101,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 138,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "03.459/1",
       "registration_number": "034591",
@@ -1945,17 +2105,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º CIPM",
+      "destino": "1� CIPM",
       "data": "10/05/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 102,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 139,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.430/4",
       "registration_number": "074304",
@@ -1967,17 +2129,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "25/01/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 104,
-      "categoria": "PISTOLAS TAURUS PT 100",
+      "lineNo": 142,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "MAJ",
       "rgRaw": "04.66/1",
       "registration_number": "04661",
@@ -1989,17 +2153,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "DETRAN",
       "data": "20/05/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 105,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 149,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "TC",
       "rgRaw": "05.425/1",
       "registration_number": "054251",
@@ -2012,17 +2178,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 2,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "CORREGEDORIA",
       "data": "18/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 106,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 150,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "TC",
       "rgRaw": "03.992/1",
       "registration_number": "039921",
@@ -2034,17 +2202,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 2,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "SECRET.REC.HIDRI",
       "data": "17/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 107,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 151,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "MAJ",
       "rgRaw": "04.704/1",
       "registration_number": "047041",
@@ -2056,17 +2226,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 1,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "PM/7",
       "data": "27/02/2019",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 108,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 152,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "MAJ",
       "rgRaw": "05.126/1",
       "registration_number": "051261",
@@ -2078,17 +2250,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "SIOPAER",
       "data": "24/11/2021",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 110,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 154,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "05.837/2",
       "registration_number": "058372",
@@ -2100,39 +2274,43 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "18/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 111,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 156,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "06.051/2",
       "registration_number": "060512",
       "rg": "06051",
-      "full_name": "GALVÃO",
+      "full_name": "GALV�O",
       "serial_raw": "27171",
       "serial_variants": [
         "27171"
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "CPMTO II",
       "data": "22/11/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 112,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 157,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "04.970/2",
       "registration_number": "049702",
@@ -2144,17 +2322,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 1,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "C. MILITAR",
       "data": "26/09/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 113,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 158,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "05.266/2",
       "registration_number": "052662",
@@ -2166,17 +2346,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "C. MILITAR",
       "data": "20/12/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 114,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 159,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "06.795/4",
       "registration_number": "067954",
@@ -2188,39 +2370,43 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "QCG BANDA",
       "data": "24/01/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 117,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 165,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "02.385/2",
       "registration_number": "023852",
       "rg": "02385",
-      "full_name": "VALDÉSIO",
+      "full_name": "VALD�SIO",
       "serial_raw": "40237",
       "serial_variants": [
         "40237"
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "SEFAZ",
       "data": "12/03/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 118,
-      "categoria": "PISTOLAS TAURUS PT 100 CAUTELADAS PARA OUTRAS UNIDADES.",
+      "lineNo": 166,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "01.948/2",
       "registration_number": "019482",
@@ -2232,17 +2418,19 @@
       ],
       "quantity": 1,
       "quantity_delivered": 1,
-      "charger_qty": 3,
-      "is_weapon_row": true,
+      "charger_qty": 0,
+      "is_weapon_row": false,
       "tamanho": null,
       "destino": "SEDUC",
       "data": "07/08/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 123,
-      "categoria": "PT IMBEL",
+      "lineNo": 175,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "06.567/2",
       "registration_number": "065672",
@@ -2258,14 +2446,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "20/02/2025",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 126,
-      "categoria": "PT IMBEL",
+      "lineNo": 182,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "CEL",
       "rgRaw": "04.124/1",
       "registration_number": "041241",
@@ -2284,12 +2474,14 @@
       "tamanho": null,
       "destino": "SIOP",
       "data": "18/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 127,
-      "categoria": "PT IMBEL",
+      "lineNo": 183,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "MAJ",
       "rgRaw": "06.264/1",
       "registration_number": "062641",
@@ -2307,12 +2499,14 @@
       "tamanho": null,
       "destino": "TCE",
       "data": "18/03/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 128,
-      "categoria": "PT IMBEL",
+      "lineNo": 184,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "04.382/2",
       "registration_number": "043822",
@@ -2330,12 +2524,14 @@
       "tamanho": null,
       "destino": "AD. GERAL",
       "data": "08/04/2022",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 129,
-      "categoria": "PT IMBEL",
+      "lineNo": 186,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.783/4",
       "registration_number": "077834",
@@ -2352,14 +2548,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºCIPM",
+      "destino": "1�CIPM",
       "data": "27/01/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 130,
-      "categoria": "TAURUS TS9",
+      "lineNo": 190,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "TEN",
       "rgRaw": "04.094/1",
       "registration_number": "040941",
@@ -2375,14 +2573,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "19/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 131,
-      "categoria": "TAURUS TS9",
+      "lineNo": 191,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.672/4",
       "registration_number": "076724",
@@ -2398,15 +2598,17 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "22/06/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 132,
-      "categoria": "TAURUS TS9",
-      "patente": "1º SGT",
+      "lineNo": 192,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
+      "patente": "1� SGT",
       "rgRaw": "06.274/2",
       "registration_number": "062742",
       "rg": "06274",
@@ -2421,14 +2623,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "29/11/2023",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 133,
-      "categoria": "TAURUS TS9",
+      "lineNo": 193,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.439/4",
       "registration_number": "074394",
@@ -2444,14 +2648,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "04/04/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 135,
-      "categoria": "TAURUS TS9",
+      "lineNo": 195,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "06.993/4",
       "registration_number": "069934",
@@ -2467,14 +2673,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "09/05/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 136,
-      "categoria": "TAURUS TS9",
+      "lineNo": 196,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SGT",
       "rgRaw": "05.850/2",
       "registration_number": "058502",
@@ -2492,12 +2700,14 @@
       "tamanho": null,
       "destino": "QCG",
       "data": "30/09/2024",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 137,
-      "categoria": "TAURUS TS9",
+      "lineNo": 197,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "05.876",
       "registration_number": "05876",
@@ -2513,14 +2723,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "19/11/25",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 138,
-      "categoria": "TAURUS TS9",
+      "lineNo": 198,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "SD",
       "rgRaw": "07.027",
       "registration_number": "07027",
@@ -2536,14 +2748,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1ºBPM",
+      "destino": "1�BPM",
       "data": "11/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 139,
-      "categoria": "TAURUS TS9",
+      "lineNo": 199,
+      "categoria": "TAURUS DO 1�BPM LIVRO SEMANAL",
       "patente": "ST",
       "rgRaw": "04.876",
       "registration_number": "04876",
@@ -2559,105 +2773,16 @@
       "charger_qty": 0,
       "is_weapon_row": false,
       "tamanho": null,
-      "destino": "1º BPM",
+      "destino": "1� BPM",
       "data": "25/02/2026",
-      "situacao": "CAUTELADA"
+      "situacao": "CAUTELADA",
+      "source": "docx",
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
     },
     {
       "skip": false,
-      "lineNo": 140,
-      "categoria": "REVÓLVER",
-      "patente": "SGT",
-      "rgRaw": "04.612/2",
-      "registration_number": "046122",
-      "rg": "04612",
-      "full_name": "MARLEY",
-      "serial_raw": "OA26376",
-      "serial_variants": [
-        "OA26376",
-        "26376"
-      ],
-      "quantity": 1,
-      "quantity_delivered": 1,
-      "charger_qty": 0,
-      "is_weapon_row": true,
-      "tamanho": null,
-      "destino": "COL. C. MILITAR",
-      "data": "12/12/2022",
-      "situacao": "CAUTELADA"
-    },
-    {
-      "skip": false,
-      "lineNo": 141,
-      "categoria": "REVÓLVER",
-      "patente": "TEN",
-      "rgRaw": "05.206/1",
-      "registration_number": "052061",
-      "rg": "05206",
-      "full_name": "FRANCIMAR",
-      "serial_raw": "JC275184",
-      "serial_variants": [
-        "JC275184",
-        "275184"
-      ],
-      "quantity": 1,
-      "quantity_delivered": 1,
-      "charger_qty": 0,
-      "is_weapon_row": true,
-      "tamanho": null,
-      "destino": "COL. C. MILITAR",
-      "data": "17/05/2023",
-      "situacao": "CAUTELADA"
-    },
-    {
-      "skip": false,
-      "lineNo": 142,
-      "categoria": "REVÓLVER",
-      "patente": "ST",
-      "rgRaw": "06.009/2",
-      "registration_number": "060092",
-      "rg": "06009",
-      "full_name": "VERSIANI",
-      "serial_raw": "JF320485",
-      "serial_variants": [
-        "JF320485",
-        "320485"
-      ],
-      "quantity": 1,
-      "quantity_delivered": 1,
-      "charger_qty": 0,
-      "is_weapon_row": true,
-      "tamanho": null,
-      "destino": "FORÇA TATICA",
-      "data": "08/10/2025",
-      "situacao": "CAUTELADA"
-    },
-    {
-      "skip": false,
-      "lineNo": 143,
-      "categoria": "REVÓLVER",
-      "patente": "3º SGT",
-      "rgRaw": "06.719",
-      "registration_number": "06719",
-      "rg": "06719",
-      "full_name": "BADARÓ",
-      "serial_raw": "947516",
-      "serial_variants": [
-        "947516"
-      ],
-      "quantity": 1,
-      "quantity_delivered": 1,
-      "charger_qty": 0,
-      "is_weapon_row": true,
-      "tamanho": null,
-      "destino": "1º BPM",
-      "data": "22/01/2026",
-      "situacao": "CAUTELADO"
-    },
-    {
-      "skip": false,
-      "lineNo": 144,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 213,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.376/4",
       "registration_number": "073764",
@@ -2673,15 +2798,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "23/11/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 145,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 214,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.027/4",
       "registration_number": "070274",
@@ -2697,15 +2824,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "23/11/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 146,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 215,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.067/4",
       "registration_number": "070674",
@@ -2721,15 +2850,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "25/11/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 147,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 216,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "7.053/4",
       "registration_number": "70534",
@@ -2745,15 +2876,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "27/11/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 148,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 217,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.287/4",
       "registration_number": "072874",
@@ -2769,15 +2902,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "03/12/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 149,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 218,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.253/4",
       "registration_number": "072534",
@@ -2793,15 +2928,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1ºBPM",
+      "tamanho": null,
+      "destino": "1�BPM",
       "data": "08/12/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 150,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 219,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "06.121/2",
       "registration_number": "061212",
@@ -2817,15 +2954,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "22/12/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 151,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 220,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.133/4",
       "registration_number": "071334",
@@ -2841,15 +2980,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "22/12/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 152,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 221,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "05.310/2",
       "registration_number": "053102",
@@ -2866,15 +3007,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "GRANDE/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "03/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 153,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 222,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "CB",
       "rgRaw": "06.383/3",
       "registration_number": "063833",
@@ -2890,15 +3033,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "03/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 154,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 224,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.052/4",
       "registration_number": "070524",
@@ -2914,15 +3059,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "08/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 155,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 225,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "06.391/3",
       "registration_number": "063913",
@@ -2938,15 +3085,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "08/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 156,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 226,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.151/4",
       "registration_number": "071514",
@@ -2962,15 +3111,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "08/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 157,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 227,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "ST",
       "rgRaw": "05.377/2",
       "registration_number": "053772",
@@ -2986,15 +3137,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
+      "tamanho": null,
       "destino": "TRANSF",
       "data": "25/01/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 158,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 228,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "MAJ",
       "rgRaw": "05.429/1",
       "registration_number": "054291",
@@ -3009,15 +3162,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
+      "tamanho": null,
       "destino": "TRANSF",
       "data": "09/02/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 159,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 229,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "06.551/2",
       "registration_number": "065512",
@@ -3033,15 +3188,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "14/02/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 160,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 230,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.234/4",
       "registration_number": "072344",
@@ -3057,15 +3214,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "23/04/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 161,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 231,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.737/4",
       "registration_number": "077374",
@@ -3081,15 +3240,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "23/07/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 162,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 232,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.244/4",
       "registration_number": "072444",
@@ -3105,15 +3266,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "01/11/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 163,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 233,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "06.567/2",
       "registration_number": "065672",
@@ -3129,15 +3292,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "14/03/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 164,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 234,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SGT",
       "rgRaw": "06.427/2",
       "registration_number": "064272",
@@ -3153,15 +3318,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "14/07/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 165,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 235,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "ST",
       "rgRaw": "04.793/2",
       "registration_number": "047932",
@@ -3177,15 +3344,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "14/07/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 166,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 236,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.516/4",
       "registration_number": "075164",
@@ -3202,15 +3371,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "14/07/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 167,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 237,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "ST",
       "rgRaw": "04.953/2",
       "registration_number": "049532",
@@ -3227,15 +3398,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/F",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "15/07/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 168,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 238,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "ST",
       "rgRaw": "06.026/2",
       "registration_number": "060262",
@@ -3252,15 +3425,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/ M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "05/08/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 169,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 239,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "06.890/4",
       "registration_number": "068904",
@@ -3276,15 +3451,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/ M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "19/08/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 170,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 240,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.372/4",
       "registration_number": "073724",
@@ -3300,15 +3477,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1ºBPM",
+      "tamanho": null,
+      "destino": "1�BPM",
       "data": "20/10/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 171,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 241,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "07.126/4",
       "registration_number": "071264",
@@ -3324,15 +3503,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/ M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "26/03/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 172,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 242,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "MAJ",
       "rgRaw": "05.560/1",
       "registration_number": "055601",
@@ -3348,15 +3529,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/ M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "25/07/24",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 173,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 243,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "TEN",
       "rgRaw": "04886/2",
       "registration_number": "048862",
@@ -3372,15 +3555,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "PEQUENO/M",
-      "destino": "1º BPM",
+      "tamanho": null,
+      "destino": "1� BPM",
       "data": "16/04/23",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 175,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 246,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "ST",
       "rgRaw": "05.031",
       "registration_number": "05031",
@@ -3396,15 +3581,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
-      "destino": "1ºBPM",
+      "tamanho": null,
+      "destino": "1�BPM",
       "data": "17/11/25",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 176,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 248,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "MAJ",
       "rgRaw": "06.096",
       "registration_number": "06096",
@@ -3421,15 +3608,17 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
+      "tamanho": null,
       "destino": "CORREG.",
       "data": "08/02/26",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     },
     {
       "skip": false,
-      "lineNo": 177,
-      "categoria": "COLETES BALISTICOS CAUTELADOS 1ºBPM",
+      "lineNo": 249,
+      "categoria": "LIVRO DE COLETES 1� BPM",
       "patente": "SD",
       "rgRaw": "06.964",
       "registration_number": "06964",
@@ -3445,276 +3634,757 @@
       "quantity_delivered": 1,
       "charger_qty": 0,
       "is_weapon_row": false,
-      "tamanho": "MÉDIO/M",
+      "tamanho": null,
       "destino": "FT",
       "data": "11/02/26",
-      "situacao": "CAUTELADO"
+      "situacao": "CAUTELADO",
+      "source": "docx",
+      "section": "LIVRO DE COLETES 1� BPM"
     }
   ],
   "skipped": [
     {
       "skip": true,
+      "reason": "secao",
+      "lineNo": 1,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 2,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 17,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 18,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 19,
+      "source": "docx"
+    },
+    {
+      "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 16,
+      "lineNo": 20,
       "situacao": "IPM 049/2022",
       "nome": "IRENILTON",
-      "serial": "375"
+      "serial": "375",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 37,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "colunas_insuficientes",
+      "lineNo": 38,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 39,
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 42,
+      "lineNo": 49,
       "situacao": "CAUTALADA",
       "nome": "ANDRADE",
-      "serial": "334"
+      "serial": "334",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 43,
+      "lineNo": 50,
       "situacao": "CAUTALADA",
       "nome": "LOPES",
-      "serial": "333"
+      "serial": "333",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 44,
+      "lineNo": 51,
       "situacao": "CAUTALADA",
       "nome": "DOS REIS",
-      "serial": "355"
+      "serial": "355",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 45,
+      "lineNo": 52,
       "situacao": "CAUTALADA",
       "nome": "F. QUEIROZ",
-      "serial": "339"
+      "serial": "339",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 55,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "colunas_insuficientes",
+      "lineNo": 56,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 57,
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 53,
+      "lineNo": 63,
       "situacao": "CAUTALADA",
       "nome": "ALMEIDA",
-      "serial": "378"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 54,
-      "situacao": "CAUTALADA",
-      "nome": "LÉO JANIO",
-      "serial": "342"
+      "serial": "378",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 64,
+      "situacao": "CAUTALADA",
+      "nome": "L�O JANIO",
+      "serial": "342",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 65,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 66,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 67,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 76,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "colunas_insuficientes",
+      "lineNo": 77,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 78,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 80,
       "situacao": "LIVRO EXTRA",
       "nome": "ROSANE",
-      "serial": "372"
+      "serial": "372",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 91,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 92,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 93,
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 71,
+      "lineNo": 94,
       "situacao": "ASCOM QCG",
       "nome": "MONTEIRO",
-      "serial": "374"
+      "serial": "374",
+      "source": "docx"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 83,
-      "situacao": "SIND.200/2018",
-      "nome": "BERNARDES",
-      "serial": "EX.39619"
+      "reason": "secao",
+      "lineNo": 104,
+      "section": "Geral"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 84,
-      "situacao": "IPM. 056/2013",
-      "nome": "LUSTOSA",
-      "serial": "EX.99531"
+      "reason": "colunas_insuficientes",
+      "lineNo": 105,
+      "source": "docx"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 85,
-      "situacao": "TRANSFERIDO",
-      "nome": "GONZAGA",
-      "serial": "25527"
+      "reason": "cabecalho",
+      "lineNo": 106,
+      "source": "docx"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 86,
-      "situacao": "CAUTALADA",
-      "nome": "ARAUJO",
-      "serial": "19040"
+      "reason": "secao",
+      "lineNo": 108,
+      "section": "Geral"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 87,
-      "situacao": "CAUTALADA",
-      "nome": "DE OLIVEIRA",
-      "serial": "40509"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 88,
-      "situacao": "CAUTALADA",
-      "nome": "MARQUES",
-      "serial": "27008"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 89,
-      "situacao": "CAUTALADA",
-      "nome": "CURSINO",
-      "serial": "26973"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 90,
-      "situacao": "CAUTALADA",
-      "nome": "FONSECA",
-      "serial": "11983"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 91,
-      "situacao": "CAUTALADA",
-      "nome": "FERNANDES",
-      "serial": "26963"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 92,
-      "situacao": "CAUTALADA",
-      "nome": "CAETANO",
-      "serial": "40244"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 103,
-      "situacao": "CAUTALADA",
-      "nome": "LEONARDO",
-      "serial": "11982"
-    },
-    {
-      "skip": true,
-      "reason": "situacao_nao_cautelado",
+      "reason": "colunas_insuficientes",
       "lineNo": 109,
-      "situacao": "CAUTALADA",
-      "nome": "ROMER",
-      "serial": "01814"
+      "source": "docx"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
-      "lineNo": 115,
-      "situacao": "CAUTALADA",
-      "nome": "ADELIA",
-      "serial": "39618"
+      "reason": "cabecalho",
+      "lineNo": 110,
+      "source": "docx"
     },
     {
       "skip": true,
-      "reason": "situacao_nao_cautelado",
+      "reason": "secao",
+      "lineNo": 112,
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "colunas_insuficientes",
+      "lineNo": 113,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 114,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
       "lineNo": 116,
-      "situacao": "CAUTALADA",
-      "nome": "F.SENA",
-      "serial": "39621"
+      "section": "Geral"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 117,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 118,
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 119,
-      "situacao": "LIVROEXTRA",
-      "nome": "TEIXEIRA",
-      "serial": "39616"
+      "situacao": "SIND.200/2018",
+      "nome": "BERNARDES",
+      "serial": "EX.39619",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 120,
-      "situacao": "LIVROEXTRA",
-      "nome": "CRISTINA",
-      "serial": "26994"
+      "situacao": "IPM. 056/2013",
+      "nome": "LUSTOSA",
+      "serial": "EX.99531",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 121,
-      "situacao": "LIVROEXTRA",
-      "nome": "PATRÍCIA",
-      "serial": "67899"
+      "situacao": "TRANSFERIDO",
+      "nome": "GONZAGA",
+      "serial": "25527",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 122,
-      "situacao": "LIVROEXTRA",
-      "nome": "MARCIO",
-      "serial": "26986"
+      "situacao": "CAUTALADA",
+      "nome": "ARAUJO",
+      "serial": "19040",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 123,
+      "situacao": "CAUTALADA",
+      "nome": "DE OLIVEIRA",
+      "serial": "40509",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 124,
-      "situacao": "IPM 055/2013",
-      "nome": "FRANCO",
-      "serial": "720"
+      "situacao": "CAUTALADA",
+      "nome": "MARQUES",
+      "serial": "27008",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
       "lineNo": 125,
+      "situacao": "CAUTALADA",
+      "nome": "CURSINO",
+      "serial": "26973",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 126,
+      "situacao": "CAUTALADA",
+      "nome": "FONSECA",
+      "serial": "11983",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 127,
+      "situacao": "CAUTALADA",
+      "nome": "FERNANDES",
+      "serial": "26963",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 128,
+      "situacao": "CAUTALADA",
+      "nome": "CAETANO",
+      "serial": "40244",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 136,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 140,
+      "situacao": "CAUTALADA",
+      "nome": "LEONARDO",
+      "serial": "11982",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 141,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 146,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 147,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 148,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 153,
+      "situacao": "CAUTALADA",
+      "nome": "ROMER",
+      "serial": "01814",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 160,
+      "situacao": "CAUTALADA",
+      "nome": "ADELIA",
+      "serial": "39618",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 162,
+      "situacao": "CAUTALADA",
+      "nome": "F.SENA",
+      "serial": "39621",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 167,
+      "situacao": "LIVROEXTRA",
+      "nome": "TEIXEIRA",
+      "serial": "39616",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 168,
+      "situacao": "LIVROEXTRA",
+      "nome": "CRISTINA",
+      "serial": "26994",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 169,
+      "situacao": "LIVROEXTRA",
+      "nome": "PATR�CIA",
+      "serial": "67899",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 170,
+      "situacao": "LIVROEXTRA",
+      "nome": "MARCIO",
+      "serial": "26986",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 171,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 172,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 173,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "rg_invalido",
+      "lineNo": 176,
+      "rgRaw": "",
+      "nome": "TASSIO",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 177,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 178,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 179,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 180,
       "situacao": "IPM 055/2013",
       "nome": "FRANCO",
-      "serial": "446"
+      "serial": "720",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 134,
+      "lineNo": 181,
+      "situacao": "IPM 055/2013",
+      "nome": "FRANCO",
+      "serial": "446",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 187,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 188,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 189,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 194,
       "situacao": "CAUTALADA",
       "nome": "TATIELY",
-      "serial": "AED262404"
+      "serial": "AED262404",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 200,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "colunas_insuficientes",
+      "lineNo": 201,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 202,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "rg_invalido",
+      "lineNo": 203,
+      "rgRaw": "",
+      "nome": "DIAS",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "rg_invalido",
+      "lineNo": 204,
+      "rgRaw": "",
+      "nome": "ROCHA",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "rg_invalido",
+      "lineNo": 205,
+      "rgRaw": "",
+      "nome": "F�BIO",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 174,
+      "lineNo": 206,
+      "situacao": "",
+      "nome": "MARLEY",
+      "serial": "OA26376",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 207,
+      "situacao": "",
+      "nome": "FRANCIMAR",
+      "serial": "JC275184",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 208,
+      "situacao": "",
+      "nome": "VERSIANI",
+      "serial": "JF320485",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 209,
+      "situacao": "",
+      "nome": "BADAR�",
+      "serial": "947516",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 210,
+      "section": "TAURUS DO 1�BPM LIVRO SEMANAL"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 211,
+      "section": "LIVRO DE COLETES 1� BPM"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 212,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "situacao_nao_cautelado",
+      "lineNo": 245,
       "situacao": "LIVRO OU.UN",
       "nome": "ROMER",
-      "serial": "0251"
+      "serial": "0251",
+      "source": "docx"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 178,
+      "lineNo": 250,
       "situacao": "LIVRO SEM",
       "nome": "RUDSON",
-      "serial": "0287"
+      "serial": "0287",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 251,
+      "section": "LIVRO DE COLETES 1� BPM"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 253,
+      "section": "PISTOLAS GLOCK G17N�GRAD.RGNOMEG17CARRDESTINODATASITUA��OTOTAL: 00"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 254,
+      "section": "PISTOLAS GLOCK G17"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 255,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 263,
+      "section": "PISTOLAS GLOCK G17"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 264,
+      "section": "PISTOLA TAURUS PT 100"
     },
     {
       "skip": true,
       "reason": "situacao_nao_cautelado",
-      "lineNo": 179,
+      "lineNo": 265,
       "situacao": "",
       "nome": "GONZAGA",
-      "serial": "25527"
+      "serial": "25527",
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 267,
+      "section": "PT IMBEL MD6"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 270,
+      "section": "PT IMBEL MD6"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 271,
+      "section": "PISTOLAS GLOCK G17"
+    },
+    {
+      "skip": true,
+      "reason": "cabecalho",
+      "lineNo": 272,
+      "source": "docx"
+    },
+    {
+      "skip": true,
+      "reason": "secao",
+      "lineNo": 280,
+      "section": "PISTOLAS GLOCK G17"
     }
   ]
 }

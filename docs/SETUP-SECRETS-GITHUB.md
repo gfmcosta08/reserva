@@ -2,7 +2,11 @@
 
 > Execute **uma vez** em: GitHub → repositório → **Settings → Secrets and variables → Actions**.
 
-O `gh` CLI não está instalado nesta máquina; use a UI ou instale: `winget install GitHub.cli`
+**gh CLI:** instalado em `%LOCALAPPDATA%\Programs\gh\gh.exe` (v2.67.0). Autentique com `gh auth login`, depois:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/set-github-secrets.ps1
+```
 
 ## Secrets obrigatórios para CI E2E
 
@@ -10,7 +14,8 @@ O `gh` CLI não está instalado nesta máquina; use a UI ou instale: `winget ins
 |--------|-------|-----|
 | `E2E_SUPERVISOR_EMAIL` | `qa.supervisor@reserva.test` | Smoke Playwright no CI |
 | `E2E_SUPERVISOR_PASSWORD` | Senha em `scripts/.env.qa` (gerada por `node scripts/qa/create-supervisor-test.mjs`) | Smoke Playwright |
-| `E2E_BASE_URL` | `https://reserva-teste.vercel.app` | Opcional; preview precisa estar **sem** SSO bloqueando |
+| `E2E_BASE_URL` | `https://reserva-teste.vercel.app` | Preview remoto |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel Dashboard → Deployment Protection → Protection Bypass for Automation | Bypass SSO no CI E2E |
 
 ## Secrets para migrations (teste_db primeiro)
 

@@ -1,40 +1,56 @@
-# Relatório final — importação cautelados (teste_bd)
+# Importação cautelados 1º BPM — apply (06/06/2026)
 
-**Data:** 2026-05-22  
-**Ambiente:** `ajyvznrmbuistlcfckuh` (teste_bd)  
-**Fonte aplicada:** `cautelados-1bpm-source.csv` (equivalente ao DOCX atualizado)
+**Fonte:** `cautelados-1bpm-atualizada-2026-06-06.docx` (cópia do DOCX do usuário)  
+**Banco:** teste_db (`ajyvznrmbuistlcfckuh`)  
+**Operador:** Gianpaolo Costa (supervisor)
 
-## Resultado no banco
+## Resultado
 
-| Entidade | Quantidade |
-|----------|------------|
-| `persons` | 123 |
-| `cautelas` (permanentes, open) | 123 |
-| `cautela_items` (pending) | 146 |
-| `materials` status `cautelado` | 134 |
-| `materials` status `available` | 453 |
+| Métrica | Valor |
+|--------|-------|
+| Linhas CAUTELADO no DOCX | 141 |
+| Pessoas criadas | 118 |
+| Pessoas já existentes (reutilizadas) | 2 (JHONNY, TESTE QA E2E) |
+| Cautelas permanentes abertas/parciais | 119 |
+| Itens de cautela vinculados | 134 (após remoção de 6 duplicatas) |
+| Materiais com status `cautelado` | ~127 |
+| Seriais não encontrados no estoque | 4 |
+| Conflitos material→pessoa (limpos) | 6 removidos |
 
-## Cadastro incompleto (conforme PRD)
+## Anti-duplicação aplicada
 
-Todas as pessoas novas:
+1. **Pessoa:** chave `registration_number` (matrícula) — não recria se já existe.
+2. **Cautela:** uma cautela `open`/`partial` por pessoa — reutiliza a existente (ex.: JHONNY QA).
+3. **Item pessoa+material:** ignora se já vinculado na cautela ativa.
+4. **Material global:** ignora se o patrimônio já está cautelado a **outra** pessoa (seriais curtos ambíguos no DOCX).
+5. **Linha repetida no mesmo grupo:** ignora mesmo material duas vezes na mesma matrícula.
 
-- E-mail: `pendente+<matrícula>@cadastro.reserva.local`
-- PIN temporário: **`0000`** (trocar no balcão)
-- Sem fotos RG, WhatsApp, biometria
+## 4 linhas sem material no inventário
 
-## Pendências
+| Militar | Serial DOCX | Seção |
+|---------|-------------|-------|
+| ATAIDES | 56703 | TAURUS |
+| VALDSON | 3709 | TAURUS |
+| GOUVEIA | 27007 | TAURUS |
+| MACEDO | 9327 | Coletes |
 
-- **9 seriais** do CSV não encontrados no inventário (ver `dry-run-report.md` seção *Materiais não encontrados*).
-- **1 colisão RG** corrigida manualmente: BADARÓ (`067192`) vs NOBRE (`06719`).
-- **DOCX:** parser Python disponível (`parse-docx-tables.py`); re-parse com `--input cautelados-1bpm-atualizada.docx` antes de nova apply se a fonte oficial for só o Word.
+Cadastrar no estoque ou ajustar serial no inventário e reexecutar import (idempotente).
 
-## Validação sugerida (UI)
+## Pessoas novas — credenciais temporárias
 
-1. https://reserva-teste.vercel.app/persons — buscar ALBUQUERQUE, SOARES  
-2. https://reserva-teste.vercel.app/materials — filtro status `cautelado`  
-3. https://reserva-teste.vercel.app/cautelas — cautelas abertas por militar  
-4. `npx vercel curl https://reserva-teste.vercel.app/api/version` → `teste_db`
+- **PIN:** `0000` (trocar no balcão)
+- **E-mail placeholder:** `pendente+<matrícula>@cadastro.reserva.local`
 
-## Produção
+## Reimportar (seguro)
 
-Não alterada. Repetir fluxo só com aprovação explícita.
+```powershell
+node scripts/import/parse-cautelados-docx.mjs --input scripts/import/cautelados-1bpm-atualizada-2026-06-06.docx
+node scripts/import/import-cautelados-test.mjs          # dry-run
+node scripts/import/import-cautelados-test.mjs --apply  # só se dry-run OK
+```
+
+## Validação sugerida
+
+- https://reserva-teste.vercel.app/persons — 120 pessoas
+- https://reserva-teste.vercel.app/cautelas — filtros Abertas/Parciais
+- https://reserva-teste.vercel.app/materials — filtro status **Em Uso**

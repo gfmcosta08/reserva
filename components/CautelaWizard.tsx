@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react"
 import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
+import { getPersonById } from "@/app/actions/persons"
+import PersonRegistrationWizard, { type PersonWizardEditTarget } from "@/components/PersonRegistrationWizard"
 import FaceVerification from "./FaceVerification"
 import { CautelaMaterialsStep, type MaterialLine } from "./cautela/CautelaMaterialsStep"
 import { extractCaliber, validateAmmunitionCaliber } from "@/lib/cautela-caliber"
@@ -61,6 +63,8 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
   const [photoWarning, setPhotoWarning] = useState(false)
   const [pendingCautelas, setPendingCautelas] = useState<any[]>([])
   const [loadingPending, setLoadingPending] = useState(false)
+  const [regularizeOpen, setRegularizeOpen] = useState(false)
+  const [regularizeTarget, setRegularizeTarget] = useState<PersonWizardEditTarget | null>(null)
 
   // Step 2: Materiais
   const [materialLines, setMaterialLines] = useState<MaterialLine[]>([])
@@ -126,23 +130,65 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     }
   }, [selectedPerson])
 
-  const selectPerson = (person: Person) => {
-    setSelectedPerson(person)
-    setSearchResults([])
-    setSearchQuery("")
-    setPendingCautelas([])
-    // Verificar fotos
-    if (!person.rg_front_url || !person.rg_back_url) {
-      setPhotoWarning(true)
-    } else {
-      setPhotoWarning(false)
-    }
-    // Decidir método de assinatura
+  const applyPersonState = (person: Person) => {
+    setPhotoWarning(!person.rg_front_url || !person.rg_back_url)
     if (person.face_descriptor && Array.isArray(person.face_descriptor) && person.face_descriptor.length > 0) {
       setUseFace(true)
     } else {
       setUseFace(false)
     }
+  }
+
+  const selectPerson = (person: Person) => {
+    setSelectedPerson(person)
+    setSearchResults([])
+    setSearchQuery("")
+    setPendingCautelas([])
+    applyPersonState(person)
+  }
+
+  const openRegularizeWizard = async () => {
+    if (!selectedPerson) return
+    const { person, error } = await getPersonById(selectedPerson.id)
+    if (!person) {
+      alert(error || "Pessoa não encontrada")
+      return
+    }
+    setRegularizeTarget({
+      id: person.id,
+      full_name: person.full_name,
+      email: person.email,
+      rg: person.rg,
+      registration_number: person.registration_number,
+      function: person.function,
+      phone: person.phone,
+      rg_front_url: person.rg_front_url,
+      rg_back_url: person.rg_back_url,
+      face_descriptor: person.face_descriptor,
+    })
+    setRegularizeOpen(true)
+  }
+
+  const handleRegularizeSuccess = async () => {
+    setRegularizeOpen(false)
+    setRegularizeTarget(null)
+    if (!selectedPerson) return
+    const { person } = await getPersonById(selectedPerson.id)
+    if (!person) return
+    const refreshed: Person = {
+      id: person.id,
+      full_name: person.full_name,
+      rg: person.rg,
+      registration_number: person.registration_number,
+      function: person.function ?? undefined,
+      status: person.status ?? "active",
+      rg_front_url: person.rg_front_url ?? undefined,
+      rg_back_url: person.rg_back_url ?? undefined,
+      face_descriptor: person.face_descriptor ?? undefined,
+      has_registered_pin: typeof person.pin_hash === "string" && person.pin_hash.length > 0,
+    }
+    setSelectedPerson(refreshed)
+    applyPersonState(refreshed)
   }
 
   const buildNotesPayload = () => {
@@ -413,12 +459,13 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                         {photoWarning && <li>• Fotos do RG incompletas</li>}
                         {!useFace && <li>• Biometria facial não cadastrada</li>}
                       </ul>
-                      <Link
-                        href={`/persons?edit=${selectedPerson.id}`}
+                      <button
+                        type="button"
+                        onClick={openRegularizeWizard}
                         className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 mt-2"
                       >
                         Regularizar cadastro <ChevronRight className="h-2.5 w-2.5" />
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -796,12 +843,13 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   Esta pessoa não possui PIN cadastrado nem biometria facial para concluir a cautela. Regularize o cadastro
                   antes de continuar.
                 </p>
-                <Link
-                  href={`/persons?edit=${selectedPerson.id}`}
+                <button
+                  type="button"
+                  onClick={openRegularizeWizard}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-900/40 hover:bg-blue-500"
                 >
                   Abrir cadastro da pessoa
-                </Link>
+                </button>
                 <button
                   type="button"
                   onClick={() => setStep(3)}
@@ -814,6 +862,19 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
           </div>
         )}
       </div>
+
+      {regularizeOpen && regularizeTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
+          <PersonRegistrationWizard
+            person={regularizeTarget}
+            onSuccess={handleRegularizeSuccess}
+            onCancel={() => {
+              setRegularizeOpen(false)
+              setRegularizeTarget(null)
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

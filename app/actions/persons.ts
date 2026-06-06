@@ -16,6 +16,63 @@ const personSchema = z.object({
   face_descriptor: z.array(z.number()).optional(),
 })
 
+export async function getPersonById(id: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase.from("persons").select("*").eq("id", id).single()
+  if (error || !data) return { person: null, error: error?.message || "Pessoa não encontrada" }
+  return { person: data, error: null }
+}
+
+const regularizeSchema = z.object({
+  full_name: z.string().min(3, "Nome muito curto"),
+  email: z.string().email("E-mail inválido"),
+  function: z.string().optional(),
+  phone: z.string().optional(),
+  pin: z.string().length(4, "O PIN deve ter 4 dígitos").optional(),
+  face_descriptor: z.array(z.number()).optional(),
+})
+
+export async function regularizePerson(
+  id: string,
+  data: z.infer<typeof regularizeSchema> & { rg_front_url?: string; rg_back_url?: string }
+) {
+  const supabase = await createClient()
+  const { data: existing, error: fetchErr } = await supabase.from("persons").select("*").eq("id", id).single()
+  if (fetchErr || !existing) return { error: "Pessoa não encontrada" }
+
+  const parsed = regularizeSchema.safeParse(data)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  const update: Record<string, unknown> = {
+    full_name: parsed.data.full_name,
+    email: parsed.data.email,
+    function: parsed.data.function || null,
+    phone: parsed.data.phone || null,
+  }
+
+  if (data.rg_front_url && !existing.rg_front_url) update.rg_front_url = data.rg_front_url
+  if (data.rg_back_url && !existing.rg_back_url) update.rg_back_url = data.rg_back_url
+
+  if (parsed.data.pin) {
+    update.pin_hash = await bcrypt.hash(parsed.data.pin, 10)
+  }
+
+  if (parsed.data.face_descriptor && parsed.data.face_descriptor.length > 0) {
+    update.face_descriptor = parsed.data.face_descriptor
+  }
+
+  const { error } = await supabase.from("persons").update(update).eq("id", id)
+  if (error) {
+    if (error.code === "23505") return { error: "E-mail já utilizado por outro cadastro" }
+    return { error: error.message }
+  }
+
+  revalidatePath("/persons")
+  revalidatePath(`/persons/${id}`)
+  revalidatePath("/cautelas")
+  return { success: true }
+}
+
 export async function getPersons(query?: string) {
   const supabase = await createClient()
   let q = supabase.from("persons").select("*").order("full_name")

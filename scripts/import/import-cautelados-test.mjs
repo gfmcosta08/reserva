@@ -166,16 +166,22 @@ async function main() {
   const materialIndex = buildMaterialIndex(materials)
 
   const cautelaByPerson = new Map()
-  for (const c of cautelas.filter((c) => c.status === "open")) {
+  for (const c of cautelas.filter((c) => c.status === "open" || c.status === "partial")) {
     if (!cautelaByPerson.has(c.person_id)) cautelaByPerson.set(c.person_id, c.id)
   }
   const openItemKeys = new Set()
+  const materialHolder = new Map()
+  const activeCautelaIds = new Set(
+    cautelas.filter((c) => c.status === "open" || c.status === "partial").map((c) => c.id)
+  )
   const cautelaIdByPerson = new Map()
   for (const c of cautelas) cautelaIdByPerson.set(c.id, c.person_id)
   for (const ci of cautelaItems) {
-    if (ci.status !== "pending") continue
+    if (!activeCautelaIds.has(ci.cautela_id)) continue
     const pid = cautelaIdByPerson.get(ci.cautela_id)
-    if (pid) openItemKeys.add(`${pid}:${ci.material_id}`)
+    if (!pid) continue
+    openItemKeys.add(`${pid}:${ci.material_id}`)
+    if (!materialHolder.has(ci.material_id)) materialHolder.set(ci.material_id, pid)
   }
 
   const report = {
@@ -190,6 +196,7 @@ async function main() {
     chargerLinesToAdd: [],
     chargersNotFound: [],
     itemsSkippedExists: [],
+    itemsSkippedMaterialConflict: [],
     cautelasToCreate: 0,
     errors: [],
   }
@@ -269,6 +276,7 @@ async function main() {
       report.cautelasToCreate++
     }
 
+    const seenMaterialIds = new Set()
     for (const item of group.items) {
       const resolved = resolveMaterial(materialIndex, item)
       if (!resolved) {
@@ -281,12 +289,37 @@ async function main() {
         continue
       }
       const mat = resolved.material
+      if (seenMaterialIds.has(mat.id)) {
+        report.itemsSkippedExists.push({
+          reg,
+          material_id: mat.id,
+          serial: item.serial_raw,
+          reason: "duplicate_line_same_material",
+        })
+        continue
+      }
+      seenMaterialIds.add(mat.id)
+
+      const holder = materialHolder.get(mat.id)
+      if (holder && holder !== person.id) {
+        report.itemsSkippedMaterialConflict.push({
+          reg,
+          person_name: item.full_name,
+          material_id: mat.id,
+          material_patrimony: mat.patrimony_number,
+          serial: item.serial_raw,
+          held_by_person_id: holder,
+        })
+        continue
+      }
+
       const key = `${person.id}:${mat.id}`
       if (openItemKeys.has(key)) {
         report.itemsSkippedExists.push({
           reg,
           material_id: mat.id,
           serial: item.serial_raw,
+          reason: "already_linked_open_cautela",
         })
         continue
       }
@@ -294,7 +327,8 @@ async function main() {
       const qtyDelivered = item.quantity_delivered ?? item.quantity ?? 1
       const chargerQty = item.charger_qty ?? 0
       const weaponRow =
-        item.is_weapon_row ?? isWeaponCategoryName(item.categoria) || isWeaponCategoryName(mat.category || "")
+        item.is_weapon_row ??
+        (isWeaponCategoryName(item.categoria) || isWeaponCategoryName(mat.category || ""))
 
       report.itemsToCreate.push({
         registration_number: reg,
@@ -343,6 +377,7 @@ async function main() {
         })
         if (!ok) continue
         openItemKeys.add(key)
+        materialHolder.set(mat.id, person.id)
 
         if (weaponRow && chargerQty > 0) {
           const chargerMat = pickChargerMaterial(materials, person.id, openItemKeys)
@@ -363,7 +398,10 @@ async function main() {
                 report,
                 context: { reg, serial: item.serial_raw, kind: "charger" },
               })
-              if (cOk) openItemKeys.add(chargerKey)
+              if (cOk) {
+                openItemKeys.add(chargerKey)
+                materialHolder.set(chargerMat.id, person.id)
+              }
             }
           }
         }
@@ -401,6 +439,7 @@ function formatReport(report, parsed, operator) {
     `| Linhas de carregador (extras) | ${report.chargerLinesToAdd.length} |`,
     `| Carregador não encontrado no estoque | ${report.chargersNotFound.length} |`,
     `| Itens já vinculados (skip) | ${report.itemsSkippedExists.length} |`,
+    `| Conflito material já cautelado a outra pessoa | ${report.itemsSkippedMaterialConflict.length} |`,
     `| Materiais não encontrados | ${report.materialsNotFound.length} |`,
     `| Erros | ${report.errors.length} |`,
     "",
@@ -435,6 +474,16 @@ function formatReport(report, parsed, operator) {
     lines.push("## Armas com carregadores no CSV sem material Carregador disponível", "")
     for (const c of report.chargersNotFound) {
       lines.push(`- ${c.person_name} | serial \`${c.weapon_serial}\` | qty ${c.charger_qty}`)
+    }
+    lines.push("")
+  }
+
+  if (report.itemsSkippedMaterialConflict.length) {
+    lines.push("## Material já em cautela de outra pessoa (ignorado)", "")
+    for (const c of report.itemsSkippedMaterialConflict) {
+      lines.push(
+        `- ${c.person_name} (mat. ${c.reg}) | serial \`${c.serial}\` → ${c.material_patrimony} (outro cautelado)`
+      )
     }
     lines.push("")
   }
