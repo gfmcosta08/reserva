@@ -2,6 +2,7 @@
  * Cria supervisor de QA no teste_bd (idempotente).
  * Grava credenciais em scripts/.env.qa
  */
+import { randomBytes } from "crypto"
 import { writeFileSync, existsSync, readFileSync } from "fs"
 import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
@@ -12,8 +13,22 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const QA_ENV_PATH = resolve(__dirname, "../.env.qa")
 
 const EMAIL = "qa.supervisor@reserva.test"
-const PASSWORD = "ReservaQA2026!Super"
 const NAME = "QA Supervisor Teste"
+
+function resolvePassword() {
+  if (process.env.QA_SUPERVISOR_PASSWORD) return process.env.QA_SUPERVISOR_PASSWORD
+  if (existsSync(QA_ENV_PATH)) {
+    for (const line of readFileSync(QA_ENV_PATH, "utf8").split(/\r?\n/)) {
+      const t = line.trim()
+      if (t.startsWith("QA_SUPERVISOR_PASSWORD=")) {
+        return t.slice("QA_SUPERVISOR_PASSWORD=".length)
+      }
+    }
+  }
+  const base = randomBytes(12).toString("base64url")
+  return `ReservaQA_${base}!`
+}
+const PASSWORD = resolvePassword()
 
 async function main() {
   const env = loadCloneEnv()

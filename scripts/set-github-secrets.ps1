@@ -43,7 +43,10 @@ $clone = Read-EnvFile (Join-Path $PSScriptRoot ".env.clone")
 $qa = Read-EnvFile (Join-Path $PSScriptRoot ".env.qa")
 
 $vercelBypass = $env:VERCEL_AUTOMATION_BYPASS_SECRET
-if (-not $vercelBypass) { $vercelBypass = "JiWhIN8Aa7gwYvd2OtxMANYgotiH8R7h" }
+if (-not $vercelBypass) { $vercelBypass = $qa["VERCEL_AUTOMATION_BYPASS_SECRET"] }
+if (-not $vercelBypass) {
+  Write-Host "SKIP VERCEL_AUTOMATION_BYPASS_SECRET (defina em env ou scripts/.env.qa)" -ForegroundColor DarkYellow
+}
 
 $secrets = @{
   E2E_SUPERVISOR_EMAIL = $qa["QA_SUPERVISOR_EMAIL"]

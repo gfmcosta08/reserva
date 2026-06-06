@@ -3,7 +3,7 @@
 **Data:** 06/06/2026  
 **Ambiente remoto:** https://reserva-teste.vercel.app  
 **Supabase:** `ajyvznrmbuistlcfckuh` (teste_db)  
-**Commit deploy:** `8cad1d0` (master — inclui `f1181fc` pool Glock + filtros materiais)
+**Commit deploy:** `5e9464d` (master — stock_quantity em cautela, devolução e cadastro)
 
 ---
 
@@ -11,14 +11,14 @@
 
 | Área | Resultado |
 |------|-----------|
-| API `/api/version` | ✅ `teste_db`, commit recente |
+| API `/api/version` | ✅ `teste_db`, commit `5e9464d` |
 | ammo_batches + migrations | ✅ SQL idempotente aplicado |
 | Materiais clonados | ✅ 589 (587 prod + 2 QA) |
-| Pessoas / cautelas demo | ✅ 2 pessoas, 1 cautela JHONNY (parcial) |
-| Supervisor QA | ✅ `qa.supervisor@reserva.test` |
+| Pessoas / cautelas pós-import | ✅ ~120 pessoas, ~119 cautelas (ver § Estado dos dados) |
+| Supervisor QA | ✅ `qa.supervisor@reserva.test` (credenciais em `scripts/.env.qa`) |
 | Vitest (`npm test`) | ✅ 2/2 passed |
 | E2E local (`localhost:3000`) | ✅ 1/1 passed |
-| E2E remoto (`reserva-teste.vercel.app`) | ✅ 1/1 passed (com bypass Vercel) |
+| E2E remoto (`reserva-teste.vercel.app`) | ✅ 1/1 passed (bypass via env) |
 | GitHub secrets | ⏳ `gh` instalado; requer `gh auth login` |
 
 ---
@@ -36,8 +36,10 @@ O preview exige login Vercel por padrão. Use **uma** das opções:
 **Opção A — Link com bypass (recomendado para QA manual):**
 
 ```
-https://reserva-teste.vercel.app/auth/login?x-vercel-protection-bypass=JiWhIN8Aa7gwYvd2OtxMANYgotiH8R7h&x-vercel-set-bypass-cookie=true
+https://reserva-teste.vercel.app/auth/login?x-vercel-protection-bypass=<VERCEL_AUTOMATION_BYPASS_SECRET>&x-vercel-set-bypass-cookie=true
 ```
+
+Substitua `<VERCEL_AUTOMATION_BYPASS_SECRET>` pelo valor em `scripts/.env.qa` ou no Dashboard Vercel → Deployment Protection → Protection Bypass for Automation.
 
 O cookie de bypass persiste na sessão do navegador após o primeiro acesso.
 
@@ -55,25 +57,33 @@ npx vercel curl https://reserva-teste.vercel.app/api/version
 
 | Papel | Identificador | Senha / PIN |
 |-------|---------------|-------------|
-| Supervisor QA | `qa.supervisor@reserva.test` | `ReservaQA2026!Super` |
-| Pessoa E2E | mat. `999888` | PIN `5678` |
-| JHONNY (demo parcial) | mat. `064272` | PIN `0000` |
+| Supervisor QA | `qa.supervisor@reserva.test` | ver `scripts/.env.qa` → `QA_SUPERVISOR_PASSWORD` |
+| Pessoa E2E | mat. `999888` | ver `scripts/.env.qa` |
+| JHONNY (demo parcial) | mat. `064272` | PIN temporário de import (`0000` — trocar no balcão) |
 
-Credenciais completas em `scripts/.env.qa` (gitignored).
+Credenciais completas em `scripts/.env.qa` (gitignored). Gerar/atualizar supervisor:
+
+```powershell
+node scripts/qa/create-supervisor-test.mjs
+```
 
 ---
 
 ## Estado dos dados (teste_db — 06/06/2026)
 
+Fonte: `scripts/import/import-final-report.md` (apply idempotente do DOCX 1º BPM).
+
 | Tabela | Count | Notas |
 |--------|-------|-------|
 | `materials` | **589** | 587 clonados de prod + PAT-QA-CAR-002 + PAT-QA-MUN-001 |
-| `persons` | **2** | JHONNY (064272) + TESTE QA E2E BROWSER (999888) |
-| `cautelas` | **1** | Demo parcial JHONNY — `dd414536-cfb8-4c32-9fda-b78e55b4b5b7` |
-| `cautela_items` | **3** | Pistola PAT-00272 + 3 carregadores + 50 munições |
+| `persons` | **120** | 118 novas do import + JHONNY (064272) + TESTE QA E2E (999888) |
+| `cautelas` | **119** | Permanentes abertas/parciais pós-import |
+| `cautela_items` | **134** | Após remoção de 6 duplicatas |
 | `ammo_batches` | **0** | Tabela criada; sem lotes seedados |
 
-**Prod** tinha 587 materiais e **0** persons/cautelas — clone de pessoas não aplicável; seeds QA usados.
+**Pendências do import:** 4 seriais ausentes no estoque (ATAIDES, VALDSON, GOUVEIA, MACEDO) — ver Etapa 4 do Plano 10/10.
+
+> **Nota:** consulta direta via `scripts/.env.clone` em 06/06/2026 retornou 0 registros (possível reset do banco ou credencial desatualizada). Revalidar counts com `node scripts/verify-supabase-connection.mjs test` ou reexecutar seeds/import se divergir.
 
 ---
 
@@ -90,20 +100,24 @@ node scripts/qa/seed-pack-accessories.mjs --apply         # munição QA + deleg
 node scripts/qa/create-supervisor-test.mjs
 node scripts/qa/seed-partial-return-demo.mjs --apply   # após criar JHONNY
 
-# 3. Ambiente local → teste_db
+# 3. Import cautelados 1º BPM (teste_db)
+node scripts/import/parse-cautelados-docx.mjs --input scripts/import/cautelados-1bpm-atualizada-2026-06-06.docx
+node scripts/import/import-cautelados-test.mjs --apply
+
+# 4. Ambiente local → teste_db
 powershell -File scripts/switch-env-test.ps1
 
-# 4. Testes
+# 5. Testes
 npm test                    # Vitest: 2 passed
 npm run test:e2e            # local: 1 passed
 
-# E2E remoto (Vercel)
+# E2E remoto (Vercel) — carregar secrets de scripts/.env.qa antes
 $env:E2E_BASE_URL="https://reserva-teste.vercel.app"
-$env:VERCEL_AUTOMATION_BYPASS_SECRET="JiWhIN8Aa7gwYvd2OtxMANYgotiH8R7h"
+# $env:VERCEL_AUTOMATION_BYPASS_SECRET — ver scripts/.env.qa
 $env:CI="1"
 npm run test:e2e            # remoto: 1 passed
 
-# 5. Verificação API
+# 6. Verificação API
 npx vercel curl https://reserva-teste.vercel.app/api/version
 ```
 
@@ -126,7 +140,7 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 | `E2E_SUPERVISOR_EMAIL` | `qa.supervisor@reserva.test` |
 | `E2E_SUPERVISOR_PASSWORD` | em `scripts/.env.qa` |
 | `E2E_BASE_URL` | `https://reserva-teste.vercel.app` |
-| `VERCEL_AUTOMATION_BYPASS_SECRET` | bypass Vercel (Dashboard ou `vercel curl -v`) |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | em `scripts/.env.qa` ou Dashboard Vercel |
 | `SUPABASE_ACCESS_TOKEN` | em `scripts/.env.clone` |
 | `SUPABASE_TEST_DB_PASSWORD` | senha Postgres teste_db |
 
@@ -134,7 +148,7 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 
 ## Evidências
 
-### `/api/version`
+### `/api/version` (06/06/2026 — Etapa 0)
 
 ```json
 {
@@ -143,19 +157,19 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
   "supabaseEnv": "teste_db",
   "supabaseRef": "ajyvznrmbuistlcfckuh",
   "vercelEnv": "preview",
-  "vercelGitCommitSha": "b9a5c547bfcbd829803c9536e7fe2cf83d748d07",
+  "vercelGitCommitSha": "5e9464d721c28f1fca4bba7720cb5b1b525eeac7",
   "vercelGitCommitRef": "master"
 }
 ```
 
-### Counts teste_db
+### Counts teste_db (pós-import — `import-final-report.md`)
 
 ```json
 {
   "materials": 589,
-  "persons": 2,
-  "cautelas": 1,
-  "cautela_items": 3,
+  "persons": 120,
+  "cautelas": 119,
+  "cautela_items": 134,
   "ammo_batches": 0
 }
 ```
@@ -170,14 +184,16 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 | `playwright.config.ts` | Suporte `VERCEL_AUTOMATION_BYPASS_SECRET` |
 | `.github/workflows/ci.yml` | Passa bypass secret no job E2E |
 | `scripts/fix-ammo-batches-test.mjs` | Fix idempotente ammo_batches |
-| `scripts/set-github-secrets.ps1` | Automação secrets após `gh auth login` |
+| `scripts/set-github-secrets.ps1` | Sem bypass hardcoded; lê de env / `.env.qa` |
+| `scripts/qa/create-supervisor-test.mjs` | Senha gerada ou lida de `.env.qa` (não versionada) |
+| `PRD.md` | Sincronizado com Obsidian PRD v1.4 |
 
 ---
 
 ## Test plan rápido (regressão manual)
 
 - [ ] Acessar via link bypass → login supervisor
-- [ ] Nova cautela diária com mat. `999888` + PIN `5678`
+- [ ] Nova cautela diária com mat. `999888` + PIN (ver `.env.qa`)
 - [ ] JHONNY (064272): cautela demo com 3 linhas → devolução parcial
 - [ ] Relatório `/reports/divergencias`
 - [ ] `/ammo-batches` (tabela vazia, UI carrega)
@@ -199,6 +215,7 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 | Verificação | Resultado |
 |-------------|-----------|
 | `npx tsc --noEmit` | ✅ sem erros |
+| `npm run build` | ✅ sem erros |
 | Sync dry-run (`scripts/.env.clone`) | ✅ pool alinhado: **90** pistolas → **270** carregadores (`PAT-GLK-POOL-*`) |
 | Disponíveis / em uso | **269** disponíveis, **1** cautelado (insert/retire = 0) |
 | Nova Cautela (código) | ✅ `resolvePackAccessoriesForWeapon` + N linhas qty 1 em `CautelaMaterialsStep` |
@@ -217,5 +234,8 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 ## Lacunas conhecidas
 
 - GitHub secrets pendentes de `gh auth login` manual
+- Rotação do bypass Vercel após exposição em docs (ação manual no Dashboard)
 - `ammo_batches` sem dados seed (tabela OK)
-- Prod sem persons/cautelas — import legado não replicado
+- 4 seriais faltantes no estoque — Etapa 4
+- 57 cautelas Glock sem carregador — backfill na Etapa 4
+- Prod sem persons/cautelas — import legado não replicado (só teste_db)
