@@ -67,8 +67,12 @@ function pushMaterialsRoute(
 const FILTER_SELECT_CLASS =
   "min-w-[9.5rem] max-w-[12rem] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 cursor-pointer shadow-sm hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 [&>option]:bg-slate-900 [&>option]:text-slate-100 [&>option]:py-1"
 
-const FILTER_INPUT_CLASS =
-  "min-w-[5.5rem] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500"
+function mergeFilterOption(options: string[], current?: string): string[] {
+  if (!current?.trim()) return options
+  const set = new Set(options)
+  set.add(current.trim())
+  return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"))
+}
 
 function useDebouncedRoutePush(
   router: ReturnType<typeof useRouter>,
@@ -93,6 +97,9 @@ export default function MaterialsClient({
   categoryOptions,
   materialNames = [],
   locations = [],
+  marcaOptions = [],
+  modeloOptions = [],
+  calibreOptions = [],
   urlQuery,
   listTruncated = false,
   materialsTotalCount,
@@ -101,6 +108,9 @@ export default function MaterialsClient({
   categoryOptions: { name: string }[];
   materialNames?: string[];
   locations?: string[];
+  marcaOptions?: string[];
+  modeloOptions?: string[];
+  calibreOptions?: string[];
   urlQuery: MaterialsUrlQuery;
   listTruncated?: boolean;
   materialsTotalCount?: number;
@@ -113,6 +123,19 @@ export default function MaterialsClient({
   const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
   const debouncedPush = useDebouncedRoutePush(router, urlQuery);
+
+  const marcaSelectOptions = useMemo(
+    () => mergeFilterOption(marcaOptions, urlQuery.marca),
+    [marcaOptions, urlQuery.marca]
+  )
+  const modeloSelectOptions = useMemo(
+    () => mergeFilterOption(modeloOptions, urlQuery.modelo),
+    [modeloOptions, urlQuery.modelo]
+  )
+  const calibreSelectOptions = useMemo(
+    () => mergeFilterOption(calibreOptions, urlQuery.calibre),
+    [calibreOptions, urlQuery.calibre]
+  )
 
   const hasActiveFilters = useMemo(
     () =>
@@ -208,10 +231,6 @@ export default function MaterialsClient({
 
   function handleFilter(key: string, value: string) {
     pushMaterialsRoute(router, urlQuery, { [key]: value || undefined })
-  }
-
-  function handleTextFilter(key: string, value: string) {
-    debouncedPush({ [key]: value || undefined })
   }
 
   return (
@@ -346,33 +365,51 @@ export default function MaterialsClient({
               ))}
             </select>
           )}
-          <input
-            type="text"
-            placeholder="Marca"
-            className={FILTER_INPUT_CLASS}
-            key={`marca-${urlQuery.marca ?? ""}`}
-            defaultValue={urlQuery.marca || ""}
-            onChange={(e) => handleTextFilter("marca", e.target.value)}
-            aria-label="Marca"
-          />
-          <input
-            type="text"
-            placeholder="Modelo"
-            className={FILTER_INPUT_CLASS}
-            key={`modelo-${urlQuery.modelo ?? ""}`}
-            defaultValue={urlQuery.modelo || ""}
-            onChange={(e) => handleTextFilter("modelo", e.target.value)}
-            aria-label="Modelo"
-          />
-          <input
-            type="text"
-            placeholder="Calibre"
-            className={FILTER_INPUT_CLASS}
-            key={`calibre-${urlQuery.calibre ?? ""}`}
-            defaultValue={urlQuery.calibre || ""}
-            onChange={(e) => handleTextFilter("calibre", e.target.value)}
-            aria-label="Calibre"
-          />
+          {marcaSelectOptions.length > 0 && (
+            <select
+              className={FILTER_SELECT_CLASS}
+              value={urlQuery.marca || ""}
+              onChange={(e) => handleFilter("marca", e.target.value)}
+              aria-label="Marca"
+            >
+              <option value="">Todas marcas</option>
+              {marcaSelectOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          )}
+          {modeloSelectOptions.length > 0 && (
+            <select
+              className={FILTER_SELECT_CLASS}
+              value={urlQuery.modelo || ""}
+              onChange={(e) => handleFilter("modelo", e.target.value)}
+              aria-label="Modelo"
+            >
+              <option value="">Todos modelos</option>
+              {modeloSelectOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          )}
+          {calibreSelectOptions.length > 0 && (
+            <select
+              className={FILTER_SELECT_CLASS}
+              value={urlQuery.calibre || ""}
+              onChange={(e) => handleFilter("calibre", e.target.value)}
+              aria-label="Calibre"
+            >
+              <option value="">Todos calibres</option>
+              {calibreSelectOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
           {hasActiveFilters && (
             <button
               type="button"

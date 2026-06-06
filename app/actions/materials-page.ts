@@ -8,6 +8,9 @@ export type MaterialsPageClientPayload = {
   categoryOptions: { name: string }[]
   materialNames: string[]
   locations: string[]
+  marcaOptions: string[]
+  modeloOptions: string[]
+  calibreOptions: string[]
   listTruncated: boolean
   materialsTotalCount: number
 }
@@ -44,6 +47,9 @@ export async function getMaterialsPagePayload(
       categoryOptions: payload.categoryOptions,
       materialNames: payload.materialNames,
       locations: payload.locations,
+      marcaOptions: payload.marcaOptions,
+      modeloOptions: payload.modeloOptions,
+      calibreOptions: payload.calibreOptions,
       listTruncated: payload.listTruncated,
       materialsTotalCount: payload.materialsTotalCount,
     }

@@ -9,6 +9,9 @@ type ApiPayload = {
   categoryOptions: { name: string }[];
   materialNames: string[];
   locations: string[];
+  marcaOptions: string[];
+  modeloOptions: string[];
+  calibreOptions: string[];
   listTruncated: boolean;
   materialsTotalCount: number;
 };
@@ -101,6 +104,9 @@ export default function MaterialsPageLoader({
       categoryOptions={data!.categoryOptions}
       materialNames={data!.materialNames}
       locations={data!.locations}
+      marcaOptions={data!.marcaOptions}
+      modeloOptions={data!.modeloOptions}
+      calibreOptions={data!.calibreOptions}
       urlQuery={urlQuery}
       listTruncated={data!.listTruncated}
       materialsTotalCount={data!.materialsTotalCount}

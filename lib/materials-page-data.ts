@@ -24,11 +24,20 @@ export type MaterialListRow = Record<string, unknown> & {
   activeDetail?: MaterialActiveDetail
 }
 
+function distinctSorted(values: (string | null | undefined)[]): string[] {
+  return [...new Set(values.map((v) => (v ?? "").trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  )
+}
+
 export type MaterialsPagePayload = {
   materials: MaterialListRow[]
   categoryOptions: { name: string }[]
   materialNames: string[]
   locations: string[]
+  marcaOptions: string[]
+  modeloOptions: string[]
+  calibreOptions: string[]
   /** true se existirem mais linhas que o limite para os filtros atuais */
   listTruncated: boolean
   /** Total de linhas que correspondem aos filtros (PostgREST count) */
@@ -49,9 +58,9 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   if (filters.category) query = query.ilike("category", filters.category)
   if (filters.name) query = query.eq("name", filters.name)
   if (filters.reservation_id) query = query.eq("reservation_id", filters.reservation_id)
-  if (filters.marca) query = query.ilike("marca", `%${filters.marca}%`)
-  if (filters.modelo) query = query.ilike("modelo", `%${filters.modelo}%`)
-  if (filters.calibre) query = query.ilike("calibre", `%${filters.calibre}%`)
+  if (filters.marca) query = query.ilike("marca", filters.marca)
+  if (filters.modelo) query = query.ilike("modelo", filters.modelo)
+  if (filters.calibre) query = query.ilike("calibre", filters.calibre)
   if (filters.search) {
     query = query.or(
       `name.ilike.%${filters.search}%,patrimony_number.ilike.%${filters.search}%,internal_code.ilike.%${filters.search}%,reservation_id.ilike.%${filters.search}%,marca.ilike.%${filters.search}%,modelo.ilike.%${filters.search}%,calibre.ilike.%${filters.search}%`
@@ -66,7 +75,10 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   ] = await Promise.all([
     query,
     supabase.from("materials").select("category").limit(MATERIALS_FILTER_META_ROW_LIMIT),
-    supabase.from("materials").select("name, reservation_id").limit(MATERIALS_FILTER_META_ROW_LIMIT),
+    supabase
+      .from("materials")
+      .select("name, reservation_id, marca, modelo, calibre")
+      .limit(MATERIALS_FILTER_META_ROW_LIMIT),
     buildActiveMaterialMap(supabase),
   ])
 
@@ -105,8 +117,11 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   })()
 
   const rows = allMaterials ?? []
-  const materialNames = Array.from(new Set(rows.map((m) => m.name))).filter(Boolean).sort() as string[]
-  const locations = Array.from(new Set(rows.map((m) => m.reservation_id))).filter(Boolean).sort() as string[]
+  const materialNames = distinctSorted(rows.map((m) => m.name))
+  const locations = distinctSorted(rows.map((m) => m.reservation_id))
+  const marcaOptions = distinctSorted(rows.map((m) => m.marca))
+  const modeloOptions = distinctSorted(rows.map((m) => m.modelo))
+  const calibreOptions = distinctSorted(rows.map((m) => m.calibre))
 
   const enrichedMaterials: MaterialListRow[] = (materials ?? []).map((m) => {
     const row = m as Record<string, unknown>
@@ -119,6 +134,9 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
     categoryOptions,
     materialNames,
     locations,
+    marcaOptions,
+    modeloOptions,
+    calibreOptions,
     listTruncated,
     materialsTotalCount: total,
   }
