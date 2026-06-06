@@ -20,6 +20,9 @@ function loadQaEnvFile(): void {
   if (!process.env.E2E_SUPERVISOR_PASSWORD && process.env.QA_SUPERVISOR_PASSWORD) {
     process.env.E2E_SUPERVISOR_PASSWORD = process.env.QA_SUPERVISOR_PASSWORD
   }
+  if (!process.env.E2E_BASE_URL) {
+    process.env.E2E_BASE_URL = "https://reserva-teste.vercel.app"
+  }
 }
 
 loadQaEnvFile()

@@ -24,10 +24,7 @@ export async function getAmmoBatches(): Promise<AmmoBatch[]> {
 
   const { data, error } = await supabase
     .from("ammo_batches")
-    .select(`
-      *,
-      profiles(name)
-    `)
+    .select("*")
     .order("created_at", { ascending: false })
 
   if (error) throw new Error(error.message)

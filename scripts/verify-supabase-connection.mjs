@@ -26,7 +26,8 @@ if (mode === "test") {
     if (i > 0) env[t.slice(0, i).trim()] = t.slice(i + 1).trim()
   }
   url = env.SUPABASE_TEST_URL
-  key = env.SUPABASE_TEST_ANON_KEY || env.SUPABASE_TEST_SERVICE_ROLE_KEY
+  // service_role evita RLS mascarar contagens (BUG-002: anon retornava 0 com dados presentes)
+  key = env.SUPABASE_TEST_SERVICE_ROLE_KEY || env.SUPABASE_TEST_ANON_KEY
 } else {
   const local = resolve(__dirname, "..", ".env.local")
   if (!existsSync(local)) {
