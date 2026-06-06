@@ -5,7 +5,11 @@ import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelas
 import { getPersonById } from "@/app/actions/persons"
 import PersonRegistrationWizard, { type PersonWizardEditTarget } from "@/components/PersonRegistrationWizard"
 import FaceVerification from "./FaceVerification"
-import { CautelaMaterialsStep, type MaterialLine } from "./cautela/CautelaMaterialsStep"
+import {
+  CautelaMaterialsStep,
+  materialLinesToCautelaItems,
+  type MaterialLine,
+} from "./cautela/CautelaMaterialsStep"
 import { extractCaliber, validateAmmunitionCaliber } from "@/lib/cautela-caliber"
 import {
   BUCKET_LABEL,
@@ -222,7 +226,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       const result = await createCautela({
         person_id: selectedPerson!.id,
         type: cautelaType,
-        items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
+        items: materialLinesToCautelaItems(materialLines),
         notes: buildNotesPayload(),
         pin,
         review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
@@ -250,7 +254,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
       const result = await createCautelaFaceAuth({
         person_id: selectedPerson!.id,
         type: cautelaType,
-        items: materialLines.map((l) => ({ material_id: l.material.id, quantity: l.quantity })),
+        items: materialLinesToCautelaItems(materialLines),
         notes: buildNotesPayload(),
         review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
       })

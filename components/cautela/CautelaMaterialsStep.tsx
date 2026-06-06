@@ -28,6 +28,46 @@ export type MaterialLine = {
   /** Arma do pacote (pistola/arma longa) — evita fundir munição entre pacotes. */
   packWeaponId?: string
   packWeaponLabel?: string
+  /** Carregadores do pool: N UUIDs distintos; quantity deve bater com length. */
+  poolMaterialIds?: string[]
+}
+
+/** Expande linhas agregadas do pool em itens distintos para createCautela. */
+export function materialLinesToCautelaItems(
+  lines: MaterialLine[]
+): { material_id: string; quantity: number }[] {
+  return lines.flatMap((l) =>
+    l.poolMaterialIds?.length
+      ? l.poolMaterialIds.map((id) => ({ material_id: id, quantity: 1 }))
+      : [{ material_id: l.material.id, quantity: l.quantity }]
+  )
+}
+
+function isPackChargerLine(row: MaterialLine): boolean {
+  return Boolean(row.poolMaterialIds?.length && row.packWeaponId)
+}
+
+function upsertPackChargerLine(
+  prev: MaterialLine[],
+  weapon: SearchableMaterial,
+  chargerMats: SearchableMaterial[],
+  cq: number
+): MaterialLine[] {
+  const without = prev.filter(
+    (l) => !(l.packWeaponId === weapon.id && isPackChargerLine(l))
+  )
+  if (chargerMats.length === 0) return without
+  return [
+    ...without,
+    {
+      rowId: crypto.randomUUID(),
+      material: normalizeWizardMaterial(chargerMats[0]),
+      quantity: cq,
+      packWeaponId: weapon.id,
+      packWeaponLabel: weapon.name,
+      poolMaterialIds: chargerMats.map((m) => m.id),
+    },
+  ]
 }
 
 type Props = {
@@ -220,9 +260,7 @@ export function CautelaMaterialsStep({
       if (!next.some((l) => l.material.id === pistolWeapon.id)) {
         next = mergeLines(next, pistolWeapon, 1)
       }
-      for (const ch of chargerMats) {
-        next = mergeLines(next, ch, 1)
-      }
+      next = upsertPackChargerLine(next, pistolWeapon, chargerMats, cq)
       if (aq > 0 && ammoMat) {
         next = mergeLines(next, ammoMat, aq, {
           packWeaponId: pistolWeapon.id,
@@ -270,9 +308,7 @@ export function CautelaMaterialsStep({
       if (!next.some((l) => l.material.id === longWeapon.id)) {
         next = mergeLines(next, longWeapon, 1)
       }
-      for (const ch of chargerMats) {
-        next = mergeLines(next, ch, 1)
-      }
+      next = upsertPackChargerLine(next, longWeapon, chargerMats, cq)
       if (aq > 0 && ammoMat) {
         next = mergeLines(next, ammoMat, aq, {
           packWeaponId: longWeapon.id,
@@ -306,8 +342,39 @@ export function CautelaMaterialsStep({
     onLinesChange(lines.filter((l) => l.rowId !== rowId))
   }
 
-  const setQty = (rowId: string, q: number) => {
+  const setQty = async (rowId: string, q: number) => {
     const n = Math.max(1, Math.min(99999, Math.floor(q)))
+    const row = lines.find((l) => l.rowId === rowId)
+    if (!row) return
+
+    if (row.poolMaterialIds?.length && row.packWeaponId) {
+      if (n === row.quantity && row.poolMaterialIds.length === n) return
+      setPackApplying(true)
+      try {
+        const r = await resolvePackAccessoriesForWeapon(row.packWeaponId, "charger", n)
+        if (r.error || r.materials.length < n) {
+          setPackError(r.error ?? "Carregador não encontrado no cadastro.")
+          return
+        }
+        onLinesChange(
+          lines.map((l) =>
+            l.rowId === rowId
+              ? {
+                  ...l,
+                  quantity: n,
+                  poolMaterialIds: r.materials.map((m) => m.id),
+                  material: normalizeWizardMaterial(r.materials[0]),
+                }
+              : l
+          )
+        )
+        setPackError(null)
+      } finally {
+        setPackApplying(false)
+      }
+      return
+    }
+
     onLinesChange(lines.map((l) => (l.rowId === rowId ? { ...l, quantity: n } : l)))
   }
 
@@ -335,7 +402,11 @@ export function CautelaMaterialsStep({
         </p>
       </div>
 
-      <CautelaLinesSummary lines={lines} onQtyChange={setQty} onRemove={removeRow} />
+      <CautelaLinesSummary
+        lines={lines}
+        onQtyChange={(rowId, qty) => void setQty(rowId, qty)}
+        onRemove={removeRow}
+      />
 
       {addedToast && (
         <p className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded-lg px-3 py-2">
