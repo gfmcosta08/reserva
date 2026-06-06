@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server"
+import { mergeMaterialCategoryOptions } from "@/lib/material-filter-categories"
 import { MATERIALS_FILTER_META_ROW_LIMIT, MATERIALS_LIST_ROW_LIMIT } from "@/lib/materials-list-limit"
 import { buildActiveMaterialMap, type MaterialActiveDetail } from "@/lib/material-active-detail"
 
@@ -45,7 +46,7 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
     .limit(MATERIALS_LIST_ROW_LIMIT)
 
   if (filters.status) query = query.eq("status", filters.status)
-  if (filters.category) query = query.eq("category", filters.category)
+  if (filters.category) query = query.ilike("category", filters.category)
   if (filters.name) query = query.eq("name", filters.name)
   if (filters.reservation_id) query = query.eq("reservation_id", filters.reservation_id)
   if (filters.marca) query = query.ilike("marca", `%${filters.marca}%`)
@@ -98,11 +99,9 @@ export async function loadMaterialsPageData(filters: MaterialsPageFilters): Prom
   }
 
   const categoryOptions = (() => {
-    if (catError || !catRows) return [] as { name: string }[]
-    const names = [...new Set(catRows.map((r) => r.category).filter(Boolean) as string[])].sort((a, b) =>
-      a.localeCompare(b, "pt-BR")
-    )
-    return names.map((name) => ({ name }))
+    if (catError || !catRows) return mergeMaterialCategoryOptions([])
+    const names = [...new Set(catRows.map((r) => r.category).filter(Boolean) as string[])]
+    return mergeMaterialCategoryOptions(names)
   })()
 
   const rows = allMaterials ?? []

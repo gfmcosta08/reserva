@@ -804,13 +804,15 @@ export async function resolvePackAccessoryForWeapon(
     return { material: null, error: "Arma não encontrada" }
   }
 
+  const accessoryFilter = packAccessoryAvailabilityFilter(kind)
+
   const { data: candidates, error: listError } = await supabase
     .from("materials")
     .select("id, name, patrimony_number, serial_number, internal_code, category, calibre")
     .eq("status", "available")
-    .or(packAccessoryAvailabilityFilter(kind))
+    .or(accessoryFilter)
     .order("name")
-    .limit(50)
+    .limit(200)
 
   if (listError) {
     return { material: null, error: listError.message }
@@ -819,9 +821,20 @@ export async function resolvePackAccessoryForWeapon(
   const picked = pickPackAccessoryForWeapon(weapon, candidates ?? [], kind)
   if (!picked) {
     const label = kind === "charger" ? "carregador" : "munição"
+    const { count: inUseCount } = await supabase
+      .from("materials")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "cautelado")
+      .or(accessoryFilter)
+
+    const hint =
+      (inUseCount ?? 0) > 0
+        ? ` Há ${inUseCount} ${label}(s) em uso — libere um em Materiais (status Disponível) ou cadastre novos.`
+        : ` Cadastre ${label} compatível em Materiais (categoria CARREGADOR / MUNICAO).`
+
     return {
       material: null,
-      error: `Não há ${label} disponível no cadastro compatível com esta arma. Cadastre ou libere o material em Materiais.`,
+      error: `Não há ${label} disponível no cadastro compatível com esta arma.${hint}`,
     }
   }
 

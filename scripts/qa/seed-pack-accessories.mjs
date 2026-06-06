@@ -1,5 +1,5 @@
 /**
- * Garante carregador e munição 9mm DISPONÍVEIS no teste_db para pacote pistola (Nova Cautela).
+ * Garante carregadores e munição 9mm DISPONÍVEIS no teste_db para pacote pistola (Nova Cautela).
  *   node scripts/qa/seed-pack-accessories.mjs
  *   node scripts/qa/seed-pack-accessories.mjs --apply
  */
@@ -8,16 +8,21 @@ import { loadCloneEnv, assertTestOnly } from "../import/lib/env-clone.mjs"
 
 const apply = process.argv.includes("--apply")
 
+const CHARGER_COUNT = 12
+
 const ACCESSORIES = [
-  {
-    name: "CARREGADOR GLOCK 9MM (QA DISPONÍVEL)",
-    category: "CARREGADOR",
-    patrimony_number: "PAT-QA-CAR-002",
-    internal_code: "QA-CAR-002",
-    serial_number: "QA-CHG-002",
-    calibre: "9mm",
-    status: "available",
-  },
+  ...Array.from({ length: CHARGER_COUNT }, (_, i) => {
+    const n = String(i + 1).padStart(2, "0")
+    return {
+      name: `CARREGADOR GLOCK 9MM (QA DISPONÍVEL ${n})`,
+      category: "CARREGADOR",
+      patrimony_number: `PAT-QA-CAR-${n}`,
+      internal_code: `QA-CAR-${n}`,
+      serial_number: `QA-CHG-${n}`,
+      calibre: "9mm",
+      status: "available",
+    }
+  }),
   {
     name: "MUNICAO 9MM (QA DISPONÍVEL)",
     category: "MUNICAO",
@@ -59,7 +64,13 @@ async function main() {
     }
   }
 
-  console.log(JSON.stringify({ apply, plan }, null, 2))
+  const { count: availChargers } = await supabase
+    .from("materials")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "available")
+    .ilike("category", "%carregador%")
+
+  console.log(JSON.stringify({ apply, plan, availableChargersAfter: availChargers }, null, 2))
 }
 
 main().catch((e) => {

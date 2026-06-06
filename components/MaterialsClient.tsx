@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import {
   Package,
   Plus,
@@ -12,7 +12,8 @@ import {
   Tag,
   Download,
   Upload,
-  QrCode
+  QrCode,
+  X,
 } from "lucide-react";
 import CategoryManager from "./CategoryManager";
 import MaterialForm from "./MaterialForm";
@@ -63,6 +64,30 @@ function pushMaterialsRoute(
   router.push(q ? `/materials?${q}` : "/materials")
 }
 
+const FILTER_SELECT_CLASS =
+  "min-w-[9.5rem] max-w-[12rem] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 cursor-pointer shadow-sm hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 [&>option]:bg-slate-900 [&>option]:text-slate-100 [&>option]:py-1"
+
+const FILTER_INPUT_CLASS =
+  "min-w-[5.5rem] rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500"
+
+function useDebouncedRoutePush(
+  router: ReturnType<typeof useRouter>,
+  urlQuery: MaterialsUrlQuery,
+  delayMs = 400
+) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  return useCallback(
+    (patch: Partial<MaterialsUrlQuery>) => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        pushMaterialsRoute(router, urlQuery, patch)
+      }, delayMs)
+    },
+    [router, urlQuery, delayMs]
+  )
+}
+
 export default function MaterialsClient({
   initialMaterials,
   categoryOptions,
@@ -87,6 +112,24 @@ export default function MaterialsClient({
   const [cautelaDetailMaterial, setCautelaDetailMaterial] = useState<MaterialRow | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
+  const debouncedPush = useDebouncedRoutePush(router, urlQuery);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        urlQuery.search ||
+          urlQuery.name ||
+          urlQuery.reservation_id ||
+          urlQuery.category ||
+          urlQuery.status ||
+          urlQuery.marca ||
+          urlQuery.modelo ||
+          urlQuery.calibre
+      ),
+    [urlQuery]
+  );
+
+  const clearFilters = () => router.push("/materials");
 
   function openCautelaDetail(m: MaterialRow) {
     if (m.status !== "cautelado") return;
@@ -160,11 +203,15 @@ export default function MaterialsClient({
   };
 
   function handleSearch(term: string) {
-    pushMaterialsRoute(router, urlQuery, { search: term || undefined })
+    debouncedPush({ search: term || undefined })
   }
 
   function handleFilter(key: string, value: string) {
     pushMaterialsRoute(router, urlQuery, { [key]: value || undefined })
+  }
+
+  function handleTextFilter(key: string, value: string) {
+    debouncedPush({ [key]: value || undefined })
   }
 
   return (
@@ -241,49 +288,31 @@ export default function MaterialsClient({
       </div>
 
       {/* Filters Bar */}
-      <div className="flex min-h-14 py-2 items-center flex-wrap gap-4 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm overflow-x-auto">
+      <div className="flex min-h-14 py-3 items-center flex-wrap gap-3 bg-slate-900/50 border border-slate-800 rounded-2xl px-4 backdrop-blur-sm">
         <div className="flex-1 relative flex items-center min-w-[200px]">
-          <Search className="absolute left-3 h-4 w-4 text-slate-500" />
-          <input 
-            type="text" 
-            placeholder="Buscar por nome, patrimônio ou código..." 
-            className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-200 pl-10 underline-offset-4"
+          <Search className="absolute left-3 h-4 w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nome, patrimônio ou código..."
+            className="w-full rounded-lg border border-slate-700 bg-slate-800/80 py-2 pl-10 pr-3 text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60"
+            key={`search-${urlQuery.search ?? ""}`}
             defaultValue={urlQuery.search || ""}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
-        <div className="hidden md:block h-6 w-px bg-slate-800" />
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs font-semibold text-slate-400">
-            <Filter className="h-3 w-3" />
-            Filtrar
+        <div className="hidden md:block h-8 w-px bg-slate-700" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg text-xs font-bold text-slate-300 border border-slate-700">
+            <Filter className="h-3.5 w-3.5 text-blue-400" />
+            Filtros
           </div>
-          <select 
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={urlQuery.name || ""}
-            onChange={(e) => handleFilter("name", e.target.value)}
-          >
-            <option value="">Por Material</option>
-            {materialNames.map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-          <select 
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={urlQuery.reservation_id || ""}
-            onChange={(e) => handleFilter("reservation_id", e.target.value)}
-          >
-            <option value="">Por Localização</option>
-            {locations.map((loc) => (
-              <option key={loc} value={loc}>{loc}</option>
-            ))}
-          </select>
-          <select 
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={urlQuery.category || ""}
+          <select
+            className={FILTER_SELECT_CLASS}
+            value={urlQuery.category || ""}
             onChange={(e) => handleFilter("category", e.target.value)}
+            aria-label="Categoria"
           >
-            <option value="">Por Categoria</option>
+            <option value="">Todas categorias</option>
             {categoryOptions.map((cat) => (
               <option key={cat.name} value={cat.name}>
                 {cat.name}
@@ -291,37 +320,69 @@ export default function MaterialsClient({
             ))}
           </select>
           <select
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 cursor-pointer"
-            defaultValue={urlQuery.status || ""}
+            className={FILTER_SELECT_CLASS}
+            value={urlQuery.status || ""}
             onChange={(e) => handleFilter("status", e.target.value)}
+            aria-label="Status"
           >
-            <option value="">Status</option>
+            <option value="">Todos status</option>
             <option value="available">Disponível</option>
             <option value="cautelado">Em Uso</option>
             <option value="maintenance">Manutenção</option>
             <option value="unavailable">Indisponível</option>
           </select>
+          {locations.length > 0 && (
+            <select
+              className={FILTER_SELECT_CLASS}
+              value={urlQuery.reservation_id || ""}
+              onChange={(e) => handleFilter("reservation_id", e.target.value)}
+              aria-label="Localização"
+            >
+              <option value="">Todas localizações</option>
+              {locations.map((loc) => (
+                <option key={loc} value={loc}>
+                  {loc}
+                </option>
+              ))}
+            </select>
+          )}
           <input
             type="text"
-            placeholder="Marca..."
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-24 placeholder-slate-500"
+            placeholder="Marca"
+            className={FILTER_INPUT_CLASS}
+            key={`marca-${urlQuery.marca ?? ""}`}
             defaultValue={urlQuery.marca || ""}
-            onChange={(e) => handleFilter("marca", e.target.value)}
+            onChange={(e) => handleTextFilter("marca", e.target.value)}
+            aria-label="Marca"
           />
           <input
             type="text"
-            placeholder="Modelo..."
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-24 placeholder-slate-500"
+            placeholder="Modelo"
+            className={FILTER_INPUT_CLASS}
+            key={`modelo-${urlQuery.modelo ?? ""}`}
             defaultValue={urlQuery.modelo || ""}
-            onChange={(e) => handleFilter("modelo", e.target.value)}
+            onChange={(e) => handleTextFilter("modelo", e.target.value)}
+            aria-label="Modelo"
           />
           <input
             type="text"
-            placeholder="Calibre..."
-            className="bg-transparent border-none text-xs font-bold text-slate-300 focus:ring-0 w-20 placeholder-slate-500"
+            placeholder="Calibre"
+            className={FILTER_INPUT_CLASS}
+            key={`calibre-${urlQuery.calibre ?? ""}`}
             defaultValue={urlQuery.calibre || ""}
-            onChange={(e) => handleFilter("calibre", e.target.value)}
+            onChange={(e) => handleTextFilter("calibre", e.target.value)}
+            aria-label="Calibre"
           />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar filtros
+            </button>
+          )}
         </div>
       </div>
 
