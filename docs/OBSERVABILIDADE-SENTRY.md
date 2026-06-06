@@ -37,7 +37,7 @@ Sem DSN configurado, as funções são no-op (zero impacto em build/runtime).
 ## Erro de teste controlado
 
 1. Defina `SENTRY_DEBUG_ROUTE=1` no ambiente Vercel (Preview) **temporariamente**.
-2. `GET /api/debug/sentry-test` → deve aparecer no Sentry como `Sentry test error — RESERVA Etapa 6 QA`.
+2. `GET /api/sentry-test` → deve aparecer no Sentry como `Sentry test error — RESERVA Etapa 6 QA`.
 3. Remova `SENTRY_DEBUG_ROUTE` após validação.
 
 ## Alertas recomendados (Dashboard Sentry)
@@ -46,7 +46,7 @@ Sem DSN configurado, as funções são no-op (zero impacto em build/runtime).
 |--------|----------|
 | 5xx em preview/prod | `level:error` + URL contém `reserva` |
 | Falha migration CI | GitHub Actions → notificar canal ops (fora do Sentry) |
-| Flood de ruído | Filtrar `/api/debug/sentry-test` após QA |
+| Flood de ruído | Filtrar `/api/sentry-test` após QA |
 
 ## Próximos passos
 
