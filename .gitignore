@@ -906,6 +906,10 @@ scripts/dumps/
 # Workspace multi-root (versionado no repo)
 !controle-material.code-workspace
 
+# Cursor / Claude local (não versionar)
+.cursor/
+.claude/
+
 # Add your project-specific ignores here
 # workspace/
 # data/
