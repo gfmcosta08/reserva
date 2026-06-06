@@ -271,7 +271,7 @@ export default function MaterialForm({
                   placeholder="Ex: 1 para arma, 500 para munição"
                 />
                 <p className="text-[11px] text-slate-500">
-                  Use 1 para equipamentos unitários. Para munição, informe o total de projéteis em estoque.
+                  Armas e coletes: 1. Carregadores fungíveis e munição: total em estoque (ex. 100 projéteis ou 50 carregadores).
                 </p>
               </div>
 

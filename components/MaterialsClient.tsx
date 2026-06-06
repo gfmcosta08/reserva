@@ -37,6 +37,7 @@ export type MaterialRow = {
   marca?: string;
   modelo?: string;
   calibre?: string;
+  stock_quantity?: number;
   activeDetail?: MaterialActiveDetail;
 };
 
@@ -206,14 +207,14 @@ export default function MaterialsClient({
 
   const exportFilteredCSV = () => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Marca,Modelo,Calibre,Status,Observacoes\n";
+    csvContent += "Nome,Patrimonio,Codigo Interno,Numero Serie,Identificacao Reserva,Categoria,Marca,Modelo,Calibre,Estoque,Status,Observacoes\n";
 
     initialMaterials.forEach(m => {
       const catName = m.category || "";
       const statusMap: any = { available: "Disponivel", cautelado: "Em Uso", maintenance: "Manutencao", unavailable: "Bloqueado/Indisponivel" };
       const statusLabel = statusMap[m.status] || m.status;
 
-      csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${m.marca || ''}","${m.modelo || ''}","${m.calibre || ''}","${statusLabel}","${m.notes || ''}"\n`;
+      csvContent += `"${m.name}","${m.patrimony_number}","${m.internal_code}","${m.serial_number || ''}","${m.reservation_id || ''}","${catName}","${m.marca || ''}","${m.modelo || ''}","${m.calibre || ''}","${m.stock_quantity ?? 1}","${statusLabel}","${m.notes || ''}"\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -455,6 +456,7 @@ export default function MaterialsClient({
               <th className="px-6 py-4">Patrimônio / Código</th>
               <th className="px-6 py-4">Marca / Modelo</th>
               <th className="px-6 py-4">Calibre</th>
+              <th className="px-6 py-4">Estoque</th>
               <th className="px-6 py-4">Categoria</th>
               <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4 text-right">Ações</th>
@@ -463,7 +465,7 @@ export default function MaterialsClient({
           <tbody className="divide-y divide-slate-800/50">
             {initialMaterials.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-20 text-center">
+                <td colSpan={8} className="px-6 py-20 text-center">
                   <Package className="h-12 w-12 text-slate-800 mx-auto mb-4" />
                   <p className="text-slate-500 font-medium text-sm">Nenhum material encontrado.</p>
                   <p className="text-slate-600 text-xs mt-1">Tente ajustar seus filtros ou cadastre um novo material.</p>
@@ -505,6 +507,11 @@ export default function MaterialsClient({
                     ) : (
                       <span className="text-slate-600 text-[10px]">—</span>
                     )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs font-bold text-slate-300 tabular-nums">
+                      {m.stock_quantity ?? 1}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400 capitalize">
@@ -611,9 +618,11 @@ function MaterialCard({
           <p className="text-[10px] text-slate-500 font-mono mt-0.5">
             {m.patrimony_number} • {m.internal_code}
           </p>
-          {(m.marca || m.modelo || m.calibre) && (
+          {(m.marca || m.modelo || m.calibre || (m.stock_quantity ?? 1) > 1) && (
             <p className="text-[10px] text-slate-500 mt-1">
-              {[m.marca, m.modelo, m.calibre].filter(Boolean).join(" • ")}
+              {[m.marca, m.modelo, m.calibre, (m.stock_quantity ?? 1) > 1 ? `Estoque ${m.stock_quantity}` : null]
+                .filter(Boolean)
+                .join(" • ")}
             </p>
           )}
         </div>

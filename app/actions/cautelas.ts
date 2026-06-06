@@ -22,7 +22,6 @@ import {
   itemBalance,
   itemIsFullyReturned,
   itemNeedsReturn,
-  materialStatusAfterReturn,
   qtyDelivered,
   qtyReturned,
   resolveItemStatusAfterReturn,
@@ -33,7 +32,6 @@ import {
   filterPackCandidatesForWeapon,
   packAccessoryAvailabilityFilter,
   pickPackAccessoryForWeapon,
-  pickPackAccessoriesForWeapon,
   type PackAccessoryCandidate,
 } from "@/lib/cautela-pack-accessories"
 import {
@@ -41,6 +39,13 @@ import {
   isGlock9mmCharger,
   isGlock9mmPistol,
 } from "@/lib/glock-9mm-inventory"
+import {
+  canReserveStock,
+  computeMaterialAfterReturn,
+  effectiveStock,
+  formatInsufficientStockMessage,
+  resolveStockUnits,
+} from "@/lib/material-stock"
 import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
 import { Resend } from "resend"
 
@@ -129,10 +134,58 @@ function mapCreateCautelaRpcError(message: string): string {
   if (message.includes("MATERIALS_NOT_ALL_AVAILABLE")) {
     return "Um ou mais materiais não estão mais disponíveis. Atualize a lista e tente novamente."
   }
+  if (message.includes("INSUFFICIENT_STOCK")) {
+    return "Estoque insuficiente para um ou mais materiais. Reduza a quantidade ou atualize o cadastro."
+  }
   if (message.includes("NOT_AUTHENTICATED")) {
     return "Sessão inválida. Faça login novamente."
   }
   return message
+}
+
+function validateCautelaItemsStock(
+  merged: { material_id: string; quantity: number }[],
+  materials: { id: string; name: string; status: string; stock_quantity: number | null }[]
+): string | null {
+  const byId = new Map(materials.map((m) => [m.id, m]))
+  for (const item of merged) {
+    const m = byId.get(item.material_id)
+    if (!m) continue
+    if (!canReserveStock(m, item.quantity)) {
+      return formatInsufficientStockMessage(m, item.quantity, effectiveStock(m))
+    }
+  }
+  return null
+}
+
+async function restoreMaterialStockAfterReturn(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  materialId: string,
+  previousReturned: number,
+  newReturned: number,
+  itemStatus: "pending" | "returned" | "damaged" | "missing",
+  qtyDelivered: number
+) {
+  const { data: material, error } = await supabase
+    .from("materials")
+    .select("stock_quantity")
+    .eq("id", materialId)
+    .single()
+
+  if (error || !material) return
+
+  const next = computeMaterialAfterReturn(
+    material.stock_quantity ?? 1,
+    previousReturned,
+    newReturned,
+    itemStatus,
+    qtyDelivered
+  )
+
+  await supabase
+    .from("materials")
+    .update({ stock_quantity: next.stock_quantity, status: next.status })
+    .eq("id", materialId)
 }
 
 // ===== LISTAR CAUTELAS =====
@@ -289,7 +342,7 @@ export async function createCautela(data: {
 
   const { data: materials, error: matError } = await supabase
     .from("materials")
-    .select("id, name, status")
+    .select("id, name, status, stock_quantity")
     .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
@@ -301,6 +354,9 @@ export async function createCautela(data: {
   if (unavailable.length > 0) {
     return { error: formatUnavailableMaterialsMessage(unavailable) }
   }
+
+  const stockError = validateCautelaItemsStock(merged, materials)
+  if (stockError) return { error: stockError }
 
   const { data: rpcData, error: rpcError } = await supabase.rpc("create_cautela_atomic", {
     p_person_id: payload.person_id,
@@ -452,8 +508,15 @@ export async function returnItem(
 
   if (updateItemError) return { error: updateItemError.message }
 
-  const materialStatus = materialStatusAfterReturn(itemStatus, qtyReturn, delivered)
-  await supabase.from("materials").update({ status: materialStatus }).eq("id", item.material_id)
+  const previousReturned = qtyReturned(item)
+  await restoreMaterialStockAfterReturn(
+    supabase,
+    item.material_id,
+    previousReturned,
+    qtyReturn,
+    itemStatus,
+    delivered
+  )
 
   await syncCautelaStatusFromItems(supabase, item.cautela_id, operatorId, now)
 
@@ -614,10 +677,14 @@ export async function processBulkDevolution(
         return { success: false, error: `Erro ao processar item: ${updateError.message}` }
       }
 
-      await supabase
-        .from("materials")
-        .update({ status: materialStatusAfterReturn(disposition, 0, delivered) })
-        .eq("id", cautelaItem.material_id)
+      await restoreMaterialStockAfterReturn(
+        supabase,
+        cautelaItem.material_id,
+        qtyReturned(cautelaItem),
+        0,
+        disposition,
+        delivered
+      )
 
       await logAudit({
         action: disposition === "damaged" ? "item_damaged" : "item_missing",
@@ -631,7 +698,7 @@ export async function processBulkDevolution(
 
     const totalReturned = item.confirmed ? delivered : (item.quantityReturned as number)
     const newStatus = resolveItemStatusAfterReturn(totalReturned, delivered)
-    const matStatus = materialStatusAfterReturn(newStatus, totalReturned, delivered)
+    const prevReturned = qtyReturned(cautelaItem)
 
     const { error: updateError } = await supabase
       .from("cautela_items")
@@ -648,7 +715,14 @@ export async function processBulkDevolution(
       return { success: false, error: `Erro ao processar item: ${updateError.message}` }
     }
 
-    await supabase.from("materials").update({ status: matStatus }).eq("id", cautelaItem.material_id)
+    await restoreMaterialStockAfterReturn(
+      supabase,
+      cautelaItem.material_id,
+      prevReturned,
+      totalReturned,
+      newStatus,
+      delivered
+    )
 
     await logAudit({
       action: "item_returned",
@@ -747,6 +821,7 @@ export type SearchableMaterial = {
   serial_number: string | null
   internal_code: string
   category: string
+  stock_quantity?: number
 }
 
 /** Busca materiais disponíveis por nome, patrimônio, serial, código interno ou UUID. */
@@ -758,7 +833,7 @@ export async function searchMaterials(
   if (raw.length < 1) return []
 
   const supabase = await createClient()
-  const select = "id, name, patrimony_number, serial_number, internal_code, category"
+  const select = "id, name, patrimony_number, serial_number, internal_code, category, stock_quantity"
 
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -810,7 +885,34 @@ function toSearchableMaterial(m: PackAccessoryCandidate): SearchableMaterial {
     serial_number: m.serial_number,
     internal_code: m.internal_code ?? "",
     category: m.category ?? "",
+    stock_quantity: m.stock_quantity ?? 1,
   }
+}
+
+/** Valida quantidade pedida contra estoque disponível (Nova Cautela, antes de gravar). */
+export async function validateMaterialQuantityForCautela(
+  materialId: string,
+  quantity: number
+): Promise<{ ok: true; stock: number } | { ok: false; error: string }> {
+  const idParsed = uuidSchema.safeParse(materialId)
+  if (!idParsed.success) return { ok: false, error: "Material inválido" }
+
+  const qty = Math.max(1, Math.floor(quantity))
+  const supabase = await createClient()
+  const { data: material, error } = await supabase
+    .from("materials")
+    .select("id, name, status, stock_quantity")
+    .eq("id", materialId)
+    .single()
+
+  if (error || !material) return { ok: false, error: "Material não encontrado" }
+  if (!canReserveStock(material, qty)) {
+    return {
+      ok: false,
+      error: formatInsufficientStockMessage(material, qty, effectiveStock(material)),
+    }
+  }
+  return { ok: true, stock: effectiveStock(material) }
 }
 
 /** Carregadores Glock 9mm do pool QA com status available (qty livre na Nova Cautela). */
@@ -880,72 +982,49 @@ export async function resolvePackAccessoriesForWeapon(
     return { materials: [], error: listError.message }
   }
 
-  const useGlockPool = isGlock9mmPistol(weapon)
+  const useGlockPool = isGlock9mmPistol(weapon) && kind === "charger"
   let poolCandidates: PackAccessoryCandidate[]
 
-  if (kind === "charger") {
-    if (useGlockPool) {
-      poolCandidates = (candidates ?? []).filter((m) =>
-        isGlock9mmCharger(m)
-      ) as PackAccessoryCandidate[]
-      if (count > poolCandidates.length) {
-        return {
-          materials: [],
-          error: `Só há ${poolCandidates.length} carregador(es) disponível(is) no pool. Devolva itens ou reduza a quantidade.`,
-        }
-      }
-    } else {
-      poolCandidates = filterPackCandidatesForWeapon(
-        weapon,
-        (candidates ?? []) as PackAccessoryCandidate[],
-        "charger"
-      )
-      if (poolCandidates.length < count) {
-        const best = pickPackAccessoryForWeapon(weapon, poolCandidates, "charger")
-        const stock = Math.max(0, best?.stock_quantity ?? 0)
-        const cal = weaponCaliberLabel(weapon)
-        const calPart = cal ? ` (calibre ${cal})` : ""
-        if (!best || stock < count) {
-          const avail = best ? stock : poolCandidates.length
-          return {
-            materials: [],
-            error: best
-              ? `Só há ${avail} carregador(es) em estoque compatível(is) com ${weapon.name}${calPart}. Pedido: ${count}.`
-              : `Nenhum carregador disponível para ${weapon.name}${calPart}.`,
-          }
-        }
-        const stockLine = Array.from({ length: count }, () => best)
-        return { materials: stockLine.map(toSearchableMaterial) }
-      }
-    }
+  if (kind === "charger" && useGlockPool) {
+    poolCandidates = (candidates ?? []).filter((m) =>
+      isGlock9mmCharger(m)
+    ) as PackAccessoryCandidate[]
   } else {
     poolCandidates = filterPackCandidatesForWeapon(
       weapon,
       (candidates ?? []) as PackAccessoryCandidate[],
-      "ammunition"
+      kind
     )
   }
 
-  const picked = pickPackAccessoriesForWeapon(weapon, poolCandidates, kind, count)
+  const resolved = resolveStockUnits(poolCandidates, count, (pool) =>
+    pickPackAccessoryForWeapon(weapon, pool, kind)
+  )
 
-  if (picked.length < count) {
+  if (resolved.error || resolved.items.length < count) {
     const label = kind === "charger" ? "carregador" : "munição"
+    const cal = weaponCaliberLabel(weapon)
+    const calPart = cal ? ` (calibre ${cal})` : ""
+    if (resolved.error) {
+      return { materials: [], error: resolved.error }
+    }
     if (kind === "charger" && useGlockPool) {
       const stats = countPoolChargersByStatus(poolCandidates)
       return {
         materials: [],
-        error: `Precisa de ${count} ${label}(es) disponível(is); encontrados ${picked.length} (pool: ${stats.available} livre(s)).`,
+        error: `Precisa de ${count} ${label}(es) no pool; encontrados ${resolved.items.length} (pool: ${stats.available} livre(s)).`,
       }
     }
-    const cal = weaponCaliberLabel(weapon)
-    const calPart = cal ? ` (calibre ${cal})` : ""
     return {
       materials: [],
-      error: `Precisa de ${count} ${label}(es) compatível(is) com ${weapon.name}${calPart}; encontrados ${picked.length} de ${poolCandidates.length} disponível(is).`,
+      error:
+        resolved.items.length === 0
+          ? `Nenhum ${label} disponível para ${weapon.name}${calPart}.`
+          : `Precisa de ${count} ${label}(es) compatível(is) com ${weapon.name}${calPart}; em estoque: ${resolved.items[0] ? effectiveStock(resolved.items[0]) : 0}.`,
     }
   }
 
-  return { materials: picked.map(toSearchableMaterial) }
+  return { materials: resolved.items.map(toSearchableMaterial) }
 }
 
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
@@ -1021,7 +1100,7 @@ export async function createCautelaFaceAuth(data: {
 
   const { data: materials, error: matError } = await supabase
     .from("materials")
-    .select("id, name, status")
+    .select("id, name, status, stock_quantity")
     .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
@@ -1033,6 +1112,9 @@ export async function createCautelaFaceAuth(data: {
   if (unavailable.length > 0) {
     return { error: formatUnavailableMaterialsMessage(unavailable) }
   }
+
+  const stockErrorFace = validateCautelaItemsStock(merged, materials)
+  if (stockErrorFace) return { error: stockErrorFace }
 
   const { data: rpcDataFace, error: rpcErrorFace } = await supabase.rpc("create_cautela_atomic", {
     p_person_id: payload.person_id,

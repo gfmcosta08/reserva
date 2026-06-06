@@ -5,7 +5,12 @@ import { ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus } from "lucide-react
 import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchField"
 import { PackQtyInput, type PackQtyInputHandle } from "./PackQtyInput"
 import { CautelaLinesSummary } from "./CautelaLinesSummary"
-import { resolvePackAccessoriesForWeapon, resolvePackAccessoryForWeapon, type SearchableMaterial } from "@/app/actions/cautelas"
+import {
+  resolvePackAccessoriesForWeapon,
+  resolvePackAccessoryForWeapon,
+  validateMaterialQuantityForCautela,
+  type SearchableMaterial,
+} from "@/app/actions/cautelas"
 import { findPackAccessoryMergeLineIndex } from "@/lib/cautela-pack-accessories"
 import { getMaterialCategoryOptions } from "@/app/actions/categories"
 import {
@@ -253,6 +258,11 @@ export function CautelaMaterialsStep({
           setPackError(r.error ?? "Munição não encontrada no cadastro.")
           return
         }
+        const stockCheck = await validateMaterialQuantityForCautela(r.material.id, aq)
+        if (stockCheck.ok === false) {
+          setPackError(stockCheck.error)
+          return
+        }
         ammoMat = r.material
       }
 
@@ -299,6 +309,11 @@ export function CautelaMaterialsStep({
         const r = await resolvePackAccessoryForWeapon(longWeapon.id, "ammunition")
         if (!r.material) {
           setPackError(r.error ?? "Munição não encontrada no cadastro.")
+          return
+        }
+        const stockCheck = await validateMaterialQuantityForCautela(r.material.id, aq)
+        if (stockCheck.ok === false) {
+          setPackError(stockCheck.error)
           return
         }
         ammoMat = r.material
@@ -375,7 +390,13 @@ export function CautelaMaterialsStep({
       return
     }
 
+    const stockCheck = await validateMaterialQuantityForCautela(row.material.id, n)
+    if (stockCheck.ok === false) {
+      setPackError(stockCheck.error)
+      return
+    }
     onLinesChange(lines.map((l) => (l.rowId === rowId ? { ...l, quantity: n } : l)))
+    setPackError(null)
   }
 
   const applyTaserAmmoPack = () => {
@@ -438,7 +459,7 @@ export function CautelaMaterialsStep({
           />
           {pistolWeapon && (
             <p className="text-[10px] text-slate-500">
-              Selecionada: <span className="text-slate-300">{pistolWeapon.name}</span> • Pat {pistolWeapon.patrimony_number}
+              Selecionada: <span className="text-red-400 font-medium">{pistolWeapon.name}</span> • Pat {pistolWeapon.patrimony_number}
             </p>
           )}
 
@@ -504,7 +525,7 @@ export function CautelaMaterialsStep({
           />
           {longWeapon && (
             <p className="text-[10px] text-slate-500">
-              Selecionada: <span className="text-slate-300">{longWeapon.name}</span>
+              Selecionada: <span className="text-red-400 font-medium">{longWeapon.name}</span>
             </p>
           )}
 

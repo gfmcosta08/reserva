@@ -105,6 +105,7 @@ export function MaterialSearchField({
                 <span className="block text-[10px] text-slate-500 mt-0.5">
                   Pat {m.patrimony_number} • Cód {m.internal_code}
                   {m.serial_number ? ` • SN ${m.serial_number}` : ""}
+                  {(m.stock_quantity ?? 1) > 1 ? ` • Estoque ${m.stock_quantity}` : ""}
                 </span>
                 {m.category && <span className="text-[9px] text-slate-600">{m.category}</span>}
               </button>

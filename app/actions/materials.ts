@@ -93,7 +93,8 @@ export async function importMaterialsCsv(csvText: string) {
       const vals = parseCSVLine(line)
       if (vals.length < 5) continue
 
-      const [nome, patrimonio, codigoInterno, numeroSerie, idReserva, categoria, marca, modelo, calibre, observacoes] = vals
+      const [nome, patrimonio, codigoInterno, numeroSerie, idReserva, categoria, marca, modelo, calibre, observacoes, qtdEstoque] =
+        vals
 
       if (!nome || !patrimonio || !codigoInterno) continue
 
@@ -111,6 +112,7 @@ export async function importMaterialsCsv(csvText: string) {
         modelo: modelo || null,
         calibre: calibre || null,
         notes: observacoes || null,
+        stock_quantity: qtdEstoque ? Math.max(1, parseInt(qtdEstoque, 10) || 1) : 1,
         status: "available",
       })
 

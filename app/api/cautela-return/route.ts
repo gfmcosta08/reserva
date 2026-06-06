@@ -4,10 +4,10 @@ import { logAudit } from "@/app/actions/audit"
 import {
   computeCautelaStatus,
   itemNeedsReturn,
-  materialStatusAfterReturn,
   qtyReturned,
   resolveItemStatusAfterReturn,
 } from "@/lib/cautela-return-status"
+import { computeMaterialAfterReturn } from "@/lib/material-stock"
 
 // ===== API: PROCESSAR DEVOLUÇÃO DE ITEM =====
 export async function POST(request: NextRequest) {
@@ -100,12 +100,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateItemError.message }, { status: 500 })
     }
 
-    const materialStatus = materialStatusAfterReturn(
-      itemStatus as "pending" | "returned" | "damaged" | "missing",
+    const { data: materialRow } = await supabase
+      .from("materials")
+      .select("stock_quantity")
+      .eq("id", item.material_id)
+      .single()
+
+    const stockUpdate = computeMaterialAfterReturn(
+      materialRow?.stock_quantity ?? 1,
+      previousReturned,
       finalQtyReturned,
+      itemStatus as "pending" | "returned" | "damaged" | "missing",
       qtyDelivered
     )
-    await supabase.from("materials").update({ status: materialStatus }).eq("id", item.material_id)
+    await supabase
+      .from("materials")
+      .update({ stock_quantity: stockUpdate.stock_quantity, status: stockUpdate.status })
+      .eq("id", item.material_id)
 
     const { data: allItems } = await supabase
       .from("cautela_items")
