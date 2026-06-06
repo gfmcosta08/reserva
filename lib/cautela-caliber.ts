@@ -54,10 +54,13 @@ export function extractCaliber(text: string): string | null {
   return null
 }
 
+/** Chave de comparação: minúsculas, sem espaços, sem `.` nem `,` (ex. 5.56 = 556). */
+export function normalizeCaliberKey(caliber: string): string {
+  return caliber.toLowerCase().replace(/[\s.,]/g, "")
+}
+
 export function areCalibersCompatible(weaponCaliber: string, ammoCaliber: string): boolean {
-  const w = weaponCaliber.toLowerCase().replace(/\s*/g, "")
-  const a = ammoCaliber.toLowerCase().replace(/\s*/g, "")
-  return w === a
+  return normalizeCaliberKey(weaponCaliber) === normalizeCaliberKey(ammoCaliber)
 }
 
 export interface CaliberMismatch {

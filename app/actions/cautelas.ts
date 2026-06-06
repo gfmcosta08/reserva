@@ -28,13 +28,19 @@ import {
   resolveItemStatusAfterReturn,
 } from "@/lib/cautela-return-status"
 import { generateCautelaPDF } from "@/lib/pdf-cautela"
+import { extractCaliber } from "@/lib/cautela-caliber"
 import {
+  filterPackCandidatesForWeapon,
   packAccessoryAvailabilityFilter,
   pickPackAccessoryForWeapon,
   pickPackAccessoriesForWeapon,
   type PackAccessoryCandidate,
 } from "@/lib/cautela-pack-accessories"
-import { countPoolChargersByStatus, isGlock9mmCharger } from "@/lib/glock-9mm-inventory"
+import {
+  countPoolChargersByStatus,
+  isGlock9mmCharger,
+  isGlock9mmPistol,
+} from "@/lib/glock-9mm-inventory"
 import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
 import { Resend } from "resend"
 
@@ -821,9 +827,19 @@ export async function countAvailableGlock9mmChargers(): Promise<number> {
   return (data ?? []).filter((m) => isGlock9mmCharger(m)).length
 }
 
+function weaponCaliberLabel(weapon: {
+  name: string
+  category: string
+  calibre?: string | null
+}): string | null {
+  const fromField = weapon.calibre?.trim()
+  if (fromField) return fromField
+  return extractCaliber(weapon.name) || extractCaliber(weapon.category)
+}
+
 /**
  * Resolve até `count` acessórios distintos do estoque available.
- * Carregadores: valida apenas saldo do pool (qty livre — operador pode pedir 1, 2, 4, 5…).
+ * Pool Glock 9mm só para pistola Glock 9mm; demais armas por marca/modelo/calibre.
  */
 export async function resolvePackAccessoriesForWeapon(
   weaponId: string,
@@ -840,7 +856,7 @@ export async function resolvePackAccessoriesForWeapon(
   const supabase = await createClient()
   const { data: weapon, error: weaponError } = await supabase
     .from("materials")
-    .select("id, name, category, calibre")
+    .select("id, name, category, calibre, marca, modelo")
     .eq("id", weaponId)
     .single()
 
@@ -850,19 +866,11 @@ export async function resolvePackAccessoriesForWeapon(
 
   const accessoryFilter = packAccessoryAvailabilityFilter(kind)
 
-  if (kind === "charger") {
-    const available = await countAvailableGlock9mmChargers()
-    if (count > available) {
-      return {
-        materials: [],
-        error: `Só há ${available} carregador(es) disponível(is) no pool. Devolva itens ou reduza a quantidade.`,
-      }
-    }
-  }
-
   const { data: candidates, error: listError } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, category, calibre")
+    .select(
+      "id, name, patrimony_number, serial_number, internal_code, category, calibre, marca, modelo"
+    )
     .eq("status", "available")
     .or(accessoryFilter)
     .order("name")
@@ -872,22 +880,59 @@ export async function resolvePackAccessoriesForWeapon(
     return { materials: [], error: listError.message }
   }
 
-  const poolCandidates = (candidates ?? []).filter((m) =>
-    kind === "charger" ? isGlock9mmCharger(m) : true
-  ) as PackAccessoryCandidate[]
+  const useGlockPool = isGlock9mmPistol(weapon)
+  let poolCandidates: PackAccessoryCandidate[]
+
+  if (kind === "charger") {
+    if (useGlockPool) {
+      poolCandidates = (candidates ?? []).filter((m) =>
+        isGlock9mmCharger(m)
+      ) as PackAccessoryCandidate[]
+      if (count > poolCandidates.length) {
+        return {
+          materials: [],
+          error: `Só há ${poolCandidates.length} carregador(es) disponível(is) no pool. Devolva itens ou reduza a quantidade.`,
+        }
+      }
+    } else {
+      poolCandidates = filterPackCandidatesForWeapon(
+        weapon,
+        (candidates ?? []) as PackAccessoryCandidate[],
+        "charger"
+      )
+      if (count > poolCandidates.length) {
+        const cal = weaponCaliberLabel(weapon)
+        const calPart = cal ? ` (calibre ${cal})` : ""
+        return {
+          materials: [],
+          error: `Nenhum carregador disponível para ${weapon.name}${calPart}. Encontrados ${poolCandidates.length} de ${count} pedidos.`,
+        }
+      }
+    }
+  } else {
+    poolCandidates = filterPackCandidatesForWeapon(
+      weapon,
+      (candidates ?? []) as PackAccessoryCandidate[],
+      "ammunition"
+    )
+  }
 
   const picked = pickPackAccessoriesForWeapon(weapon, poolCandidates, kind, count)
 
   if (picked.length < count) {
     const label = kind === "charger" ? "carregador" : "munição"
-    const stats =
-      kind === "charger"
-        ? countPoolChargersByStatus(poolCandidates)
-        : { available: poolCandidates.length }
-    const avail = kind === "charger" ? stats.available : poolCandidates.length
+    if (kind === "charger" && useGlockPool) {
+      const stats = countPoolChargersByStatus(poolCandidates)
+      return {
+        materials: [],
+        error: `Precisa de ${count} ${label}(es) disponível(is); encontrados ${picked.length} (pool: ${stats.available} livre(s)).`,
+      }
+    }
+    const cal = weaponCaliberLabel(weapon)
+    const calPart = cal ? ` (calibre ${cal})` : ""
     return {
       materials: [],
-      error: `Precisa de ${count} ${label}(es) disponível(is); encontrados ${picked.length} (pool: ${avail} livre(s)).`,
+      error: `Precisa de ${count} ${label}(es) compatível(is) com ${weapon.name}${calPart}; encontrados ${picked.length} de ${poolCandidates.length} disponível(is).`,
     }
   }
 

@@ -533,7 +533,7 @@ export function CautelaMaterialsStep({
 
           {(longChargerQty > 0 || longAmmoQty > 0) && (
             <p className="text-[10px] text-slate-500">
-              Carregador e munição serão vinculados automaticamente ao calibre/modelo da arma selecionada.
+              Carregadores e munição limitados ao calibre e à marca da arma selecionada.
             </p>
           )}
 

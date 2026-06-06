@@ -1,5 +1,18 @@
 import { areCalibersCompatible, extractCaliber, isAmmunitionCategory } from "@/lib/cautela-caliber"
 import { categoryNameMatchesGroup } from "@/lib/cautela-material-groups"
+import {
+  GLK_POOL_PATRIMONY_PREFIX,
+  isGlock9mmCharger,
+  isGlock9mmPistol,
+} from "@/lib/glock-9mm-inventory"
+
+export type PackWeaponContext = {
+  name: string
+  category: string
+  calibre?: string | null
+  marca?: string | null
+  modelo?: string | null
+}
 
 export type PackAccessoryCandidate = {
   id: string
@@ -9,9 +22,11 @@ export type PackAccessoryCandidate = {
   internal_code: string
   category: string
   calibre: string | null
+  marca?: string | null
+  modelo?: string | null
 }
 
-function weaponCaliber(weapon: { name: string; category: string; calibre?: string | null }): string | null {
+function weaponCaliber(weapon: PackWeaponContext): string | null {
   const fromField = weapon.calibre?.trim()
   if (fromField) return fromField
   return extractCaliber(weapon.name) || extractCaliber(weapon.category)
@@ -30,6 +45,57 @@ function matchesGroup(m: PackAccessoryCandidate, kind: "charger" | "ammunition")
     return categoryNameMatchesGroup(cat, "charger") || categoryNameMatchesGroup(name, "charger")
   }
   return categoryNameMatchesGroup(cat, "ammunition") || categoryNameMatchesGroup(name, "ammunition")
+}
+
+export function weaponAccessoryContext(weapon: PackWeaponContext) {
+  return {
+    caliber: weaponCaliber(weapon),
+    marca: weapon.marca?.trim() || null,
+    modelo: weapon.modelo?.trim() || null,
+    nameTokens: weapon.name.toLowerCase().split(/\s+/).filter((t) => t.length > 2),
+  }
+}
+
+export function isGlockPoolCharger(m: PackAccessoryCandidate): boolean {
+  const pat = (m.patrimony_number || "").toUpperCase()
+  return pat.startsWith(GLK_POOL_PATRIMONY_PREFIX)
+}
+
+export function isChargerCompatibleWithWeapon(
+  weapon: PackWeaponContext,
+  m: PackAccessoryCandidate
+): boolean {
+  if (!matchesGroup(m, "charger")) return false
+  if (!isGlock9mmPistol(weapon)) {
+    if (isGlockPoolCharger(m) || isGlock9mmCharger(m)) return false
+  }
+  const wCal = weaponCaliber(weapon)
+  if (wCal) {
+    const mCal = materialCaliber(m)
+    if (!mCal || !areCalibersCompatible(wCal, mCal)) return false
+  }
+  return true
+}
+
+export function isAmmunitionCompatibleWithWeapon(
+  weapon: PackWeaponContext,
+  m: PackAccessoryCandidate
+): boolean {
+  if (!matchesGroup(m, "ammunition")) return false
+  const wCal = weaponCaliber(weapon)
+  if (!wCal) return true
+  const mCal = materialCaliber(m)
+  return mCal != null && areCalibersCompatible(wCal, mCal)
+}
+
+export function filterPackCandidatesForWeapon(
+  weapon: PackWeaponContext,
+  candidates: PackAccessoryCandidate[],
+  kind: "charger" | "ammunition"
+): PackAccessoryCandidate[] {
+  const predicate =
+    kind === "charger" ? isChargerCompatibleWithWeapon : isAmmunitionCompatibleWithWeapon
+  return candidates.filter((m) => predicate(weapon, m))
 }
 
 /** Filtro PostgREST: só carregadores ou só munição (evita .limit(300) sem trazer CARREGADOR). */
@@ -63,9 +129,32 @@ export function findPackAccessoryMergeLineIndex(
   })
 }
 
-/** Escolhe o primeiro acessório disponível mais compatível com a arma (calibre / nome). */
+function scoreAccessoryForWeapon(
+  weapon: PackWeaponContext,
+  m: PackAccessoryCandidate,
+  wCal: string | null,
+  weaponTokens: string[]
+): number {
+  let score = 0
+  const mCal = materialCaliber(m)
+  if (wCal && mCal && areCalibersCompatible(wCal, mCal)) score += 10
+  const lower = m.name.toLowerCase()
+  for (const t of weaponTokens) {
+    if (lower.includes(t)) score += 2
+  }
+  if (wCal && lower.includes(wCal.toLowerCase().replace(/[.,]/g, ""))) score += 3
+  const wMarca = weapon.marca?.trim().toLowerCase()
+  const mMarca = m.marca?.trim().toLowerCase()
+  if (wMarca && mMarca && wMarca === mMarca) score += 5
+  const wModelo = weapon.modelo?.trim().toLowerCase()
+  const mModelo = m.modelo?.trim().toLowerCase()
+  if (wModelo && mModelo && wModelo === mModelo) score += 5
+  return score
+}
+
+/** Escolhe o primeiro acessório disponível mais compatível com a arma (calibre / marca / modelo). */
 export function pickPackAccessoryForWeapon(
-  weapon: { name: string; category: string; calibre?: string | null },
+  weapon: PackWeaponContext,
   candidates: PackAccessoryCandidate[],
   kind: "charger" | "ammunition",
   excludeIds: string[] = []
@@ -75,7 +164,7 @@ export function pickPackAccessoryForWeapon(
   if (pool.length === 0) return null
 
   const wCal = weaponCaliber(weapon)
-  if (kind === "ammunition" && wCal) {
+  if (wCal) {
     const compatible = pool.filter((m) => {
       const mCal = materialCaliber(m)
       return mCal != null && areCalibersCompatible(wCal, mCal)
@@ -83,19 +172,13 @@ export function pickPackAccessoryForWeapon(
     if (compatible.length === 0) return null
     pool = compatible
   }
-  const weaponTokens = weapon.name.toLowerCase().split(/\s+/).filter((t) => t.length > 2)
 
-  const scored = pool.map((m) => {
-    let score = 0
-    const mCal = materialCaliber(m)
-    if (wCal && mCal && areCalibersCompatible(wCal, mCal)) score += 10
-    const lower = m.name.toLowerCase()
-    for (const t of weaponTokens) {
-      if (lower.includes(t)) score += 2
-    }
-    if (wCal && lower.includes(wCal.toLowerCase().replace(/\./g, ""))) score += 3
-    return { m, score }
-  })
+  const { nameTokens } = weaponAccessoryContext(weapon)
+
+  const scored = pool.map((m) => ({
+    m,
+    score: scoreAccessoryForWeapon(weapon, m, wCal, nameTokens),
+  }))
 
   scored.sort((a, b) => b.score - a.score)
   return scored[0]?.m ?? null
@@ -103,7 +186,7 @@ export function pickPackAccessoryForWeapon(
 
 /** Até `count` acessórios distintos, excluindo IDs já escolhidos. */
 export function pickPackAccessoriesForWeapon(
-  weapon: { name: string; category: string; calibre?: string | null },
+  weapon: PackWeaponContext,
   candidates: PackAccessoryCandidate[],
   kind: "charger" | "ammunition",
   count: number
