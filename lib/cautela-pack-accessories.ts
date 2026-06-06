@@ -44,9 +44,11 @@ export function packAccessoryAvailabilityFilter(kind: "charger" | "ammunition"):
 export function pickPackAccessoryForWeapon(
   weapon: { name: string; category: string; calibre?: string | null },
   candidates: PackAccessoryCandidate[],
-  kind: "charger" | "ammunition"
+  kind: "charger" | "ammunition",
+  excludeIds: string[] = []
 ): PackAccessoryCandidate | null {
-  const pool = candidates.filter((m) => matchesGroup(m, kind))
+  const exclude = new Set(excludeIds)
+  const pool = candidates.filter((m) => matchesGroup(m, kind) && !exclude.has(m.id))
   if (pool.length === 0) return null
 
   const wCal = weaponCaliber(weapon)
@@ -66,4 +68,22 @@ export function pickPackAccessoryForWeapon(
 
   scored.sort((a, b) => b.score - a.score)
   return scored[0]?.m ?? null
+}
+
+/** Até `count` acessórios distintos, excluindo IDs já escolhidos. */
+export function pickPackAccessoriesForWeapon(
+  weapon: { name: string; category: string; calibre?: string | null },
+  candidates: PackAccessoryCandidate[],
+  kind: "charger" | "ammunition",
+  count: number
+): PackAccessoryCandidate[] {
+  const picked: PackAccessoryCandidate[] = []
+  const exclude: string[] = []
+  for (let i = 0; i < count; i++) {
+    const one = pickPackAccessoryForWeapon(weapon, candidates, kind, exclude)
+    if (!one) break
+    picked.push(one)
+    exclude.push(one.id)
+  }
+  return picked
 }

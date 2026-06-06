@@ -31,7 +31,10 @@ import { generateCautelaPDF } from "@/lib/pdf-cautela"
 import {
   packAccessoryAvailabilityFilter,
   pickPackAccessoryForWeapon,
+  pickPackAccessoriesForWeapon,
+  type PackAccessoryCandidate,
 } from "@/lib/cautela-pack-accessories"
+import { countPoolChargersByStatus, isGlock9mmCharger } from "@/lib/glock-9mm-inventory"
 import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
 import { Resend } from "resend"
 
@@ -788,9 +791,50 @@ export async function resolvePackAccessoryForWeapon(
   weaponId: string,
   kind: "charger" | "ammunition"
 ): Promise<{ material: SearchableMaterial | null; error?: string }> {
+  const multi = await resolvePackAccessoriesForWeapon(weaponId, kind, 1)
+  if (multi.error) return { material: null, error: multi.error }
+  return { material: multi.materials[0] ?? null }
+}
+
+function toSearchableMaterial(m: PackAccessoryCandidate): SearchableMaterial {
+  return {
+    id: m.id,
+    name: m.name,
+    patrimony_number: m.patrimony_number ?? "",
+    serial_number: m.serial_number,
+    internal_code: m.internal_code ?? "",
+    category: m.category ?? "",
+  }
+}
+
+/** Carregadores Glock 9mm do pool QA com status available (qty livre na Nova Cautela). */
+export async function countAvailableGlock9mmChargers(): Promise<number> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("materials")
+    .select("id, name, category, calibre, marca, patrimony_number, status")
+    .eq("status", "available")
+    .or(packAccessoryAvailabilityFilter("charger"))
+    .limit(500)
+
+  if (error) return 0
+  return (data ?? []).filter((m) => isGlock9mmCharger(m)).length
+}
+
+/**
+ * Resolve até `count` acessórios distintos do estoque available.
+ * Carregadores: valida apenas saldo do pool (qty livre — operador pode pedir 1, 2, 4, 5…).
+ */
+export async function resolvePackAccessoriesForWeapon(
+  weaponId: string,
+  kind: "charger" | "ammunition",
+  count: number
+): Promise<{ materials: SearchableMaterial[]; error?: string }> {
+  if (count < 1) return { materials: [] }
+
   const idParsed = uuidSchema.safeParse(weaponId)
   if (!idParsed.success) {
-    return { material: null, error: "Arma inválida" }
+    return { materials: [], error: "Arma inválida" }
   }
 
   const supabase = await createClient()
@@ -801,10 +845,20 @@ export async function resolvePackAccessoryForWeapon(
     .single()
 
   if (weaponError || !weapon) {
-    return { material: null, error: "Arma não encontrada" }
+    return { materials: [], error: "Arma não encontrada" }
   }
 
   const accessoryFilter = packAccessoryAvailabilityFilter(kind)
+
+  if (kind === "charger") {
+    const available = await countAvailableGlock9mmChargers()
+    if (count > available) {
+      return {
+        materials: [],
+        error: `Só há ${available} carregador(es) disponível(is) no pool. Devolva itens ou reduza a quantidade.`,
+      }
+    }
+  }
 
   const { data: candidates, error: listError } = await supabase
     .from("materials")
@@ -815,39 +869,29 @@ export async function resolvePackAccessoryForWeapon(
     .limit(200)
 
   if (listError) {
-    return { material: null, error: listError.message }
+    return { materials: [], error: listError.message }
   }
 
-  const picked = pickPackAccessoryForWeapon(weapon, candidates ?? [], kind)
-  if (!picked) {
+  const poolCandidates = (candidates ?? []).filter((m) =>
+    kind === "charger" ? isGlock9mmCharger(m) : true
+  ) as PackAccessoryCandidate[]
+
+  const picked = pickPackAccessoriesForWeapon(weapon, poolCandidates, kind, count)
+
+  if (picked.length < count) {
     const label = kind === "charger" ? "carregador" : "munição"
-    const { count: inUseCount } = await supabase
-      .from("materials")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "cautelado")
-      .or(accessoryFilter)
-
-    const hint =
-      (inUseCount ?? 0) > 0
-        ? ` Há ${inUseCount} ${label}(s) em uso — libere um em Materiais (status Disponível) ou cadastre novos.`
-        : ` Cadastre ${label} compatível em Materiais (categoria CARREGADOR / MUNICAO).`
-
+    const stats =
+      kind === "charger"
+        ? countPoolChargersByStatus(poolCandidates)
+        : { available: poolCandidates.length }
+    const avail = kind === "charger" ? stats.available : poolCandidates.length
     return {
-      material: null,
-      error: `Não há ${label} disponível no cadastro compatível com esta arma.${hint}`,
+      materials: [],
+      error: `Precisa de ${count} ${label}(es) disponível(is); encontrados ${picked.length} (pool: ${avail} livre(s)).`,
     }
   }
 
-  return {
-    material: {
-      id: picked.id,
-      name: picked.name,
-      patrimony_number: picked.patrimony_number ?? "",
-      serial_number: picked.serial_number,
-      internal_code: picked.internal_code ?? "",
-      category: picked.category ?? "",
-    },
-  }
+  return { materials: picked.map(toSearchableMaterial) }
 }
 
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====

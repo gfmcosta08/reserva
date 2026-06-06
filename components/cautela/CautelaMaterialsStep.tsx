@@ -5,7 +5,7 @@ import { ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus } from "lucide-react
 import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchField"
 import { PackQtyInput, type PackQtyInputHandle } from "./PackQtyInput"
 import { CautelaLinesSummary } from "./CautelaLinesSummary"
-import { resolvePackAccessoryForWeapon, type SearchableMaterial } from "@/app/actions/cautelas"
+import { resolvePackAccessoriesForWeapon, resolvePackAccessoryForWeapon, type SearchableMaterial } from "@/app/actions/cautelas"
 import { getMaterialCategoryOptions } from "@/app/actions/categories"
 import {
   resolveCategoryNamesForGroup,
@@ -98,7 +98,7 @@ export function CautelaMaterialsStep({
   const opt = (names: string[]) => (names.length > 0 ? names : undefined)
 
   const [pistolWeapon, setPistolWeapon] = useState<SearchableMaterial | null>(null)
-  const [chargerQty, setChargerQty] = useState(0)
+  const [chargerQty, setChargerQty] = useState(3)
   const [ammoQty, setAmmoQty] = useState(0)
 
   const [longWeapon, setLongWeapon] = useState<SearchableMaterial | null>(null)
@@ -163,16 +163,16 @@ export function CautelaMaterialsStep({
       const cq = pistolChargerQtyRef.current?.commit() ?? chargerQty
       const aq = pistolAmmoQtyRef.current?.commit() ?? ammoQty
 
-      let chargerMat: SearchableMaterial | null = null
+      let chargerMats: SearchableMaterial[] = []
       let ammoMat: SearchableMaterial | null = null
 
       if (cq > 0) {
-        const r = await resolvePackAccessoryForWeapon(pistolWeapon.id, "charger")
-        if (!r.material) {
+        const r = await resolvePackAccessoriesForWeapon(pistolWeapon.id, "charger", cq)
+        if (r.error || r.materials.length < cq) {
           setPackError(r.error ?? "Carregador não encontrado no cadastro.")
           return
         }
-        chargerMat = r.material
+        chargerMats = r.materials
       }
       if (aq > 0) {
         const r = await resolvePackAccessoryForWeapon(pistolWeapon.id, "ammunition")
@@ -187,7 +187,9 @@ export function CautelaMaterialsStep({
       if (!next.some((l) => l.material.id === pistolWeapon.id)) {
         next = mergeLines(next, pistolWeapon, 1)
       }
-      if (cq > 0 && chargerMat) next = mergeLines(next, chargerMat, cq)
+      for (const ch of chargerMats) {
+        next = mergeLines(next, ch, 1)
+      }
       if (aq > 0 && ammoMat) next = mergeLines(next, ammoMat, aq)
       onLinesChange(next)
     } finally {
@@ -206,16 +208,16 @@ export function CautelaMaterialsStep({
       const cq = longChargerQtyRef.current?.commit() ?? longChargerQty
       const aq = longAmmoQtyRef.current?.commit() ?? longAmmoQty
 
-      let chargerMat: SearchableMaterial | null = null
+      let chargerMats: SearchableMaterial[] = []
       let ammoMat: SearchableMaterial | null = null
 
       if (cq > 0) {
-        const r = await resolvePackAccessoryForWeapon(longWeapon.id, "charger")
-        if (!r.material) {
+        const r = await resolvePackAccessoriesForWeapon(longWeapon.id, "charger", cq)
+        if (r.error || r.materials.length < cq) {
           setPackError(r.error ?? "Carregador não encontrado no cadastro.")
           return
         }
-        chargerMat = r.material
+        chargerMats = r.materials
       }
       if (aq > 0) {
         const r = await resolvePackAccessoryForWeapon(longWeapon.id, "ammunition")
@@ -230,7 +232,9 @@ export function CautelaMaterialsStep({
       if (!next.some((l) => l.material.id === longWeapon.id)) {
         next = mergeLines(next, longWeapon, 1)
       }
-      if (cq > 0 && chargerMat) next = mergeLines(next, chargerMat, cq)
+      for (const ch of chargerMats) {
+        next = mergeLines(next, ch, 1)
+      }
       if (aq > 0 && ammoMat) next = mergeLines(next, ammoMat, aq)
       onLinesChange(next)
     } finally {

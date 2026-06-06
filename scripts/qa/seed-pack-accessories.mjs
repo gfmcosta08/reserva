@@ -1,29 +1,21 @@
 /**
- * Garante carregadores e munição 9mm DISPONÍVEIS no teste_db para pacote pistola (Nova Cautela).
- *   node scripts/qa/seed-pack-accessories.mjs
+ * @deprecated Use sync-glock-charger-pool.mjs — mantém munição QA e delega carregadores ao sync.
+ *
  *   node scripts/qa/seed-pack-accessories.mjs --apply
  */
+import { spawnSync } from "child_process"
+import { resolve, dirname } from "path"
+import { fileURLToPath } from "url"
 import { createClient } from "@supabase/supabase-js"
 import { loadCloneEnv, assertTestOnly } from "../import/lib/env-clone.mjs"
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
 const apply = process.argv.includes("--apply")
 
-const CHARGER_COUNT = 12
+const SYNC = resolve(__dirname, "sync-glock-charger-pool.mjs")
 
-const ACCESSORIES = [
-  ...Array.from({ length: CHARGER_COUNT }, (_, i) => {
-    const n = String(i + 1).padStart(2, "0")
-    return {
-      name: `CARREGADOR GLOCK 9MM (QA DISPONÍVEL ${n})`,
-      category: "CARREGADOR",
-      patrimony_number: `PAT-QA-CAR-${n}`,
-      internal_code: `QA-CAR-${n}`,
-      serial_number: `QA-CHG-${n}`,
-      calibre: "9mm",
-      status: "available",
-    }
-  }),
-  {
+async function ensureAmmo(supabase) {
+  const row = {
     name: "MUNICAO 9MM (QA DISPONÍVEL)",
     category: "MUNICAO",
     patrimony_number: "PAT-QA-MUN-001",
@@ -31,46 +23,46 @@ const ACCESSORIES = [
     serial_number: null,
     calibre: "9mm",
     status: "available",
-  },
-]
+  }
+  const { data: existing } = await supabase
+    .from("materials")
+    .select("id, status")
+    .eq("patrimony_number", row.patrimony_number)
+    .maybeSingle()
+
+  if (existing) {
+    if (existing.status !== "available" && apply) {
+      await supabase.from("materials").update({ status: "available" }).eq("id", existing.id)
+      return { action: "ammo set available" }
+    }
+    return { action: "ammo exists", status: existing.status }
+  }
+  if (apply) {
+    const { error } = await supabase.from("materials").insert(row)
+    if (error) throw new Error(error.message)
+  }
+  return { action: apply ? "ammo insert" : "ammo would insert" }
+}
 
 async function main() {
   const env = loadCloneEnv()
   assertTestOnly(env.SUPABASE_TEST_URL)
   const supabase = createClient(env.SUPABASE_TEST_URL, env.SUPABASE_TEST_SERVICE_ROLE_KEY)
 
-  const plan = []
-  for (const row of ACCESSORIES) {
-    const { data: existing } = await supabase
-      .from("materials")
-      .select("id, status, name")
-      .eq("patrimony_number", row.patrimony_number)
-      .maybeSingle()
+  const ammo = await ensureAmmo(supabase)
 
-    if (existing) {
-      if (existing.status !== "available" && apply) {
-        await supabase.from("materials").update({ status: "available" }).eq("id", existing.id)
-        plan.push({ patrimony: row.patrimony_number, action: "set available" })
-      } else {
-        plan.push({ patrimony: row.patrimony_number, action: "already exists", status: existing.status })
-      }
-      continue
-    }
+  const syncArgs = ["scripts/qa/sync-glock-charger-pool.mjs"]
+  if (apply) syncArgs.push("--apply")
 
-    plan.push({ patrimony: row.patrimony_number, action: apply ? "insert" : "would insert" })
-    if (apply) {
-      const { error } = await supabase.from("materials").insert(row)
-      if (error) throw new Error(`${row.patrimony_number}: ${error.message}`)
-    }
-  }
+  const r = spawnSync(process.execPath, syncArgs, {
+    cwd: resolve(__dirname, "../.."),
+    encoding: "utf8",
+  })
 
-  const { count: availChargers } = await supabase
-    .from("materials")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "available")
-    .ilike("category", "%carregador%")
-
-  console.log(JSON.stringify({ apply, plan, availableChargersAfter: availChargers }, null, 2))
+  console.log(JSON.stringify({ apply, ammo, sync_exit: r.status }, null, 2))
+  if (r.stdout) process.stdout.write(r.stdout)
+  if (r.stderr) process.stderr.write(r.stderr)
+  if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
 main().catch((e) => {

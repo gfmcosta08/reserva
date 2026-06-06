@@ -84,7 +84,9 @@ Credenciais completas em `scripts/.env.qa` (gitignored).
 node scripts/fix-ammo-batches-test.mjs
 
 # 2. Seeds QA
-node scripts/qa/seed-pack-accessories.mjs --apply
+node scripts/qa/sync-glock-charger-pool.mjs              # dry-run pool Glock 9mm
+node scripts/qa/sync-glock-charger-pool.mjs --apply       # teste_db: total = 3×N pistolas (só seed QA)
+node scripts/qa/seed-pack-accessories.mjs --apply         # munição QA + delega carregadores ao sync acima
 node scripts/qa/create-supervisor-test.mjs
 node scripts/qa/seed-partial-return-demo.mjs --apply   # após criar JHONNY
 
@@ -179,6 +181,18 @@ Secrets a configurar (ver `docs/SETUP-SECRETS-GITHUB.md`):
 - [ ] JHONNY (064272): cautela demo com 3 linhas → devolução parcial
 - [ ] Relatório `/reports/divergencias`
 - [ ] `/ammo-batches` (tabela vazia, UI carrega)
+
+---
+
+## Pool carregadores Glock 9mm (teste_db)
+
+> **Regra 3×N é somente seed/sync no `teste_db`**, para alinhar QA com a realidade operacional. **Não** é regra da Nova Cautela em produção ou preview: o operador informa qualquer quantidade, limitada apenas ao saldo **disponível** no pool.
+
+| Comando | Efeito |
+|---------|--------|
+| `node scripts/qa/sync-glock-charger-pool.mjs` | Dry-run: N pistolas Glock 9mm → alvo `3×N` carregadores `PAT-GLK-POOL-*` |
+| `node scripts/qa/sync-glock-charger-pool.mjs --apply` | Aplica inserts/retires no teste_db |
+| Relatório | `scripts/qa/sync-glock-charger-pool-report.md` |
 
 ---
 
