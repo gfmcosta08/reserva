@@ -24,9 +24,15 @@ test.describe("E2E-06 Estoque (stock_quantity)", () => {
     await page.goto("/materials")
     await expect(page.getByRole("heading", { name: "Materiais" })).toBeVisible({ timeout: 15_000 })
 
+    const searchInput = page.getByPlaceholder(/buscar|pesquisar|patrim/i).first()
+    if (await searchInput.isVisible().catch(() => false)) {
+      await searchInput.fill(chargerPatrimony)
+      await page.waitForTimeout(500)
+    }
+
     const rowBefore = page.locator("tr").filter({ hasText: chargerPatrimony }).first()
     await expect(rowBefore).toBeVisible({ timeout: 15_000 })
-    await expect(rowBefore.getByText("Em Uso", { exact: true })).toBeVisible()
+    await expect(rowBefore.getByRole("button", { name: "Em Uso" })).toBeVisible({ timeout: 15_000 })
 
     await openCautelaById(page, cautelaId)
     await startReturnFlow(page)
@@ -35,8 +41,12 @@ test.describe("E2E-06 Estoque (stock_quantity)", () => {
 
     await page.goto("/materials")
     await expect(page.getByRole("heading", { name: "Materiais" })).toBeVisible({ timeout: 15_000 })
+    if (await searchInput.isVisible().catch(() => false)) {
+      await searchInput.fill(chargerPatrimony)
+      await page.waitForTimeout(500)
+    }
     const rowAfter = page.locator("tr").filter({ hasText: chargerPatrimony }).first()
     await expect(rowAfter).toBeVisible({ timeout: 15_000 })
-    await expect(rowAfter.getByText("Disponível", { exact: true })).toBeVisible()
+    await expect(rowAfter.getByText("Disponível", { exact: true })).toBeVisible({ timeout: 15_000 })
   })
 })

@@ -12,3 +12,21 @@
 | Inserir | 0 |
 | Retirar (available POOL) | 0 |
 | Cautelas Glock sem carregador | 0 |
+
+## Backfill linhas de carregador (Etapa 4)
+
+Após criar o pool (`sync-glock-charger-pool.mjs --apply`), cautelas legadas com Glock e sem linha de carregador foram corrigidas com:
+
+```powershell
+node scripts/import/backfill-glock-charger-lines.mjs --apply
+```
+
+| Etapa | Resultado |
+|-------|-----------|
+| Cautelas corrigidas | 79 |
+| Carregadores por cautela | 3 (linhas separadas, qty 1) |
+| Pool insuficiente | 0 |
+| Erros | 0 |
+| Flag pós-backfill | **0** cautelas sem carregador |
+
+Relatório: `scripts/import/backfill-glock-charger-lines-report.md`

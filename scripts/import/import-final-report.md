@@ -1,62 +1,52 @@
-# Importação cautelados 1º BPM — apply (06/06/2026)
+# Importação cautelados 1º BPM — apply (Etapa 4, 06/06/2026)
 
 **Fonte:** `cautelados-1bpm-atualizada-2026-06-06.docx`  
 **Banco:** teste_db (`ajyvznrmbuistlcfckuh`)  
 **Operador:** Gianpaolo Costa (supervisor)
 
-## Resultado (apply inicial)
+## Resultado final (pós reimport + seriais + backfill Glock)
 
 | Métrica | Valor |
 |--------|-------|
 | Linhas CAUTELADO no DOCX | 141 |
-| Pessoas criadas | 118 |
-| Pessoas já existentes (reutilizadas) | 2 (JHONNY, TESTE QA E2E) |
-| Cautelas permanentes abertas/parciais | 119 |
-| Itens de cautela vinculados | 134 (após remoção de 6 duplicatas) |
-| Materiais com status `cautelado` | ~127 |
-| Seriais não encontrados no estoque | 0 (4 cadastrados via `seed-missing-serials-etapa4.mjs`) |
-| Conflitos material→pessoa (limpos) | 6 removidos |
+| Pessoas no banco | 121 (120 import + 1 QA E2E) |
+| Cautelas open/partial (live) | ~148 (incl. seeds QA/E2E) |
+| Cautelas permanentes import | 120 grupos / ~131 itens vinculados |
+| Itens criados na reexecução `--apply` | 7 (+ 1 cautela nova) |
+| Seriais não encontrados | **0** |
+| Import idempotente (2º dry-run) | 0 itens a criar, 131 skip, 0 erros |
+| Conflitos serial→outra pessoa (ignorados) | 10 |
 
-## Estado live pós-Etapa 4 (06/06/2026)
+## Seriais cadastrados (Etapa 4.0)
 
-| Métrica | Valor |
-|--------|-------|
-| Materials | 863 |
-| Persons | 121 (120 import + seeds E2E) |
-| Cautelas | 176 (import + cautelas E2E/diárias) |
-| Cautela items | 444 |
-| Dry-run reimport | 0 itens a criar, 0 seriais não encontrados |
-| Cautelas Glock sem carregador | 0 (backfill 79 + 2 E2E) |
-| Pool Glock 9mm | 270 total (3×90 pistolas), 26 disponíveis |
-
-## Anti-duplicação aplicada
-
-1. **Pessoa:** chave `registration_number` (matrícula) — não recria se já existe.
-2. **Cautela:** uma cautela `open`/`partial` por pessoa — reutiliza a existente (ex.: JHONNY QA).
-3. **Item pessoa+material:** ignora se já vinculado na cautela ativa.
-4. **Material global:** ignora se o patrimônio já está cautelado a **outra** pessoa (seriais curtos ambíguos no DOCX).
-5. **Linha repetida no mesmo grupo:** ignora mesmo material duas vezes na mesma matrícula.
-
-## 4 seriais resolvidos (Etapa 4.1)
-
-| Militar | Serial DOCX | Patrimônio |
-|---------|-------------|------------|
+| Militar | Serial | Patrimônio |
+|---------|--------|------------|
 | ATAIDES | 56703 | PAT-56703 |
 | VALDSON | 3709 | PAT-03709 |
 | GOUVEIA | 27007 | PAT-27007 |
 | MACEDO | 9327 | PAT-09327 |
 
-## Backfill carregadores Glock
+## Pool e backfill carregadores Glock 9mm
 
-- `backfill-glock-charger-lines.mjs --apply`: 79 cautelas legadas + 2 cautelas E2E (06/06)
-- Dry-run final: **0** cautelas alvo
-- Relatório: `scripts/import/backfill-glock-charger-lines-report.md`
-- Pool QA: `scripts/qa/sync-glock-charger-pool-report.md` — 0 flags
+| Métrica | Valor |
+|--------|-------|
+| Pistolas Glock 9mm | 90 |
+| Pool carregadores (3×N) | 270 |
+| Pool disponível / em uso | 28 / 242 |
+| Cautelas Glock sem carregador (antes) | 79 |
+| Correções `backfill-glock-charger-lines.mjs --apply` | **79** (3 linhas/cautela) |
+| Cautelas Glock sem carregador (depois) | **0** |
 
-## Pessoas novas — credenciais temporárias
+Relatório detalhado: `scripts/import/backfill-glock-charger-lines-report.md`  
+Sync pool: `scripts/qa/sync-glock-charger-pool-report.md`
 
-- **PIN:** `0000` (trocar no balcão)
-- **E-mail placeholder:** `pendente+<matrícula>@cadastro.reserva.local`
+## Anti-duplicação (import)
+
+1. **Pessoa:** chave `registration_number` — não recria se já existe.
+2. **Cautela:** uma cautela `open`/`partial` por pessoa — reutiliza a existente.
+3. **Item pessoa+material:** ignora se já vinculado na cautela ativa.
+4. **Material global:** ignora se patrimônio já cautelado a **outra** pessoa.
+5. **Linha repetida no mesmo grupo:** ignora duplicata na mesma matrícula.
 
 ## Reimportar (seguro)
 
@@ -64,11 +54,13 @@
 node scripts/import/parse-cautelados-docx.mjs --input scripts/import/cautelados-1bpm-atualizada-2026-06-06.docx
 node scripts/import/import-cautelados-test.mjs          # dry-run
 node scripts/import/import-cautelados-test.mjs --apply  # só se dry-run OK
+node scripts/qa/sync-glock-charger-pool.mjs --apply     # pool 3×N
+node scripts/import/backfill-glock-charger-lines.mjs --apply  # se flags Glock
 ```
 
-## Validação
+## Validação (live teste_db)
 
-- https://reserva-teste.vercel.app/persons — ~121 pessoas
-- https://reserva-teste.vercel.app/cautelas — filtros Abertas/Parciais
-- https://reserva-teste.vercel.app/materials — filtro status **Em Uso**
-- E2E remoto **8/8** CI=1 (1 flaky E2E-06, retry OK)
+- `/persons` — 121 pessoas
+- `/cautelas` — filtros Abertas/Parciais coerentes (~148 open/partial)
+- `/materials` — filtro **Em Uso** (~400 materiais cautelados)
+- Regressão: `npm test` 14/14, `tsc` OK, E2E core 8/8 remoto (`reserva-teste`)
