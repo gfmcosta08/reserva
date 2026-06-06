@@ -56,8 +56,11 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Rotas públicas (verificação de deploy / build)
-  if (request.nextUrl.pathname === '/api/version') {
+  // Rotas públicas (verificação de deploy / build / QA Sentry)
+  if (
+    request.nextUrl.pathname === '/api/version' ||
+    request.nextUrl.pathname === '/api/sentry-test'
+  ) {
     return response
   }
 
