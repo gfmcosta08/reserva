@@ -88,6 +88,7 @@ jobs:
         env:
           SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          E2E_SUPERVISOR_EMAIL: ${{ secrets.E2E_SUPERVISOR_EMAIL }}
         run: |
           node scripts/qa/seed-e2e-person.mjs --apply
           node scripts/qa/seed-pack-accessories.mjs --apply

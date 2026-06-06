@@ -8,6 +8,7 @@ import { resolve, dirname } from "path"
 import { fileURLToPath } from "url"
 import { createClient } from "@supabase/supabase-js"
 import { loadCloneEnv, assertTestOnly } from "../import/lib/env-clone.mjs"
+import { resolveQaOperatorId } from "./lib/qa-operator.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const QA_ENV_PATH = resolve(__dirname, "../.env.qa")
@@ -23,13 +24,6 @@ function appendQaEnv(key, value) {
   content = re.test(content) ? content.replace(re, line) : `${content.replace(/\s*$/, "")}\n${line}\n`
   writeFileSync(QA_ENV_PATH, content, "utf8")
 }
-function qaOperatorId() {
-  const p = QA_ENV_PATH
-  if (!existsSync(p)) return null
-  const m = readFileSync(p, "utf8").match(/QA_SUPERVISOR_USER_ID=(.+)/)
-  return m?.[1]?.trim() || null
-}
-
 async function main() {
   const env = loadCloneEnv()
   assertTestOnly(env.SUPABASE_TEST_URL)
@@ -74,11 +68,13 @@ async function main() {
     await supabase.from("cautelas").delete().eq("id", existing.id)
   }
 
+  const operatorId = await resolveQaOperatorId(supabase)
+
   const { data: cautela, error: cErr } = await supabase
     .from("cautelas")
     .insert({
       person_id: person.id,
-      operator_id: qaOperatorId(),
+      operator_id: operatorId,
       type: "daily",
       status: "open",
       notes: NOTES,
