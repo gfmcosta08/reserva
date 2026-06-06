@@ -24,7 +24,7 @@ test.describe("E2E-03 Devolução total", () => {
     await expect(page.getByText("HT QA E2E", { exact: true })).toBeVisible()
     await startReturnFlow(page)
     await setReturnModeOnItem(page, "HT QA E2E", "Devolver total")
-    await finalizeReturn(page)
+    await finalizeReturn(page, 1)
 
     await expect(page.getByRole("heading", { name: "Detalhes da Cautela" })).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText("Fechada", { exact: true }).first()).toBeVisible()

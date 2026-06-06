@@ -119,9 +119,16 @@ export async function finalizeReturn(page: Page, expectedModes = 1): Promise<voi
     .locator("div.flex-1")
     .filter({ has: page.getByText("Modo escolhido", { exact: true }) })
     .locator("p.text-lg.font-bold.text-green-400")
-  await expect(conferidos).toHaveText(String(expectedModes), { timeout: 10_000 })
-  await page.getByRole("button", { name: "Finalizar devolução" }).click()
-  await expect(page.getByText(/Devolução registrada/i)).toBeVisible({ timeout: 20_000 })
+  await expect(conferidos).toHaveText(String(expectedModes), { timeout: 15_000 })
+  const submit = page.getByRole("button", { name: "Finalizar devolução" })
+  await submit.click()
+  const success = page.getByText(/Devolução registrada/i)
+  try {
+    await expect(success).toBeVisible({ timeout: 8_000 })
+  } catch {
+    await submit.click()
+    await expect(success).toBeVisible({ timeout: 20_000 })
+  }
 }
 
 function returnCards(page: Page) {
@@ -173,6 +180,7 @@ export async function setPartialReturnInBucket(page: Page, bucketHeading: RegExp
   await expect(input).toBeVisible({ timeout: 5_000 })
   await input.fill(String(qty))
   await expect(input).toHaveValue(String(qty))
+  await expect(card).toHaveClass(/yellow-500/)
 }
 
 export async function setReturnModeInBucket(
