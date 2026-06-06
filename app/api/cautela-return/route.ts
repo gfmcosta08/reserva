@@ -9,6 +9,7 @@ import {
   resolveItemStatusAfterReturn,
 } from "@/lib/cautela-return-status"
 import { computeMaterialAfterReturn } from "@/lib/material-stock"
+import { captureCautelaFlowError, tagCautelaFlow } from "@/lib/sentry-flow"
 
 // ===== API: PROCESSAR DEVOLUÇÃO DE ITEM =====
 export async function POST(request: NextRequest) {
@@ -145,6 +146,8 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    tagCautelaFlow("cautela_return", item.cautela_id)
+
     return NextResponse.json({
       success: true,
       item_id: cautela_item_id,
@@ -154,6 +157,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error("Erro na API cautela-return:", error)
+    captureCautelaFlowError("cautela_return", error)
     return NextResponse.json({ error: error.message || "Erro interno" }, { status: 500 })
   }
 }

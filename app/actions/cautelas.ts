@@ -38,6 +38,7 @@ import {
   pickPackAccessoryForWeapon,
   type PackAccessoryCandidate,
 } from "@/lib/cautela-pack-accessories"
+import { tagCautelaFlow } from "@/lib/sentry-flow"
 import {
   countPoolChargersByStatus,
   isGlock9mmCharger,
@@ -423,6 +424,8 @@ export async function createCautela(data: {
 
   // Disparar notificações (email + WhatsApp) sem bloquear o retorno
   dispatchCautelaNotifications(cautelaId).catch(console.error)
+
+  tagCautelaFlow("cautela_create", cautelaId)
 
   revalidatePath("/cautelas")
   revalidatePath("/materials")

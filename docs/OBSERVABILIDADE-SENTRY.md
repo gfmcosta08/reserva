@@ -23,7 +23,33 @@ Integração preparada; **build e runtime funcionam sem DSN**.
 - `instrumentation.ts` — hook Next.js + `onRequestError`
 - `next.config.mjs` — `withSentryConfig` só quando DSN presente
 
-## Próximos passos (pós-M0)
+## Tags nos fluxos críticos (Etapa 6)
 
-- Alertas 5xx e falha de migration no GitHub Actions
-- Tags `cautela_id` / `flow` nos fluxos de cautela e devolução (`Sentry.setTag`)
+`lib/sentry-flow.ts` define `tagCautelaFlow` e `captureCautelaFlowError`:
+
+| Tag | Valores | Onde |
+|-----|---------|------|
+| `flow` | `cautela_create`, `cautela_return` | `createCautela`, `POST /api/cautela-return` |
+| `cautela_id` | UUID da cautela | Após sucesso ou no catch de devolução |
+
+Sem DSN configurado, as funções são no-op (zero impacto em build/runtime).
+
+## Erro de teste controlado
+
+1. Defina `SENTRY_DEBUG_ROUTE=1` no ambiente Vercel (Preview) **temporariamente**.
+2. `GET /api/debug/sentry-test` → deve aparecer no Sentry como `Sentry test error — RESERVA Etapa 6 QA`.
+3. Remova `SENTRY_DEBUG_ROUTE` após validação.
+
+## Alertas recomendados (Dashboard Sentry)
+
+| Alerta | Condição |
+|--------|----------|
+| 5xx em preview/prod | `level:error` + URL contém `reserva` |
+| Falha migration CI | GitHub Actions → notificar canal ops (fora do Sentry) |
+| Flood de ruído | Filtrar `/api/debug/sentry-test` após QA |
+
+## Próximos passos
+
+- Criar projeto Sentry + configurar `NEXT_PUBLIC_SENTRY_DSN` em Vercel Preview e Production
+- Validar ingestão via rota de teste
+- Remover `SENTRY_DEBUG_ROUTE` após certificação Etapa 6
