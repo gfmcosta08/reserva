@@ -48,13 +48,19 @@ if (-not $vercelBypass) {
   Write-Host "SKIP VERCEL_AUTOMATION_BYPASS_SECRET (defina em env ou scripts/.env.qa)" -ForegroundColor DarkYellow
 }
 
+$testRef = $clone["SUPABASE_TEST_PROJECT_REF"]
+$testUrl = $clone["SUPABASE_TEST_URL"]
+if (-not $testUrl -and $testRef) { $testUrl = "https://$testRef.supabase.co" }
+
 $secrets = @{
   E2E_SUPERVISOR_EMAIL = $qa["QA_SUPERVISOR_EMAIL"]
   E2E_SUPERVISOR_PASSWORD = $qa["QA_SUPERVISOR_PASSWORD"]
   E2E_BASE_URL = "https://reserva-teste.vercel.app"
   SUPABASE_ACCESS_TOKEN = $clone["SUPABASE_ACCESS_TOKEN"]
   SUPABASE_TEST_DB_PASSWORD = $clone["SUPABASE_TEST_DB_PASSWORD"]
-  SUPABASE_TEST_PROJECT_REF = $clone["SUPABASE_TEST_PROJECT_REF"]
+  SUPABASE_TEST_PROJECT_REF = $testRef
+  SUPABASE_TEST_URL = $testUrl
+  SUPABASE_TEST_SERVICE_ROLE_KEY = $clone["SUPABASE_TEST_SERVICE_ROLE_KEY"]
   VERCEL_AUTOMATION_BYPASS_SECRET = $vercelBypass
 }
 

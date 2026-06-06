@@ -71,7 +71,23 @@ jobs:
             exit 1
           fi
 
+      - name: Require teste_db seed credentials
+        env:
+          SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+        run: |
+          missing=""
+          [ -z "$SUPABASE_TEST_PROJECT_REF" ] && missing="$missing SUPABASE_TEST_PROJECT_REF"
+          [ -z "$SUPABASE_TEST_SERVICE_ROLE_KEY" ] && missing="$missing SUPABASE_TEST_SERVICE_ROLE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets seed teste_db ausentes:$missing"
+            exit 1
+          fi
+
       - name: Seed E2E fixtures (teste_db)
+        env:
+          SUPABASE_TEST_PROJECT_REF: ${{ secrets.SUPABASE_TEST_PROJECT_REF }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
         run: |
           node scripts/qa/seed-e2e-person.mjs --apply
           node scripts/qa/seed-pack-accessories.mjs --apply
