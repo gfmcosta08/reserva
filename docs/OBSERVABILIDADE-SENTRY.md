@@ -48,36 +48,29 @@ Sem DSN configurado, as funções são no-op (zero impacto em build/runtime).
 | Falha migration CI | GitHub Actions → notificar canal ops (fora do Sentry) |
 | Flood de ruído | Filtrar `/api/sentry-test` após QA |
 
-## Status Etapa 6 (2026-06-06)
+## Status Etapa 6 (2026-06-06) — ✅ certificada
 
 | Item | Status |
 |------|--------|
 | Código Sentry (`@sentry/nextjs`, configs, tags cautela) | ✅ |
-| Rota `GET /api/sentry-test` + `force-dynamic` | ✅ |
+| Rota `GET /api/sentry-test` + `force-dynamic` + `captureException` | ✅ |
 | Middleware libera `/api/sentry-test` (sem auth) | ✅ |
-| `SENTRY_DEBUG_ROUTE=1` em Vercel Preview (branch `master`) | ✅ |
-| `NEXT_PUBLIC_SENTRY_DSN` em Vercel | ⛔ **ausente** |
-| Evento visível no dashboard Sentry | ⛔ **bloqueado** (sem DSN) |
+| Projeto Sentry via Vercel Marketplace (`reserva-sentry`, plano Developer) | ✅ |
+| `NEXT_PUBLIC_SENTRY_DSN` em Vercel Preview + Production | ✅ |
+| `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (integração) | ✅ |
+| `GET /api/sentry-test` → HTTP 500 (com `SENTRY_DEBUG_ROUTE=1`) | ✅ |
+| Evento no Sentry (`Sentry test error — RESERVA Etapa 6 QA`) | ✅ API 2026-06-07 |
+| `SENTRY_DEBUG_ROUTE` removido pós-QA | ✅ |
 
-### Bloqueador — DSN manual (5 min)
+### Provisionamento automatizado (sem dashboard manual)
 
-1. [sentry.io](https://sentry.io) → **Create project** → plataforma **Next.js**.
-2. Copie o **DSN** (formato `https://<key>@o<org>.ingest.us.sentry.io/<project>`).
-3. Vercel → **reserva-master** → Settings → Environment Variables:
-   - `NEXT_PUBLIC_SENTRY_DSN` = DSN → marque **Preview** e **Production**.
-4. Redeploy Preview (`git push` ou `npx vercel deploy --yes`) + alias `reserva-teste`.
-5. `npx vercel curl https://reserva-teste.vercel.app/api/sentry-test` → esperado **HTTP 500** com mensagem `Sentry test error — RESERVA Etapa 6 QA`.
-6. Confirme o evento no dashboard Sentry → Issues.
-7. Remova `SENTRY_DEBUG_ROUTE` da Vercel após validação.
+1. `vercel integration add sentry` → termos aceitos via API Vercel (`auto-provision` + `billingPlanId: am3_f`).
+2. Recurso `reserva-sentry` conectado ao projeto `reserva-master` (Preview + Production).
+3. Redeploy + alias `reserva-teste` → `reserva-master-dp0gijuva`.
+4. Validação: `vercel curl /api/sentry-test` → 500; Sentry API `/projects/reserva-sentry/reserva-sentry/events/` → issue confirmada.
 
-**Nota:** `SENTRY_DEBUG_ROUTE=1` no ambiente de build quebra o deploy se a rota não tiver `export const dynamic = "force-dynamic"` — já corrigido.
+**Nota Next.js 14:** `onRequestError` exige Next.js 15+; a rota de teste usa `Sentry.captureException` + `flush` antes do throw.
 
-### API Sentry (automação)
+### Rota de debug
 
-Não foi possível criar projeto via API: `SENTRY_AUTH_TOKEN` ausente no ambiente local, Vercel e GitHub (gh não autenticado nesta sessão).
-
-## Próximos passos
-
-- [ ] Responsável: criar projeto Sentry + `NEXT_PUBLIC_SENTRY_DSN` em Preview e Production
-- [ ] Validar ingestão via `/api/sentry-test`
-- [ ] Remover `SENTRY_DEBUG_ROUTE` após certificação Etapa 6
+`SENTRY_DEBUG_ROUTE` foi **removida** da Vercel após certificação. Para revalidar ingestão no futuro, reative temporariamente em Preview e remova após o teste.
