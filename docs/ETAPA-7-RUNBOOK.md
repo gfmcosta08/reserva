@@ -1,6 +1,6 @@
 # Etapa 7 — Deploy código em PRODUÇÃO (Fase 1)
 
-**Status:** ⛔ Aguardando Etapa 6 certificada (Sentry com DSN) + aprovação explícita  
+**Status:** ⛔ Aguardando aprovação explícita (G2) — Etapa 6 ✅ certificada 2026-06-07  
 **Ambiente:** `mxlgkpfiugbodocyleij` + https://reserva1bpm.vercel.app  
 **NÃO inclui:** import em massa de cautelados (Etapa 8)
 
@@ -165,4 +165,4 @@ Somente então execute Passos A–E.
 
 ---
 
-*Runbook gerado 2026-06-06. Etapa 7 permanece ⛔ até Etapa 6 certificada.*
+*Runbook gerado 2026-06-06. Etapa 6 certificada 2026-06-07. Etapa 7 permanece ⛔ até G2 ("Aprovado para produção — Fase 1 código").*
