@@ -13,10 +13,14 @@ import {
   formatUnavailableMaterialsMessage,
   mergeCautelaItems,
   validateCautelaModifiable,
+  type TransferOriginCautela,
+  type TransferOriginItem,
 } from "@/lib/cautela-helpers"
 import {
   createCautelaFaceAuthInputSchema,
   createCautelaInputSchema,
+  createCautelaWithTransferInputSchema,
+  createCautelaWithTransferFaceAuthInputSchema,
   processBulkDevolutionInputSchema,
   uuidSchema,
 } from "@/lib/cautela-schemas"
@@ -33,11 +37,13 @@ import {
 import { generateCautelaPDF } from "@/lib/pdf-cautela"
 import { extractCaliber } from "@/lib/cautela-caliber"
 import {
-  filterPackCandidatesForWeapon,
   packAccessoryAvailabilityFilter,
   pickPackAccessoryForWeapon,
   type PackAccessoryCandidate,
+  buildPackAccessoryPool,
+  fetchReservablePackAccessories,
 } from "@/lib/cautela-pack-accessories"
+import { filterReservableMaterials } from "@/lib/cautela-reservable"
 import { tagCautelaFlow } from "@/lib/sentry-flow"
 import {
   countPoolChargersByStatus,
@@ -46,13 +52,18 @@ import {
 } from "@/lib/glock-9mm-inventory"
 import {
   canReserveStock,
-  computeMaterialAfterReturn,
   effectiveStock,
   formatInsufficientStockMessage,
   resolveStockUnits,
 } from "@/lib/material-stock"
 import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
 import { Resend } from "resend"
+
+async function assertCautelaOperator() {
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) throw new Error(auth.error)
+  return auth
+}
 
 async function dispatchCautelaNotifications(cautelaId: string) {
   try {
@@ -148,6 +159,31 @@ function mapCreateCautelaRpcError(message: string): string {
   return message
 }
 
+function resolveReviewDateForRpc(
+  type: "daily" | "permanent",
+  reviewDate?: string
+): string | null {
+  if (type !== "permanent") return null
+  if (reviewDate) return new Date(reviewDate).toISOString()
+  return null
+}
+
+function mapVistoriaRpcError(message: string): string {
+  if (message.includes("NOT_PERMANENT_CAUTELA")) {
+    return "Vistoria anual só se aplica a cautelas permanentes."
+  }
+  if (message.includes("CAUTELA_NOT_OPEN")) {
+    return "A cautela não está aberta para vistoria."
+  }
+  if (message.includes("NO_PENDING_ITEMS")) {
+    return "Não há itens pendentes para registrar vistoria."
+  }
+  if (message.includes("NOT_AUTHENTICATED")) {
+    return "Sessão inválida. Faça login novamente."
+  }
+  return message
+}
+
 function validateCautelaItemsStock(
   merged: { material_id: string; quantity: number }[],
   materials: { id: string; name: string; status: string; stock_quantity: number | null }[]
@@ -165,36 +201,26 @@ function validateCautelaItemsStock(
 
 async function restoreMaterialStockAfterReturn(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  materialId: string,
+  cautelaItemId: string,
   previousReturned: number,
   newReturned: number,
   itemStatus: "pending" | "returned" | "damaged" | "missing",
   qtyDelivered: number
 ) {
-  const { data: material, error } = await supabase
-    .from("materials")
-    .select("stock_quantity")
-    .eq("id", materialId)
-    .single()
+  const { error } = await supabase.rpc("registrar_movimentacao_devolucao", {
+    p_cautela_item_id: cautelaItemId,
+    p_previous_returned: previousReturned,
+    p_new_returned: newReturned,
+    p_item_status: itemStatus,
+    p_qty_delivered: qtyDelivered,
+  })
 
-  if (error || !material) return
-
-  const next = computeMaterialAfterReturn(
-    material.stock_quantity ?? 1,
-    previousReturned,
-    newReturned,
-    itemStatus,
-    qtyDelivered
-  )
-
-  await supabase
-    .from("materials")
-    .update({ stock_quantity: next.stock_quantity, status: next.status })
-    .eq("id", materialId)
+  if (error) throw new Error(error.message)
 }
 
 // ===== LISTAR CAUTELAS =====
 export async function getCautelas(filters?: { status?: string; search?: string }) {
+  await assertCautelaOperator()
   const supabase = await createClient()
   let query = supabase
     .from("cautelas")
@@ -241,6 +267,7 @@ export async function getCautelas(filters?: { status?: string; search?: string }
 
 // ===== DETALHES DE UMA CAUTELA =====
 export async function getCautelaById(id: string) {
+  await assertCautelaOperator()
   const supabase = await createClient()
 
   const { data: cautela, error } = await supabase
@@ -286,6 +313,9 @@ async function assertPersonEligibleForCautela(
 
 // ===== VALIDAR PIN =====
 export async function validatePin(personId: string, pin: string) {
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { valid: false, error: auth.error }
+
   const supabase = await createClient()
 
   const { data: person, error } = await supabase
@@ -371,7 +401,7 @@ export async function createCautela(data: {
 
   const { data: materials, error: matError } = await supabase
     .from("materials")
-    .select("id, name, status, stock_quantity")
+    .select("id, name, status, status_atual, stock_quantity")
     .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
@@ -392,6 +422,7 @@ export async function createCautela(data: {
     p_type: payload.type,
     p_notes: payload.notes ?? null,
     p_items: merged,
+    p_review_date: resolveReviewDateForRpc(payload.type, data.review_date),
   })
 
   if (rpcError) {
@@ -402,11 +433,6 @@ export async function createCautela(data: {
   const cautelaId = result?.cautela_id
   if (!cautelaId) {
     return { error: "Falha ao criar cautela" }
-  }
-
-  // Save review_date if provided (permanent cautelas only)
-  if (data.review_date && cautelaId) {
-    await supabase.from("cautelas").update({ review_date: data.review_date }).eq("id", cautelaId)
   }
 
   await logAudit({
@@ -542,7 +568,7 @@ export async function returnItem(
   const previousReturned = qtyReturned(item)
   await restoreMaterialStockAfterReturn(
     supabase,
-    item.material_id,
+    cautelaItemId,
     previousReturned,
     qtyReturn,
     itemStatus,
@@ -710,7 +736,7 @@ export async function processBulkDevolution(
 
       await restoreMaterialStockAfterReturn(
         supabase,
-        cautelaItem.material_id,
+        item.cautelaItemId,
         qtyReturned(cautelaItem),
         0,
         disposition,
@@ -748,7 +774,7 @@ export async function processBulkDevolution(
 
     await restoreMaterialStockAfterReturn(
       supabase,
-      cautelaItem.material_id,
+      item.cautelaItemId,
       prevReturned,
       totalReturned,
       newStatus,
@@ -782,6 +808,7 @@ export async function processBulkDevolution(
 
 // ===== BUSCAR PESSOAS (para autocomplete no wizard) =====
 export async function searchPersons(query: string) {
+  await assertCautelaOperator()
   const q = sanitizeIlikeFragment(query.trim(), 80)
   if (q.length < 2) return []
 
@@ -804,11 +831,12 @@ export async function searchPersons(query: string) {
 
 // ===== BUSCAR MATERIAIS DISPONÍVEIS =====
 export async function getAvailableMaterials(categoryName?: string) {
+  await assertCautelaOperator()
   const supabase = await createClient()
   let query = supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, category")
-    .eq("status", "available")
+    .select("id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
     .order("name")
 
   if (categoryName) {
@@ -817,23 +845,25 @@ export async function getAvailableMaterials(categoryName?: string) {
 
   const { data, error } = await query
   if (error) return []
-  return data
+  return filterReservableMaterials(data ?? [], 1)
 }
 
 // ===== BUSCAR MATERIAIS AGRUPADOS POR CATEGORIA =====
 export async function getAvailableMaterialsGrouped() {
+  await assertCautelaOperator()
   const supabase = await createClient()
 
   const { data: materials } = await supabase
     .from("materials")
-    .select("id, name, patrimony_number, serial_number, internal_code, category")
-    .eq("status", "available")
+    .select("id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
     .order("name")
 
-  if (!materials?.length) return []
+  const reservable = filterReservableMaterials(materials ?? [], 1)
+  if (!reservable.length) return []
 
-  const byName = new Map<string, typeof materials>()
-  for (const m of materials) {
+  const byName = new Map<string, typeof reservable>()
+  for (const m of reservable) {
     const key = m.category || "Geral"
     const arr = byName.get(key) ?? []
     arr.push(m)
@@ -860,22 +890,23 @@ export async function searchMaterials(
   query: string,
   categoryNames?: string[]
 ): Promise<SearchableMaterial[]> {
+  await assertCautelaOperator()
   const raw = query.trim()
   if (raw.length < 1) return []
 
   const supabase = await createClient()
-  const select = "id, name, patrimony_number, serial_number, internal_code, category, stock_quantity"
+  const select = "id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual"
 
   const uuidPattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
   if (uuidPattern.test(raw)) {
-    let qUuid = supabase.from("materials").select(select).eq("status", "available").eq("id", raw).limit(5)
+    let qUuid = supabase.from("materials").select(select).eq("status_atual", "DISPONIVEL").eq("id", raw).limit(5)
     if (categoryNames && categoryNames.length > 0) {
       qUuid = qUuid.in("category", categoryNames)
     }
     const { data } = await qUuid
-    return (data ?? []) as SearchableMaterial[]
+    return filterReservableMaterials((data ?? []) as SearchableMaterial[], 1)
   }
 
   const q = sanitizeIlikeFragment(raw, 80)
@@ -884,7 +915,7 @@ export async function searchMaterials(
   let qText = supabase
     .from("materials")
     .select(select)
-    .eq("status", "available")
+    .eq("status_atual", "DISPONIVEL")
     .or(`name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`)
     .limit(25)
 
@@ -895,7 +926,7 @@ export async function searchMaterials(
   const { data, error } = await qText
 
   if (error) return []
-  return (data ?? []) as SearchableMaterial[]
+  return filterReservableMaterials((data ?? []) as SearchableMaterial[], 1)
 }
 
 /** Resolve carregador ou munição disponível compatível com a arma (pacote pistola/arma longa). */
@@ -903,6 +934,7 @@ export async function resolvePackAccessoryForWeapon(
   weaponId: string,
   kind: "charger" | "ammunition"
 ): Promise<{ material: SearchableMaterial | null; error?: string }> {
+  await assertCautelaOperator()
   const multi = await resolvePackAccessoriesForWeapon(weaponId, kind, 1)
   if (multi.error) return { material: null, error: multi.error }
   return { material: multi.materials[0] ?? null }
@@ -925,6 +957,7 @@ export async function validateMaterialQuantityForCautela(
   materialId: string,
   quantity: number
 ): Promise<{ ok: true; stock: number } | { ok: false; error: string }> {
+  await assertCautelaOperator()
   const idParsed = uuidSchema.safeParse(materialId)
   if (!idParsed.success) return { ok: false, error: "Material inválido" }
 
@@ -932,7 +965,7 @@ export async function validateMaterialQuantityForCautela(
   const supabase = await createClient()
   const { data: material, error } = await supabase
     .from("materials")
-    .select("id, name, status, stock_quantity")
+    .select("id, name, status, status_atual, stock_quantity")
     .eq("id", materialId)
     .single()
 
@@ -948,11 +981,12 @@ export async function validateMaterialQuantityForCautela(
 
 /** Carregadores Glock 9mm do pool QA com status available (qty livre na Nova Cautela). */
 export async function countAvailableGlock9mmChargers(): Promise<number> {
+  await assertCautelaOperator()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("materials")
-    .select("id, name, category, calibre, marca, patrimony_number, status")
-    .eq("status", "available")
+    .select("id, name, category, calibre, marca, patrimony_number, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
     .or(packAccessoryAvailabilityFilter("charger"))
     .limit(500)
 
@@ -979,6 +1013,7 @@ export async function resolvePackAccessoriesForWeapon(
   kind: "charger" | "ammunition",
   count: number
 ): Promise<{ materials: SearchableMaterial[]; error?: string }> {
+  await assertCautelaOperator()
   if (count < 1) return { materials: [] }
 
   const idParsed = uuidSchema.safeParse(weaponId)
@@ -997,36 +1032,16 @@ export async function resolvePackAccessoriesForWeapon(
     return { materials: [], error: "Arma não encontrada" }
   }
 
-  const accessoryFilter = packAccessoryAvailabilityFilter(kind)
-
-  const { data: candidates, error: listError } = await supabase
-    .from("materials")
-    .select(
-      "id, name, patrimony_number, serial_number, internal_code, category, calibre, marca, modelo, stock_quantity"
-    )
-    .eq("status", "available")
-    .or(accessoryFilter)
-    .order("name")
-    .limit(200)
-
-  if (listError) {
-    return { materials: [], error: listError.message }
+  let candidates: PackAccessoryCandidate[]
+  try {
+    candidates = await fetchReservablePackAccessories(supabase, kind)
+  } catch (listError) {
+    const msg = listError instanceof Error ? listError.message : "Erro ao listar acessórios"
+    return { materials: [], error: msg }
   }
 
   const useGlockPool = isGlock9mmPistol(weapon) && kind === "charger"
-  let poolCandidates: PackAccessoryCandidate[]
-
-  if (kind === "charger" && useGlockPool) {
-    poolCandidates = (candidates ?? []).filter((m) =>
-      isGlock9mmCharger(m)
-    ) as PackAccessoryCandidate[]
-  } else {
-    poolCandidates = filterPackCandidatesForWeapon(
-      weapon,
-      (candidates ?? []) as PackAccessoryCandidate[],
-      kind
-    )
-  }
+  const poolCandidates = buildPackAccessoryPool(weapon, candidates, kind)
 
   const resolved = resolveStockUnits(poolCandidates, count, (pool) =>
     pickPackAccessoryForWeapon(weapon, pool, kind)
@@ -1058,10 +1073,95 @@ export async function resolvePackAccessoriesForWeapon(
   return { materials: resolved.items.map(toSearchableMaterial) }
 }
 
+// ===== BUSCAR CAUTELA DIÁRIA DE ORIGEM PARA TRANSFERÊNCIA =====
+export async function getDailyCautelaForMaterial(materialId: string): Promise<{
+  origin: TransferOriginCautela | null
+  error?: string
+  permanentBlock?: boolean
+}> {
+  await assertCautelaOperator()
+  const idParsed = uuidSchema.safeParse(materialId)
+  if (!idParsed.success) return { origin: null, error: "Material inválido" }
+
+  const supabase = await createClient()
+
+  const { data: material, error: matError } = await supabase
+    .from("materials")
+    .select("id, status, status_atual")
+    .eq("id", materialId)
+    .single()
+
+  if (matError || !material) return { origin: null, error: "Material não encontrado" }
+
+  const { data: activeItem, error: itemError } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, cautela_id, material_id, status, quantity_delivered, quantity_returned,
+      materials(id, name, patrimony_number, category)
+    `)
+    .eq("material_id", materialId)
+    .in("status", ["pending"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (itemError || !activeItem) return { origin: null }
+
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select(`id, person_id, type, status, persons(id, full_name)`)
+    .eq("id", activeItem.cautela_id)
+    .single()
+
+  if (cautelaError || !cautela) return { origin: null }
+
+  if (cautela.type === "permanent") {
+    return { origin: null, permanentBlock: true }
+  }
+
+  if (cautela.type !== "daily" || !["open", "partial"].includes(cautela.status)) {
+    return { origin: null }
+  }
+
+  const { data: siblingItems } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, material_id, status, quantity_delivered, quantity_returned,
+      materials(id, name, patrimony_number, category)
+    `)
+    .eq("cautela_id", cautela.id)
+
+  const person = cautela.persons as any
+  const transferItems: TransferOriginItem[] = (siblingItems || [])
+    .filter((i: any) => i.status === "pending" && (i.quantity_delivered - (i.quantity_returned || 0)) > 0)
+    .map((i: any) => ({
+      cautela_item_id: i.id,
+      material_id: i.material_id,
+      material_name: i.materials?.name ?? "",
+      patrimony_number: i.materials?.patrimony_number ?? "",
+      quantity_delivered: i.quantity_delivered ?? 1,
+      quantity_returned: i.quantity_returned ?? 0,
+      quantity_available: (i.quantity_delivered ?? 1) - (i.quantity_returned ?? 0),
+      category: i.materials?.category ?? "",
+    }))
+
+  return {
+    origin: {
+      cautela_id: cautela.id,
+      person_id: cautela.person_id,
+      person_name: person?.full_name ?? "",
+      type: cautela.type,
+      status: cautela.status,
+      items: transferItems,
+    },
+  }
+}
+
 // ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
 // Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
 // Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)
 export async function getPendingCautelasForPerson(personId: string) {
+  await assertCautelaOperator()
   const idParsed = uuidSchema.safeParse(personId)
   if (!idParsed.success) return []
 
@@ -1134,7 +1234,7 @@ export async function createCautelaFaceAuth(data: {
 
   const { data: materials, error: matError } = await supabase
     .from("materials")
-    .select("id, name, status, stock_quantity")
+    .select("id, name, status, status_atual, stock_quantity")
     .in("id", distinctIds)
 
   if (matError) return { error: matError.message }
@@ -1155,6 +1255,7 @@ export async function createCautelaFaceAuth(data: {
     p_type: payload.type,
     p_notes: payload.notes ?? null,
     p_items: merged,
+    p_review_date: resolveReviewDateForRpc(payload.type, data.review_date),
   })
 
   if (rpcErrorFace) {
@@ -1165,11 +1266,6 @@ export async function createCautelaFaceAuth(data: {
   const cautelaIdFace = resultFace?.cautela_id
   if (!cautelaIdFace) {
     return { error: "Falha ao criar cautela" }
-  }
-
-  // Save review_date if provided (permanent cautelas only)
-  if (data.review_date && cautelaIdFace) {
-    await supabase.from("cautelas").update({ review_date: data.review_date }).eq("id", cautelaIdFace)
   }
 
   await logAudit({
@@ -1192,6 +1288,604 @@ export async function createCautelaFaceAuth(data: {
   revalidatePath("/cautelas")
   revalidatePath("/materials")
   return { success: true, cautelaId: cautelaIdFace }
+}
+
+// ===== CRIAR CAUTELA COM TRANSFERÊNCIA (PIN) =====
+export async function createCautelaWithTransfer(data: {
+  person_id: string
+  type: "daily"
+  items: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+  notes?: string
+  pin: string
+}) {
+  const parsed = createCautelaWithTransferInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela com transferência"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const operatorId = auth.user.id
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
+
+  const pinResult = await validatePin(payload.person_id, payload.pin)
+  if (!pinResult.valid) return { error: pinResult.error }
+
+  const transferItems = payload.items.filter((i) => i.transfer_from_cautela_item_id)
+  const availableItems = payload.items.filter((i) => !i.transfer_from_cautela_item_id)
+
+  for (const ti of transferItems) {
+    const { data: originItem, error: originError } = await supabase
+      .from("cautela_items")
+      .select(`id, cautela_id, material_id, status, quantity_delivered, quantity_returned, cautelas(person_id, type)`)
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (originError || !originItem) return { error: "Item de origem não encontrado" }
+
+    const originCautela = originItem.cautelas as any
+    if (originCautela?.type === "permanent") {
+      return { error: "Transferência não permitida para materiais em cautela Permanente" }
+    }
+    if (originCautela?.person_id === payload.person_id) {
+      return { error: "Origem e destino não podem ser a mesma pessoa" }
+    }
+    const balance = (originItem.quantity_delivered || 1) - (originItem.quantity_returned || 0)
+    if (ti.quantity > balance) {
+      return { error: `Quantidade transferida (${ti.quantity}) excede saldo disponível (${balance})` }
+    }
+  }
+
+  if (availableItems.length > 0) {
+    const distinctIds = availableItems.map((m) => m.material_id)
+    const { data: materials, error: matError } = await supabase
+      .from("materials")
+      .select("id, name, status, status_atual, stock_quantity")
+      .in("id", distinctIds)
+
+    if (matError) return { error: matError.message }
+    if (!materials || materials.length !== distinctIds.length) {
+      return { error: "Um ou mais materiais não foram encontrados" }
+    }
+
+    const unavailable = materials.filter((m) => m.status !== "available")
+    if (unavailable.length > 0) {
+      return { error: formatUnavailableMaterialsMessage(unavailable) }
+    }
+
+    const merged = mergeCautelaItems(availableItems)
+    const stockErr = validateCautelaItemsStock(merged, materials)
+    if (stockErr) return { error: stockErr }
+  }
+
+  const now = new Date().toISOString()
+  const { data: deadlineData } = await supabase.rpc("calc_daily_return_deadline")
+  const deadline = deadlineData as string | null
+
+  const { data: tenantData } = await supabase
+    .from("usuarios")
+    .select("organization_id, unit_id, reserva_id")
+    .eq("auth_user_id", operatorId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+
+  const tenant = tenantData as { organization_id: string; unit_id: string; reserva_id: string } | null
+
+  const { data: newCautela, error: createError } = await supabase
+    .from("cautelas")
+    .insert({
+      person_id: payload.person_id,
+      operator_id: operatorId,
+      type: "daily",
+      status: "open",
+      notes: payload.notes ?? null,
+      data_prevista_devolucao: deadline,
+      organization_id: tenant?.organization_id ?? null,
+      unit_id: tenant?.unit_id ?? null,
+      reserva_id: tenant?.reserva_id ?? null,
+    })
+    .select("id")
+    .single()
+
+  if (createError) return { error: createError.message }
+  const newCautelaId = (newCautela as any).id
+
+  for (const ti of transferItems) {
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("id, cautela_id, material_id, quantity_delivered, quantity_returned, status")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (!originItem) continue
+
+    const prevReturned = originItem.quantity_returned || 0
+    const newReturned = prevReturned + ti.quantity
+    const delivered = originItem.quantity_delivered || 1
+    const itemStatus: "pending" | "returned" = newReturned >= delivered ? "returned" : "pending"
+
+    await supabase
+      .from("cautela_items")
+      .update({
+        quantity_returned: newReturned,
+        status: itemStatus,
+        returned_at: itemStatus === "returned" ? now : null,
+        returned_by: itemStatus === "returned" ? operatorId : null,
+      })
+      .eq("id", ti.transfer_from_cautela_item_id)
+
+    if (itemStatus === "returned") {
+      await restoreMaterialStockAfterReturn(
+        supabase,
+        ti.transfer_from_cautela_item_id!,
+        prevReturned,
+        newReturned,
+        "returned",
+        delivered
+      )
+    }
+
+    await supabase
+      .from("cautela_items")
+      .insert({
+        cautela_id: newCautelaId,
+        material_id: ti.material_id,
+        status: "pending",
+        quantity_delivered: ti.quantity,
+        organization_id: tenant?.organization_id ?? null,
+        unit_id: tenant?.unit_id ?? null,
+        reserva_id: tenant?.reserva_id ?? null,
+      })
+
+    await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
+
+    await logAudit({
+      action: "item_transferred",
+      entity: "cautela_items",
+      entity_id: ti.transfer_from_cautela_item_id!,
+      before_state: {
+        cautela_id: originItem.cautela_id,
+        material_id: ti.material_id,
+        status: originItem.status,
+        quantity_returned: prevReturned,
+      },
+      after_state: {
+        cautela_id_destino: newCautelaId,
+        material_id: ti.material_id,
+        status: itemStatus,
+        quantity_returned: newReturned,
+        quantity_transferred: ti.quantity,
+      },
+    })
+  }
+
+  if (availableItems.length === 0) {
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: transferItems.length,
+        items: transferItems.map((ti) => ({ material_id: ti.material_id, quantity: ti.quantity })),
+        transfer_count: transferItems.length,
+        transfer_only: true,
+      },
+    })
+  } else {
+    const merged = mergeCautelaItems(availableItems)
+
+    for (const item of merged) {
+      const { data: matItem } = await supabase
+        .from("materials")
+        .select("id, name, stock_quantity")
+        .eq("id", item.material_id)
+        .single()
+
+      if (!matItem) continue
+
+      await supabase
+        .from("cautela_items")
+        .insert({
+          cautela_id: newCautelaId,
+          material_id: item.material_id,
+          status: "pending",
+          quantity_delivered: item.quantity,
+          organization_id: tenant?.organization_id ?? null,
+          unit_id: tenant?.unit_id ?? null,
+          reserva_id: tenant?.reserva_id ?? null,
+        })
+
+      const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
+      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
+      await supabase
+        .from("materials")
+        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
+        .eq("id", item.material_id)
+    }
+
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: merged.length,
+        items: merged,
+        transfer_count: transferItems.length,
+      },
+    })
+  }
+
+  await dispatchCautelaNotifications(newCautelaId).catch(console.error)
+  await dispatchTransferNotifications(newCautelaId, transferItems).catch(console.error)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId: newCautelaId }
+}
+
+// ===== CRIAR CAUTELA COM TRANSFERÊNCIA (VERIFICAÇÃO FACIAL) =====
+export async function createCautelaWithTransferFaceAuth(data: {
+  person_id: string
+  type: "daily"
+  items: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+  notes?: string
+}) {
+  const parsed = createCautelaWithTransferFaceAuthInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela com transferência"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const operatorId = auth.user.id
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
+
+  const transferItems = payload.items.filter((i) => i.transfer_from_cautela_item_id)
+  const availableItems = payload.items.filter((i) => !i.transfer_from_cautela_item_id)
+
+  for (const ti of transferItems) {
+    const { data: originItem, error: originError } = await supabase
+      .from("cautela_items")
+      .select(`id, cautela_id, material_id, status, quantity_delivered, quantity_returned, cautelas(person_id, type)`)
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (originError || !originItem) return { error: "Item de origem não encontrado" }
+
+    const originCautela = originItem.cautelas as any
+    if (originCautela?.type === "permanent") {
+      return { error: "Transferência não permitida para materiais em cautela Permanente" }
+    }
+    if (originCautela?.person_id === payload.person_id) {
+      return { error: "Origem e destino não podem ser a mesma pessoa" }
+    }
+    const balance = (originItem.quantity_delivered || 1) - (originItem.quantity_returned || 0)
+    if (ti.quantity > balance) {
+      return { error: `Quantidade transferida (${ti.quantity}) excede saldo disponível (${balance})` }
+    }
+  }
+
+  if (availableItems.length > 0) {
+    const distinctIds = availableItems.map((m) => m.material_id)
+    const { data: materials, error: matError } = await supabase
+      .from("materials")
+      .select("id, name, status, status_atual, stock_quantity")
+      .in("id", distinctIds)
+
+    if (matError) return { error: matError.message }
+    if (!materials || materials.length !== distinctIds.length) {
+      return { error: "Um ou mais materiais não foram encontrados" }
+    }
+
+    const unavailable = materials.filter((m) => m.status !== "available")
+    if (unavailable.length > 0) {
+      return { error: formatUnavailableMaterialsMessage(unavailable) }
+    }
+
+    const merged = mergeCautelaItems(availableItems)
+    const stockErr = validateCautelaItemsStock(merged, materials)
+    if (stockErr) return { error: stockErr }
+  }
+
+  const now = new Date().toISOString()
+  const { data: deadlineData } = await supabase.rpc("calc_daily_return_deadline")
+  const deadline = deadlineData as string | null
+
+  const { data: tenantData } = await supabase
+    .from("usuarios")
+    .select("organization_id, unit_id, reserva_id")
+    .eq("auth_user_id", operatorId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+
+  const tenant = tenantData as { organization_id: string; unit_id: string; reserva_id: string } | null
+
+  const { data: newCautela, error: createError } = await supabase
+    .from("cautelas")
+    .insert({
+      person_id: payload.person_id,
+      operator_id: operatorId,
+      type: "daily",
+      status: "open",
+      notes: payload.notes ?? null,
+      data_prevista_devolucao: deadline,
+      organization_id: tenant?.organization_id ?? null,
+      unit_id: tenant?.unit_id ?? null,
+      reserva_id: tenant?.reserva_id ?? null,
+    })
+    .select("id")
+    .single()
+
+  if (createError) return { error: createError.message }
+  const newCautelaId = (newCautela as any).id
+
+  for (const ti of transferItems) {
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("id, cautela_id, material_id, quantity_delivered, quantity_returned, status")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (!originItem) continue
+
+    const prevReturned = originItem.quantity_returned || 0
+    const newReturned = prevReturned + ti.quantity
+    const delivered = originItem.quantity_delivered || 1
+    const itemStatus: "pending" | "returned" = newReturned >= delivered ? "returned" : "pending"
+
+    await supabase
+      .from("cautela_items")
+      .update({
+        quantity_returned: newReturned,
+        status: itemStatus,
+        returned_at: itemStatus === "returned" ? now : null,
+        returned_by: itemStatus === "returned" ? operatorId : null,
+      })
+      .eq("id", ti.transfer_from_cautela_item_id)
+
+    if (itemStatus === "returned") {
+      await restoreMaterialStockAfterReturn(
+        supabase,
+        ti.transfer_from_cautela_item_id!,
+        prevReturned,
+        newReturned,
+        "returned",
+        delivered
+      )
+    }
+
+    await supabase
+      .from("cautela_items")
+      .insert({
+        cautela_id: newCautelaId,
+        material_id: ti.material_id,
+        status: "pending",
+        quantity_delivered: ti.quantity,
+        organization_id: tenant?.organization_id ?? null,
+        unit_id: tenant?.unit_id ?? null,
+        reserva_id: tenant?.reserva_id ?? null,
+      })
+
+    await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
+
+    await logAudit({
+      action: "item_transferred",
+      entity: "cautela_items",
+      entity_id: ti.transfer_from_cautela_item_id!,
+      before_state: {
+        cautela_id: originItem.cautela_id,
+        material_id: ti.material_id,
+        status: originItem.status,
+        quantity_returned: prevReturned,
+      },
+      after_state: {
+        cautela_id_destino: newCautelaId,
+        material_id: ti.material_id,
+        status: itemStatus,
+        quantity_returned: newReturned,
+        quantity_transferred: ti.quantity,
+      },
+    })
+  }
+
+  if (availableItems.length === 0) {
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: transferItems.length,
+        items: transferItems.map((ti) => ({ material_id: ti.material_id, quantity: ti.quantity })),
+        transfer_count: transferItems.length,
+        transfer_only: true,
+        auth: "face",
+      },
+    })
+  } else {
+    const merged = mergeCautelaItems(availableItems)
+
+    for (const item of merged) {
+      const { data: matItem } = await supabase
+        .from("materials")
+        .select("id, name, stock_quantity")
+        .eq("id", item.material_id)
+        .single()
+
+      if (!matItem) continue
+
+      await supabase
+        .from("cautela_items")
+        .insert({
+          cautela_id: newCautelaId,
+          material_id: item.material_id,
+          status: "pending",
+          quantity_delivered: item.quantity,
+          organization_id: tenant?.organization_id ?? null,
+          unit_id: tenant?.unit_id ?? null,
+          reserva_id: tenant?.reserva_id ?? null,
+        })
+
+      const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
+      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
+      await supabase
+        .from("materials")
+        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
+        .eq("id", item.material_id)
+    }
+
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: merged.length,
+        items: merged,
+        transfer_count: transferItems.length,
+        auth: "face",
+      },
+    })
+  }
+
+  await dispatchCautelaNotifications(newCautelaId).catch(console.error)
+  await dispatchTransferNotifications(newCautelaId, transferItems).catch(console.error)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId: newCautelaId }
+}
+
+async function dispatchTransferNotifications(
+  newCautelaId: string,
+  transferItems: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+) {
+  if (transferItems.length === 0) return
+
+  const supabase = await createClient()
+
+  const { data: destCautela } = await supabase
+    .from("cautelas")
+    .select(`id, persons(id, full_name, rg, email, phone)`)
+    .eq("id", newCautelaId)
+    .single()
+
+  if (!destCautela) return
+
+  const destPerson = destCautela.persons as any
+  const originCautelaIds = new Set<string>()
+
+  for (const ti of transferItems) {
+    if (!ti.transfer_from_cautela_item_id) continue
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("cautela_id")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+    if (originItem) originCautelaIds.add(originItem.cautela_id)
+  }
+
+  const resendKey = process.env.RESEND_API_KEY
+  const archiveEmail = process.env.ARCHIVE_EMAIL
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+
+  if (!resendKey) return
+
+  const resend = new Resend(resendKey)
+
+  const { data: materials } = await supabase
+    .from("materials")
+    .select("id, name, patrimony_number")
+    .in("id", transferItems.map((ti) => ti.material_id))
+
+  const matMap = new Map((materials ?? []).map((m: any) => [m.id, m]))
+
+  for (const originCautelaId of originCautelaIds) {
+    const { data: originCautela } = await supabase
+      .from("cautelas")
+      .select(`id, persons(id, full_name, rg, email, phone)`)
+      .eq("id", originCautelaId)
+      .single()
+
+    if (!originCautela) continue
+    const originPerson = originCautela.persons as any
+
+    const transferredFromThisCautela = transferItems.filter(async (ti) => {
+      if (!ti.transfer_from_cautela_item_id) return false
+      const { data: oi } = await supabase
+        .from("cautela_items")
+        .select("cautela_id")
+        .eq("id", ti.transfer_from_cautela_item_id)
+        .single()
+      return oi?.cautela_id === originCautelaId
+    })
+
+    const itemsList = transferItems
+      .map((ti) => {
+        const m = matMap.get(ti.material_id)
+        return `• ${m?.name || "Material"} (Pat: ${m?.patrimony_number || "?"}) — ${ti.quantity} un.`
+      })
+      .join("\n")
+
+    if (originPerson?.email) {
+      try {
+        await resend.emails.send({
+          from: fromEmail,
+          to: [originPerson.email],
+          subject: `Material transferido da sua cautela — ${new Date().toLocaleDateString("pt-BR")}`,
+          text: `Olá ${originPerson.full_name},\n\nOs seguintes materiais foram transferidos da sua cautela para ${destPerson?.full_name || "outra pessoa"}:\n\n${itemsList}\n\nSistema RESERVA`,
+        })
+      } catch {}
+    }
+  }
+
+  const allRecipients: string[] = []
+  if (destPerson?.email) allRecipients.push(destPerson.email)
+  if (archiveEmail) allRecipients.push(archiveEmail)
+
+  if (allRecipients.length > 0) {
+    const itemsList = transferItems
+      .map((ti) => {
+        const m = matMap.get(ti.material_id)
+        return `• ${m?.name || "Material"} (Pat: ${m?.patrimony_number || "?"}) — ${ti.quantity} un. [TRANSFERIDO]`
+      })
+      .join("\n")
+
+    try {
+      await resend.emails.send({
+        from: fromEmail,
+        to: allRecipients,
+        subject: `Cautela com Transferência - ${new Date().toLocaleDateString("pt-BR")}`,
+        text: `Olá ${destPerson?.full_name || ""},\n\nVocê recebeu materiais em cautela Diária (incluindo itens transferidos):\n\n${itemsList}\n\nSistema RESERVA`,
+      })
+    } catch {}
+  }
 }
 
 // ===== RENOVAR CAUTELA =====
@@ -1337,6 +2031,7 @@ export async function createSimpleCautelaRenewal(
 
 // ===== BUSCAR HISTÓRICO DE RENOVAÇÕES =====
 export async function getCautelaRenewals(cautelaId: string) {
+  await assertCautelaOperator()
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -1350,4 +2045,51 @@ export async function getCautelaRenewals(cautelaId: string) {
 
   if (error) return { error: error.message }
   return { renewals: data || [] }
+}
+
+// ===== REGISTRAR VISTORIA ANUAL (cautela permanente) =====
+export async function registrarVistoria(cautelaId: string, observacao?: string) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) return { error: "ID de cautela inválido" }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc("registrar_vistoria", {
+    p_cautela_id: cautelaId,
+    p_observacao: observacao ?? null,
+  })
+
+  if (error) {
+    return { error: mapVistoriaRpcError(error.message) }
+  }
+
+  const result = data as {
+    cautela_id: string
+    movimentacao_ids?: string[]
+    next_review_date?: string
+  } | null
+
+  await logAudit({
+    action: "vistoria_registrada",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      movimentacao_ids: result?.movimentacao_ids ?? [],
+      next_review_date: result?.next_review_date,
+      observacao: observacao ?? null,
+    },
+  })
+
+  revalidatePath("/cautelas")
+  revalidatePath("/alerts")
+  revalidatePath("/")
+  revalidatePath("/history")
+
+  return {
+    success: true,
+    nextReviewDate: result?.next_review_date ?? null,
+  }
 }

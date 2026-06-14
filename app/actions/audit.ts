@@ -1,14 +1,18 @@
 "use server"
 
 import { createClient } from "@/lib/supabase-server"
+import { requireCautelaOperator, requireCautelaOperatorOrThrow } from "@/lib/auth-cautela"
+import { getTenantContextForUser, withTenantScope } from "@/lib/tenant-context"
 
 export type AuditAction =
   | "cautela_created"
   | "cautela_closed"
   | "cautela_renewed"
+  | "vistoria_registrada"
   | "item_returned"
   | "item_damaged"
   | "item_missing"
+  | "item_transferred"
   | "person_created"
   | "person_updated"
   | "material_created"
@@ -23,19 +27,27 @@ export async function logAudit(params: {
   before_state?: Record<string, any>
   after_state?: Record<string, any>
 }) {
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return // silently fail if no user
+  const tenant = await getTenantContextForUser(auth.user.id)
+  if (!tenant) return
 
-  await supabase.from("audit_logs").insert({
-    user_id: user.id,
-    action: params.action,
-    entity: params.entity,
-    entity_id: params.entity_id,
-    before_state: params.before_state || null,
-    after_state: params.after_state || null,
-  })
+  await supabase.from("audit_logs").insert(
+    withTenantScope(
+      {
+        user_id: auth.user.id,
+        action: params.action,
+        entity: params.entity,
+        entity_id: params.entity_id,
+        before_state: params.before_state || null,
+        after_state: params.after_state || null,
+      },
+      tenant
+    )
+  )
 }
 
 // Listar logs de auditoria
@@ -45,6 +57,7 @@ export async function getAuditLogs(filters?: {
   limit?: number
   offset?: number
 }) {
+  await requireCautelaOperatorOrThrow()
   const supabase = await createClient()
   let query = supabase
     .from("audit_logs")
@@ -69,6 +82,7 @@ export async function getAuditLogs(filters?: {
 
 // Contar total de logs (para paginação)
 export async function countAuditLogs(filters?: { entity?: string; action?: string }) {
+  await requireCautelaOperatorOrThrow()
   const supabase = await createClient()
   let query = supabase.from("audit_logs").select("*", { count: "exact", head: true })
 

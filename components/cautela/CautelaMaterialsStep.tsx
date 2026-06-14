@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect, useCallback, useRef } from "react"
-import { ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus } from "lucide-react"
+import { ShieldAlert, AlertTriangle, CheckCircle, Zap, Plus, ArrowRightLeft, X, Check } from "lucide-react"
 import { MaterialSearchField, normalizeWizardMaterial } from "./MaterialSearchField"
 import { PackQtyInput, type PackQtyInputHandle } from "./PackQtyInput"
 import { CautelaLinesSummary } from "./CautelaLinesSummary"
@@ -9,6 +9,8 @@ import {
   resolvePackAccessoriesForWeapon,
   resolvePackAccessoryForWeapon,
   validateMaterialQuantityForCautela,
+  getDailyCautelaForMaterial,
+  searchMaterials,
   type SearchableMaterial,
 } from "@/app/actions/cautelas"
 import { findPackAccessoryMergeLineIndex } from "@/lib/cautela-pack-accessories"
@@ -35,17 +37,44 @@ export type MaterialLine = {
   packWeaponLabel?: string
   /** Carregadores do pool: N UUIDs distintos; quantity deve bater com length. */
   poolMaterialIds?: string[]
+  /** Se este item está sendo transferido de outra cautela diária. */
+  transferFromCautelaItemId?: string
+  /** Nome da pessoa de origem na transferência. */
+  transferFromPersonName?: string
+  /** ID da cautela de origem. */
+  transferFromCautelaId?: string
+}
+
+export type CautelaItemPayload = {
+  material_id: string
+  quantity: number
+  transfer_from_cautela_item_id?: string
 }
 
 /** Expande linhas agregadas do pool em itens distintos para createCautela. */
 export function materialLinesToCautelaItems(
   lines: MaterialLine[]
-): { material_id: string; quantity: number }[] {
+): CautelaItemPayload[] {
   return lines.flatMap((l) =>
     l.poolMaterialIds?.length
-      ? l.poolMaterialIds.map((id) => ({ material_id: id, quantity: 1 }))
-      : [{ material_id: l.material.id, quantity: l.quantity }]
+      ? l.poolMaterialIds.map((id) => ({
+          material_id: id,
+          quantity: 1,
+          transfer_from_cautela_item_id: undefined,
+        }))
+      : [
+          {
+            material_id: l.material.id,
+            quantity: l.quantity,
+            transfer_from_cautela_item_id: l.transferFromCautelaItemId,
+          },
+        ]
   )
+}
+
+/** Retorna true se qualquer linha contém item de transferência. */
+export function hasTransferItems(lines: MaterialLine[]): boolean {
+  return lines.some((l) => Boolean(l.transferFromCautelaItemId))
 }
 
 function isPackChargerLine(row: MaterialLine): boolean {
@@ -200,6 +229,28 @@ export function CautelaMaterialsStep({
   const [caliberWarnings, setCaliberWarnings] = useState<string[]>([])
   const [selectedWeaponForCaliber, setSelectedWeaponForCaliber] = useState<WizardMaterial | null>(null)
   const [caliberOverrideConfirmed, setCaliberOverrideConfirmed] = useState(false)
+
+  const [transferPat, setTransferPat] = useState("")
+  const [transferLoading, setTransferLoading] = useState(false)
+  const [transferOrigin, setTransferOrigin] = useState<{
+    cautela_id: string
+    person_id: string
+    person_name: string
+    items: Array<{
+      cautela_item_id: string
+      material_id: string
+      material_name: string
+      patrimony_number: string
+      quantity_delivered: number
+      quantity_returned: number
+      quantity_available: number
+      category: string
+      checked: boolean
+      transferQty: number
+    }>
+  } | null>(null)
+  const [transferError, setTransferError] = useState<string | null>(null)
+  const [permanentBlockMsg, setPermanentBlockMsg] = useState<string | null>(null)
 
   const selectedAsMaterialLike = useMemo(
     () =>
@@ -413,6 +464,118 @@ export function CautelaMaterialsStep({
     onLinesChange(mergeLines(lines, taserAmmoMat, tq))
   }
 
+  const handleTransferPatSearch = async () => {
+    const pat = transferPat.trim()
+    if (!pat) return
+    setTransferLoading(true)
+    setTransferError(null)
+    setPermanentBlockMsg(null)
+    setTransferOrigin(null)
+    try {
+      const rows = await searchMaterials(pat)
+      if (rows.length === 0) {
+        setTransferError("Nenhum material encontrado com esse patrimônio.")
+        return
+      }
+      const mat = rows[0]
+      const result = await getDailyCautelaForMaterial(mat.id)
+      if (result.error) {
+        setTransferError(result.error)
+        return
+      }
+      if (result.permanentBlock) {
+        setPermanentBlockMsg("Este material está em cautela Permanente. Transferência não permitida para cautelas Diárias.")
+        return
+      }
+      if (!result.origin) {
+        setTransferError("Este material não está em uma cautela Diária ativa de outra pessoa.")
+        return
+      }
+      const alreadyAdded = lines.find((l) => l.material.id === mat.id)
+      if (alreadyAdded) {
+        setTransferError("Este material já está na lista desta cautela.")
+        return
+      }
+      setTransferOrigin({
+        cautela_id: result.origin.cautela_id,
+        person_id: result.origin.person_id,
+        person_name: result.origin.person_name,
+        items: result.origin.items.map((item) => ({
+          ...item,
+          checked: item.material_id === mat.id,
+          transferQty: item.quantity_available,
+        })),
+      })
+    } catch {
+      setTransferError("Erro ao buscar dados do material.")
+    } finally {
+      setTransferLoading(false)
+    }
+  }
+
+  const toggleTransferItem = (idx: number) => {
+    if (!transferOrigin) return
+    const items = [...transferOrigin.items]
+    items[idx] = { ...items[idx], checked: !items[idx].checked }
+    if (items[idx].checked) {
+      items[idx].transferQty = items[idx].quantity_available
+    }
+    setTransferOrigin({ ...transferOrigin, items })
+  }
+
+  const updateTransferQty = (idx: number, qty: number) => {
+    if (!transferOrigin) return
+    const items = [...transferOrigin.items]
+    const max = items[idx].quantity_available
+    items[idx] = { ...items[idx], transferQty: Math.max(1, Math.min(qty, max)) }
+    setTransferOrigin({ ...transferOrigin, items })
+  }
+
+  const confirmTransferItems = () => {
+    if (!transferOrigin) return
+    const selected = transferOrigin.items.filter((i) => i.checked)
+    if (selected.length === 0) {
+      setTransferError("Selecione pelo menos um item para transferir.")
+      return
+    }
+    const duplicateInList = selected.find((s) =>
+      lines.some((l) => l.material.id === s.material_id)
+    )
+    if (duplicateInList) {
+      setTransferError(`${duplicateInList.material_name} já está na lista desta cautela.`)
+      return
+    }
+    const newLines: MaterialLine[] = selected.map((item) => ({
+      rowId: crypto.randomUUID(),
+      material: {
+        id: item.material_id,
+        name: item.material_name,
+        patrimony_number: item.patrimony_number,
+        serial_number: null,
+        internal_code: "",
+        category: item.category,
+        stock_quantity: undefined,
+      },
+      quantity: item.transferQty,
+      transferFromCautelaItemId: item.cautela_item_id,
+      transferFromPersonName: transferOrigin.person_name,
+      transferFromCautelaId: transferOrigin.cautela_id,
+    }))
+    onLinesChange([...lines, ...newLines])
+    setTransferOrigin(null)
+    setTransferPat("")
+    setTransferError(null)
+    setAddedToast(`${selected.length} item(ns) transferido(s) de ${transferOrigin.person_name}`)
+    setTimeout(() => setAddedToast(null), 3500)
+  }
+
+  const cancelTransfer = () => {
+    setTransferOrigin(null)
+    setTransferPat("")
+    setTransferError(null)
+    setPermanentBlockMsg(null)
+  }
+
   return (
     <div className="space-y-5">
       <div className="text-center space-y-1">
@@ -444,6 +607,122 @@ export function CautelaMaterialsStep({
       {packError && (
         <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{packError}</div>
       )}
+
+      {permanentBlockMsg && (
+        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <div className="flex items-start gap-2">
+            <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs font-bold text-red-400">{permanentBlockMsg}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">
+        <SectionTitle>Transferência de Cautela Diária</SectionTitle>
+        <p className="text-[10px] text-slate-500">
+          Se o material está em posse de outra pessoa (cautela Diária ativa), digite o PAT para detectar e transferir diretamente.
+        </p>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={transferPat}
+              onChange={(e) => { setTransferPat(e.target.value); setTransferError(null); setPermanentBlockMsg(null) }}
+              placeholder="Digitar PAT do material em cautela..."
+              className="w-full pl-3 pr-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-sm text-white placeholder-slate-600 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+              disabled={transferLoading}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleTransferPatSearch()}
+            disabled={transferLoading || !transferPat.trim()}
+            className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-sm font-bold text-white disabled:opacity-50 flex items-center gap-2"
+          >
+            {transferLoading ? <span className="animate-spin">⟳</span> : <ArrowRightLeft className="h-4 w-4" />}
+            Buscar
+          </button>
+        </div>
+
+        {transferError && (
+          <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-400">
+            {transferError}
+          </div>
+        )}
+
+        {transferOrigin && (
+          <div className="p-3 bg-slate-900 border border-amber-500/30 rounded-lg space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-xs font-bold text-amber-400">
+                  Material em cautela Diária com {transferOrigin.person_name}
+                </p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Selecione os itens para transferir. Itens marcados serão movidos da cautela de {transferOrigin.person_name} para esta.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              {transferOrigin.items.map((item, idx) => (
+                <div
+                  key={item.cautela_item_id}
+                  className={`flex items-center gap-2 p-2 rounded-lg border ${
+                    item.checked ? "bg-amber-500/10 border-amber-500/30" : "bg-slate-950/50 border-slate-800"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => toggleTransferItem(idx)}
+                    className="h-4 w-4 rounded accent-amber-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-medium truncate">{item.material_name}</p>
+                    <p className="text-[10px] text-slate-400">
+                      Pat: {item.patrimony_number} • Disponível: {item.quantity_available}
+                    </p>
+                  </div>
+                  {item.checked && item.quantity_available > 1 && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[9px] text-slate-500">Qtd:</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={item.quantity_available}
+                        value={item.transferQty}
+                        onChange={(e) => updateTransferQty(idx, parseInt(e.target.value) || 1)}
+                        className="w-14 py-0.5 px-1 bg-slate-900 border border-slate-700 rounded text-xs text-white text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={confirmTransferItems}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-sm font-bold text-white"
+              >
+                <Check className="h-4 w-4" />
+                Confirmar Transferência
+              </button>
+              <button
+                type="button"
+                onClick={cancelTransfer}
+                className="px-4 py-2 rounded-lg border border-slate-700 bg-slate-900 text-sm font-bold text-slate-400 hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="space-y-6 max-h-[min(52vh,520px)] overflow-y-auto pr-1">
         <div className="space-y-3 rounded-xl border border-slate-800/80 bg-slate-950/40 p-3">
