@@ -97,16 +97,18 @@ export function pickPackAccessoryForWeapon(
   weapon: PackWeaponContext,
   candidates: PackAccessoryCandidate[],
   kind: "charger" | "ammunition"
-): PackAccessoryCandidate[] {
-  return candidates
+): PackAccessoryCandidate | null {
+  const filtered = filterPackCandidatesForWeapon(weapon, candidates)
+  return filtered[0] ?? null
 }
 
 export function buildPackAccessoryPool(
-  _weapon: any,
-  _candidates: PackAccessoryCandidate[],
-  _kind: string
+  weapon: any,
+  candidates: PackAccessoryCandidate[],
+  kind: string
 ): PackAccessoryCandidate[] {
-  return _candidates
+  const filtered = filterPackCandidatesForWeapon(weapon, candidates)
+  return filtered
 }
 
 export async function fetchReservablePackAccessories(
