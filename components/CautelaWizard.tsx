@@ -408,6 +408,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     {searchResults.map(person => (
                       <button
                         key={person.id}
+                        data-testid="person-result"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => selectPerson(person)}
                         className="w-full text-left p-3 bg-slate-950 border border-slate-800 rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
@@ -871,6 +872,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           <button
                             key={key}
                             type="button"
+                            data-testid="confirm-pin-btn"
                             onClick={handleSubmitWithPin}
                             disabled={pin.length !== 4 || loading}
                             className="h-12 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center"

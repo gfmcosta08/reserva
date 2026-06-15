@@ -101,6 +101,7 @@ export default function CautelasClient() {
           <p className="text-slate-400 mt-1">Gerenciar empréstimos de materiais.</p>
         </div>
         <button
+          data-testid="nova-cautela-btn"
           onClick={() => setShowWizard(true)}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl font-bold text-sm shadow-lg shadow-blue-900/40 transition-all hover:scale-105"
         >
@@ -165,6 +166,7 @@ export default function CautelasClient() {
             return (
               <button
                 key={cautela.id}
+                data-testid="cautela-card"
                 onClick={() => setSelectedCautelaId(cautela.id)}
                 className={`w-full text-left p-4 bg-slate-900/50 border rounded-2xl transition-all group ${
                   isDelayed ? "border-red-500/50 hover:bg-slate-900" : "border-slate-800 hover:border-blue-500/30 hover:bg-slate-900"

@@ -628,6 +628,7 @@ export function CautelaMaterialsStep({
           <div className="flex-1">
             <input
               type="text"
+              data-testid="transfer-search-input"
               value={transferPat}
               onChange={(e) => { setTransferPat(e.target.value); setTransferError(null); setPermanentBlockMsg(null) }}
               placeholder="Digitar PAT do material em cautela..."

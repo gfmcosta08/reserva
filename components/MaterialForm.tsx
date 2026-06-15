@@ -305,6 +305,7 @@ export default function MaterialForm({
             </button>
             <button
               type="submit"
+              data-testid="salvar-btn"
               disabled={isLoading}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3 sm:py-2 min-h-[44px] bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 hover:bg-blue-500 disabled:opacity-50 transition-all"
             >
