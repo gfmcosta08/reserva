@@ -1,1 +1,2074 @@
-content=%22use+server%22%0A%0Aimport+%7B+createClient+%7D+from+%22%40%2Flib%2Fsupabase-server%22%0Aimport+%7B+revalidatePath+%7D+from+%22next%2Fcache%22%0Aimport+bcrypt+from+%22bcryptjs%22%0Aimport+%7B+logAudit+%7D+from+%22.%2Faudit%22%0Aimport+%7B+requireCautelaOperator+%7D+from+%22%40%2Flib%2Fauth-cautela%22%0Aimport+%7B%0A++PIN_CHANGE_REQUIRED_MESSAGE%2C%0A++personRequiresPinChange%2C%0A%7D+from+%22%40%2Flib%2Fperson-pin-policy%22%0Aimport+%7B%0A++formatUnavailableMaterialsMessage%2C%0A++mergeCautelaItems%2C%0A++validateCautelaModifiable%2C%0A++type+TransferOriginCautela%2C%0A++type+TransferOriginItem%2C%0A%7D+from+%22%40%2Flib%2Fcautela-helpers%22%0Aimport+%7B%0A++createCautelaFaceAuthInputSchema%2C%0A++createCautelaInputSchema%2C%0A++createCautelaWithTransferInputSchema%2C%0A++createCautelaWithTransferFaceAuthInputSchema%2C%0A++processBulkDevolutionInputSchema%2C%0A++uuidSchema%2C%0A%7D+from+%22%40%2Flib%2Fcautela-schemas%22%0Aimport+%7B+sendCautelaSummary+%7D+from+%22%40%2Flib%2Fwhatsapp%22%0Aimport+%7B%0A++computeCautelaStatus%2C%0A++itemBalance%2C%0A++itemIsFullyReturned%2C%0A++itemNeedsReturn%2C%0A++qtyDelivered%2C%0A++qtyReturned%2C%0A++resolveItemStatusAfterReturn%2C%0A%7D+from+%22%40%2Flib%2Fcautela-return-status%22%0Aimport+%7B+generateCautelaPDF+%7D+from+%22%40%2Flib%2Fpdf-cautela%22%0Aimport+%7B+extractCaliber+%7D+from+%22%40%2Flib%2Fcautela-caliber%22%0Aimport+%7B%0A++packAccessoryAvailabilityFilter%2C%0A++pickPackAccessoryForWeapon%2C%0A++type+PackAccessoryCandidate%2C%0A++buildPackAccessoryPool%2C%0A++fetchReservablePackAccessories%2C%0A%7D+from+%22%40%2Flib%2Fcautela-pack-accessories%22%0Aimport+%7B+filterReservableMaterials+%7D+from+%22%40%2Flib%2Fcautela-reservable%22%0Aimport+%7B+tagCautelaFlow+%7D+from+%22%40%2Flib%2Fsentry-flow%22%0Aimport+%7B%0A++countPoolChargersByStatus%2C%0A++isGlock9mmCharger%2C%0A++isGlock9mmPistol%2C%0A%7D+from+%22%40%2Flib%2Fglock-9mm-inventory%22%0Aimport+%7B%0A++canReserveStock%2C%0A++effectiveStock%2C%0A++formatInsufficientStockMessage%2C%0A++resolveStockUnits%2C%0A%7D+from+%22%40%2Flib%2Fmaterial-stock%22%0Aimport+%7B+sanitizeIlikeFragment+%7D+from+%22%40%2Flib%2Fsearch-sanitize%22%0Aimport+%7B+Resend+%7D+from+%22resend%22%0A%0Aasync+function+assertCautelaOperator%28%29+%7B%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+throw+new+Error%28auth.error%29%0A++return+auth%0A%7D%0A%0Aasync+function+dispatchCautelaNotifications%28cautelaId%3A+string%29+%7B%0A++try+%7B%0A++++const+supabase+%3D+await+createClient%28%29%0A++++const+%7B+data%3A+cautela+%7D+%3D+await+supabase%0A++++++.from%28%22cautelas%22%29%0A++++++.select%28%60%2A%2C+persons%28full_name%2C+rg%2C+registration_number%2C+function%2C+phone%2C+email%29%2C+profiles%28name%2C+email%29%2C+cautela_items%28quantity_delivered%2C+materials%28name%2C+patrimony_number%2C+internal_code%2C+category%29%29%60%29%0A++++++.eq%28%22id%22%2C+cautelaId%29%0A++++++.single%28%29%0A%0A++++if+%28%21cautela%29+return%0A%0A++++const+person+%3D+cautela.persons+as+any%0A++++const+operator+%3D+cautela.profiles+as+any%0A++++const+items+%3D+%28cautela.cautela_items+as+any%5B%5D%29+%3F%3F+%5B%5D%0A%0A++++%2F%2F+1.+Generate+PDF%0A++++let+pdfBuffer%3A+Buffer+%7C+null+%3D+null%0A++++try+%7B%0A++++++pdfBuffer+%3D+await+generateCautelaPDF%28%7B%0A++++++++cautela%3A+%7B+id%3A+cautela.id%2C+type%3A+cautela.type%2C+status%3A+cautela.status%2C+created_at%3A+cautela.created_at%2C+notes%3A+cautela.notes+%7D%2C%0A++++++++person%3A+%7B+full_name%3A+person%3F.full_name+%3F%3F+%22%22%2C+rg%3A+person%3F.rg+%3F%3F+%22%22%2C+registration_number%3A+person%3F.registration_number+%3F%3F+%22%22%2C+function%3A+person%3F.function+%7D%2C%0A++++++++operator%3A+%7B+name%3A+operator%3F.name+%3F%3F+%22%22%2C+email%3A+operator%3F.email+%3F%3F+%22%22+%7D%2C%0A++++++++items%3A+items.map%28%28i%3A+any%29+%3D%3E+%28%7B%0A++++++++++name%3A+i.materials%3F.name+%3F%3F+%22%22%2C%0A++++++++++patrimony_number%3A+i.materials%3F.patrimony_number+%3F%3F+%22%22%2C%0A++++++++++internal_code%3A+i.materials%3F.internal_code+%3F%3F+%22%22%2C%0A++++++++++category%3A+i.materials%3F.category%2C%0A++++++++++quantity_delivered%3A+i.quantity_delivered+%3F%3F+1%2C%0A++++++++%7D%29%29%2C%0A++++++%7D%29%0A++++%7D+catch+%28e%29+%7B%0A++++++console.error%28%22%5BPDF%5D+Erro+ao+gerar+PDF+da+cautela%3A%22%2C+e%29%0A++++%7D%0A%0A++++%2F%2F+2.+Send+email+with+PDF+attachment%0A++++const+resendKey+%3D+process.env.RESEND_API_KEY%0A++++const+archiveEmail+%3D+process.env.ARCHIVE_EMAIL%0A++++const+fromEmail+%3D+process.env.RESEND_FROM_EMAIL+%7C%7C+%22onboarding%40resend.dev%22%0A++++if+%28resendKey%29+%7B%0A++++++try+%7B%0A++++++++const+resend+%3D+new+Resend%28resendKey%29%0A++++++++const+recipients%3A+string%5B%5D+%3D+%5B%5D%0A++++++++if+%28person%3F.email%29+recipients.push%28person.email%29%0A++++++++if+%28archiveEmail%29+recipients.push%28archiveEmail%29%0A++++++++if+%28recipients.length+%3E+0%29+%7B%0A++++++++++const+itemsList+%3D+items.map%28%28i%3A+any%29+%3D%3E+%60%E2%80%A2+%24%7Bi.materials%3F.name%7D+%28Pat%3A+%24%7Bi.materials%3F.patrimony_number%7D%29%60%29.join%28%22%5Cn%22%29%0A++++++++++const+attachments+%3D+pdfBuffer%0A++++++++++++%3F+%5B%7B+filename%3A+%60cautela-%24%7BcautelaId.slice%280%2C+8%29%7D.pdf%60%2C+content%3A+pdfBuffer.toString%28%22base64%22%29+%7D%5D%0A++++++++++++%3A+%5B%5D%0A++++++++++await+resend.emails.send%28%7B%0A++++++++++++from%3A+fromEmail%2C%0A++++++++++++to%3A+recipients%2C%0A++++++++++++subject%3A+%60Recibo+de+Cautela+-+%24%7Bnew+Date%28cautela.created_at%29.toLocaleDateString%28%22pt-BR%22%29%7D%60%2C%0A++++++++++++text%3A+%60Ol%C3%A1+%24%7Bperson%3F.full_name%7D%2C%5Cn%5CnSua+cautela+foi+registrada.%5Cn%5CnTipo%3A+%24%7Bcautela.type+%3D%3D%3D+%22daily%22+%3F+%22Di%C3%A1ria%22+%3A+%22Permanente%22%7D%5CnData%3A+%24%7Bnew+Date%28cautela.created_at%29.toLocaleString%28%22pt-BR%22%29%7D%5CnOperador%3A+%24%7Boperator%3F.name%7D%5Cn%5CnMateriais%3A%5Cn%24%7BitemsList%7D%5Cn%5Cn%24%7Bcautela.notes+%3F+%60Observa%C3%A7%C3%B5es%3A+%24%7Bcautela.notes%7D%5Cn%5Cn%60+%3A+%22%22%7DSistema+RESERVA%60%2C%0A++++++++++++attachments%2C%0A++++++++++%7D%29%0A++++++++%7D%0A++++++%7D+catch+%28e%29+%7B%0A++++++++console.error%28%22%5BEmail%5D+Erro+ao+enviar+email+da+cautela%3A%22%2C+e%29%0A++++++%7D%0A++++%7D%0A%0A++++%2F%2F+3.+Send+WhatsApp+summary%0A++++if+%28person%3F.phone%29+%7B%0A++++++await+sendCautelaSummary%28%7B%0A++++++++phone%3A+person.phone%2C%0A++++++++personName%3A+person.full_name%2C%0A++++++++operatorName%3A+operator%3F.name+%3F%3F+%22Operador%22%2C%0A++++++++type%3A+cautela.type%2C%0A++++++++date%3A+cautela.created_at%2C%0A++++++++items%3A+items.map%28%28i%3A+any%29+%3D%3E+%28%7B+name%3A+i.materials%3F.name+%3F%3F+%22%22%2C+quantity_delivered%3A+i.quantity_delivered+%3F%3F+1+%7D%29%29%2C%0A++++++%7D%29%0A++++%7D%0A++%7D+catch+%28e%29+%7B%0A++++console.error%28%22%5BNotify%5D+Erro+nas+notifica%C3%A7%C3%B5es+p%C3%B3s-cautela%3A%22%2C+e%29%0A++%7D%0A%7D%0A%0Afunction+mapCreateCautelaRpcError%28message%3A+string%29%3A+string+%7B%0A++if+%28message.includes%28%22EMPTY_MATERIALS%22%29%29+%7B%0A++++return+%22Selecione+pelo+menos+um+material%22%0A++%7D%0A++if+%28message.includes%28%22MATERIALS_NOT_ALL_AVAILABLE%22%29%29+%7B%0A++++return+%22Um+ou+mais+materiais+n%C3%A3o+est%C3%A3o+mais+dispon%C3%ADveis.+Atualize+a+lista+e+tente+novamente.%22%0A++%7D%0A++if+%28message.includes%28%22INSUFFICIENT_STOCK%22%29%29+%7B%0A++++return+%22Estoque+insuficiente+para+um+ou+mais+materiais.+Reduza+a+quantidade+ou+atualize+o+cadastro.%22%0A++%7D%0A++if+%28message.includes%28%22NOT_AUTHENTICATED%22%29%29+%7B%0A++++return+%22Sess%C3%A3o+inv%C3%A1lida.+Fa%C3%A7a+login+novamente.%22%0A++%7D%0A++return+message%0A%7D%0A%0Afunction+resolveReviewDateForRpc%28%0A++type%3A+%22daily%22+%7C+%22permanent%22%2C%0A++reviewDate%3F%3A+string%0A%29%3A+string+%7C+null+%7B%0A++if+%28type+%21%3D%3D+%22permanent%22%29+return+null%0A++if+%28reviewDate%29+return+new+Date%28reviewDate%29.toISOString%28%29%0A++return+null%0A%7D%0A%0Afunction+mapVistoriaRpcError%28message%3A+string%29%3A+string+%7B%0A++if+%28message.includes%28%22NOT_PERMANENT_CAUTELA%22%29%29+%7B%0A++++return+%22Vistoria+anual+s%C3%B3+se+aplica+a+cautelas+permanentes.%22%0A++%7D%0A++if+%28message.includes%28%22CAUTELA_NOT_OPEN%22%29%29+%7B%0A++++return+%22A+cautela+n%C3%A3o+est%C3%A1+aberta+para+vistoria.%22%0A++%7D%0A++if+%28message.includes%28%22NO_PENDING_ITEMS%22%29%29+%7B%0A++++return+%22N%C3%A3o+h%C3%A1+itens+pendentes+para+registrar+vistoria.%22%0A++%7D%0A++if+%28message.includes%28%22NOT_AUTHENTICATED%22%29%29+%7B%0A++++return+%22Sess%C3%A3o+inv%C3%A1lida.+Fa%C3%A7a+login+novamente.%22%0A++%7D%0A++return+message%0A%7D%0A%0Afunction+validateCautelaItemsStock%28%0A++merged%3A+%7B+material_id%3A+string%3B+quantity%3A+number+%7D%5B%5D%2C%0A++materials%3A+%7B+id%3A+string%3B+name%3A+string%3B+status%3A+string%3B+stock_quantity%3A+number+%7C+null+%7D%5B%5D%0A%29%3A+string+%7C+null+%7B%0A++const+byId+%3D+new+Map%28materials.map%28%28m%29+%3D%3E+%5Bm.id%2C+m%5D%29%29%0A++for+%28const+item+of+merged%29+%7B%0A++++const+m+%3D+byId.get%28item.material_id%29%0A++++if+%28%21m%29+continue%0A++++if+%28%21canReserveStock%28m%2C+item.quantity%29%29+%7B%0A++++++return+formatInsufficientStockMessage%28m%2C+item.quantity%2C+effectiveStock%28m%29%29%0A++++%7D%0A++%7D%0A++return+null%0A%7D%0A%0Aasync+function+restoreMaterialStockAfterReturn%28%0A++supabase%3A+Awaited%3CReturnType%3Ctypeof+createClient%3E%3E%2C%0A++cautelaItemId%3A+string%2C%0A++previousReturned%3A+number%2C%0A++newReturned%3A+number%2C%0A++itemStatus%3A+%22pending%22+%7C+%22returned%22+%7C+%22damaged%22+%7C+%22missing%22%2C%0A++qtyDelivered%3A+number%0A%29+%7B%0A++const+%7B+error+%7D+%3D+await+supabase.rpc%28%22registrar_movimentacao_devolucao%22%2C+%7B%0A++++p_cautela_item_id%3A+cautelaItemId%2C%0A++++p_previous_returned%3A+previousReturned%2C%0A++++p_new_returned%3A+newReturned%2C%0A++++p_item_status%3A+itemStatus%2C%0A++++p_qty_delivered%3A+qtyDelivered%2C%0A++%7D%29%0A%0A++if+%28error%29+throw+new+Error%28error.message%29%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+LISTAR+CAUTELAS+%3D%3D%3D%3D%3D%0Aexport+async+function+getCautelas%28filters%3F%3A+%7B+status%3F%3A+string%3B+search%3F%3A+string+%7D%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A++let+query+%3D+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%60%0A++++++%2A%2C%0A++++++persons%21inner%28full_name%2C+rg%2C+registration_number%2C+rg_front_url%2C+rg_back_url%29%2C%0A++++++profiles%21inner%28name%2C+email%29%0A++++%60%29%0A++++.order%28%22created_at%22%2C+%7B+ascending%3A+false+%7D%29%0A%0A++if+%28filters%3F.status%29+%7B%0A++++query+%3D+query.eq%28%22status%22%2C+filters.status%29%0A++%7D%0A++if+%28filters%3F.search%29+%7B%0A++++query+%3D+query.ilike%28%22persons.full_name%22%2C+%60%25%24%7Bfilters.search%7D%25%60%29%0A++%7D%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+query%0A++if+%28error%29+throw+new+Error%28error.message%29%0A%0A++%2F%2F+Buscar+contagem+de+itens+para+cada+cautela%0A++if+%28data+%26%26+data.length+%3E+0%29+%7B%0A++++const+cautelaIds+%3D+data.map%28c+%3D%3E+c.id%29%0A++++const+%7B+data%3A+items+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%22cautela_id%2C+status%22%29%0A++++++.in%28%22cautela_id%22%2C+cautelaIds%29%0A%0A++++return+data.map%28cautela+%3D%3E+%7B%0A++++++const+cautelaItems+%3D+items%3F.filter%28i+%3D%3E+i.cautela_id+%3D%3D%3D+cautela.id%29+%7C%7C+%5B%5D%0A++++++const+withBalance+%3D+cautelaItems.filter%28%28i%29+%3D%3E+itemNeedsReturn%28i%29%29%0A++++++return+%7B%0A++++++++...cautela%2C%0A++++++++items_count%3A+cautelaItems.length%2C%0A++++++++items_returned%3A+cautelaItems.filter%28%28i%29+%3D%3E+itemIsFullyReturned%28i%29%29.length%2C%0A++++++++items_pending%3A+cautelaItems.filter%28%28i%29+%3D%3E+i.status+%3D%3D%3D+%22pending%22%29.length%2C%0A++++++++items_with_balance%3A+withBalance.length%2C%0A++++++%7D%0A++++%7D%29%0A++%7D%0A%0A++return+data+%7C%7C+%5B%5D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+DETALHES+DE+UMA+CAUTELA+%3D%3D%3D%3D%3D%0Aexport+async+function+getCautelaById%28id%3A+string%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+cautela%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%60%0A++++++%2A%2C%0A++++++persons%28id%2C+full_name%2C+rg%2C+registration_number%2C+function%2C+rg_front_url%2C+rg_back_url%29%2C%0A++++++profiles%28name%2C+email%29%0A++++%60%29%0A++++.eq%28%22id%22%2C+id%29%0A++++.single%28%29%0A%0A++if+%28error%29+return+%7B+error%3A+error.message+%7D%0A%0A++%2F%2F+Buscar+itens+com+dados+do+material%0A++const+%7B+data%3A+items+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%60%0A++++++%2A%2C%0A++++++materials%28id%2C+name%2C+patrimony_number%2C+serial_number%2C+internal_code%2C+category%29%0A++++%60%29%0A++++.eq%28%22cautela_id%22%2C+id%29%0A%0A++return+%7B+cautela%2C+items%3A+items+%7C%7C+%5B%5D+%7D%0A%7D%0A%0Aasync+function+assertPersonEligibleForCautela%28%0A++supabase%3A+Awaited%3CReturnType%3Ctypeof+createClient%3E%3E%2C%0A++personId%3A+string%0A%29%3A+Promise%3C%7B+error%3F%3A+string+%7D%3E+%7B%0A++const+%7B+data%3A+person%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22persons%22%29%0A++++.select%28%22pin_hash%2C+must_change_pin%22%29%0A++++.eq%28%22id%22%2C+personId%29%0A++++.single%28%29%0A%0A++if+%28error+%7C%7C+%21person%29+return+%7B+error%3A+%22Pessoa+n%C3%A3o+encontrada%22+%7D%0A++if+%28await+personRequiresPinChange%28person%29%29+%7B%0A++++return+%7B+error%3A+PIN_CHANGE_REQUIRED_MESSAGE+%7D%0A++%7D%0A++return+%7B%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+VALIDAR+PIN+%3D%3D%3D%3D%3D%0Aexport+async+function+validatePin%28personId%3A+string%2C+pin%3A+string%29+%7B%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+valid%3A+false%2C+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+person%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22persons%22%29%0A++++.select%28%22id%2C+pin_hash%2C+must_change_pin%2C+failed_pin_attempts%2C+pin_locked_until%22%29%0A++++.eq%28%22id%22%2C+personId%29%0A++++.single%28%29%0A%0A++if+%28error+%7C%7C+%21person%29+return+%7B+valid%3A+false%2C+error%3A+%22Pessoa+n%C3%A3o+encontrada%22+%7D%0A%0A++if+%28await+personRequiresPinChange%28person%29%29+%7B%0A++++return+%7B+valid%3A+false%2C+error%3A+PIN_CHANGE_REQUIRED_MESSAGE+%7D%0A++%7D%0A%0A++%2F%2F+Verificar+bloqueio%0A++if+%28person.pin_locked_until%29+%7B%0A++++const+lockUntil+%3D+new+Date%28person.pin_locked_until%29%0A++++if+%28lockUntil+%3E+new+Date%28%29%29+%7B%0A++++++const+minutesLeft+%3D+Math.ceil%28%28lockUntil.getTime%28%29+-+Date.now%28%29%29+%2F+60000%29%0A++++++return+%7B+valid%3A+false%2C+error%3A+%60PIN+bloqueado.+Tente+novamente+em+%24%7BminutesLeft%7D+minuto%28s%29.%60+%7D%0A++++%7D%0A++++%2F%2F+Desbloqueio+autom%C3%A1tico%0A++++await+supabase.from%28%22persons%22%29.update%28%7B+failed_pin_attempts%3A+0%2C+pin_locked_until%3A+null+%7D%29.eq%28%22id%22%2C+personId%29%0A++%7D%0A%0A++%2F%2F+Verificar+PIN%0A++const+isValid+%3D+await+bcrypt.compare%28pin%2C+person.pin_hash%29%0A%0A++if+%28%21isValid%29+%7B%0A++++const+attempts+%3D+%28person.failed_pin_attempts+%7C%7C+0%29+%2B+1%0A++++const+update%3A+Record%3Cstring%2C+any%3E+%3D+%7B+failed_pin_attempts%3A+attempts+%7D%0A%0A++++if+%28attempts+%3E%3D+3%29+%7B%0A++++++const+lockUntil+%3D+new+Date%28Date.now%28%29+%2B+15+%2A+60+%2A+1000%29+%2F%2F+15+min%0A++++++update.pin_locked_until+%3D+lockUntil.toISOString%28%29%0A++++%7D%0A%0A++++await+supabase.from%28%22persons%22%29.update%28update%29.eq%28%22id%22%2C+personId%29%0A++++return+%7B%0A++++++valid%3A+false%2C%0A++++++error%3A+attempts+%3E%3D+3%0A++++++++%3F+%22PIN+bloqueado+por+15+minutos+ap%C3%B3s+3+tentativas.%22%0A++++++++%3A+%60PIN+incorreto.+%24%7B3+-+attempts%7D+tentativa%28s%29+restante%28s%29.%60%0A++++%7D%0A++%7D%0A%0A++%2F%2F+Resetar+tentativas%0A++await+supabase.from%28%22persons%22%29.update%28%7B+failed_pin_attempts%3A+0%2C+pin_locked_until%3A+null+%7D%29.eq%28%22id%22%2C+personId%29%0A++return+%7B+valid%3A+true+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+CRIAR+CAUTELA+%3D%3D%3D%3D%3D%0Aexport+async+function+createCautela%28data%3A+%7B%0A++person_id%3A+string%0A++type%3A+%22daily%22+%7C+%22permanent%22%0A++items%3A+%7B+material_id%3A+string%3B+quantity%3F%3A+number+%7D%5B%5D%0A++notes%3F%3A+string%0A++pin%3A+string%0A++review_date%3F%3A+string%0A%7D%29+%7B%0A++const+parsed+%3D+createCautelaInputSchema.safeParse%28data%29%0A++if+%28%21parsed.success%29+%7B%0A++++const+first+%3D+parsed.error.flatten%28%29.fieldErrors%0A++++const+msg+%3D%0A++++++%28Object.values%28first%29%5B0%5D+as+string%5B%5D+%7C+undefined%29%3F.%5B0%5D+%7C%7C%0A++++++%22Dados+inv%C3%A1lidos+para+abertura+da+cautela%22%0A++++return+%7B+error%3A+msg+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+payload+%3D+parsed.data%0A++const+merged+%3D+mergeCautelaItems%28payload.items%29%0A++const+distinctIds+%3D+merged.map%28%28m%29+%3D%3E+m.material_id%29%0A%0A++const+pinPolicy+%3D+await+assertPersonEligibleForCautela%28supabase%2C+payload.person_id%29%0A++if+%28pinPolicy.error%29+return+%7B+error%3A+pinPolicy.error+%7D%0A%0A++const+pinResult+%3D+await+validatePin%28payload.person_id%2C+payload.pin%29%0A++if+%28%21pinResult.valid%29+return+%7B+error%3A+pinResult.error+%7D%0A%0A++const+%7B+data%3A+materials%2C+error%3A+matError+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+status%2C+status_atual%2C+stock_quantity%22%29%0A++++.in%28%22id%22%2C+distinctIds%29%0A%0A++if+%28matError%29+return+%7B+error%3A+matError.message+%7D%0A++if+%28%21materials+%7C%7C+materials.length+%21%3D%3D+distinctIds.length%29+%7B%0A++++return+%7B+error%3A+%22Um+ou+mais+materiais+n%C3%A3o+foram+encontrados%22+%7D%0A++%7D%0A%0A++const+unavailable+%3D+materials.filter%28%28m%29+%3D%3E+m.status+%21%3D%3D+%22available%22%29%0A++if+%28unavailable.length+%3E+0%29+%7B%0A++++return+%7B+error%3A+formatUnavailableMaterialsMessage%28unavailable%29+%7D%0A++%7D%0A%0A++const+stockError+%3D+validateCautelaItemsStock%28merged%2C+materials%29%0A++if+%28stockError%29+return+%7B+error%3A+stockError+%7D%0A%0A++const+%7B+data%3A+rpcData%2C+error%3A+rpcError+%7D+%3D+await+supabase.rpc%28%22create_cautela_atomic%22%2C+%7B%0A++++p_person_id%3A+payload.person_id%2C%0A++++p_type%3A+payload.type%2C%0A++++p_notes%3A+payload.notes+%3F%3F+null%2C%0A++++p_items%3A+merged%2C%0A++++p_review_date%3A+resolveReviewDateForRpc%28payload.type%2C+data.review_date%29%2C%0A++%7D%29%0A%0A++if+%28rpcError%29+%7B%0A++++return+%7B+error%3A+mapCreateCautelaRpcError%28rpcError.message%29+%7D%0A++%7D%0A%0A++const+result+%3D+rpcData+as+%7B+cautela_id%3A+string%3B+cautela_item_ids%3F%3A+string%5B%5D+%7D+%7C+null%0A++const+cautelaId+%3D+result%3F.cautela_id%0A++if+%28%21cautelaId%29+%7B%0A++++return+%7B+error%3A+%22Falha+ao+criar+cautela%22+%7D%0A++%7D%0A%0A++await+logAudit%28%7B%0A++++action%3A+%22cautela_created%22%2C%0A++++entity%3A+%22cautelas%22%2C%0A++++entity_id%3A+cautelaId%2C%0A++++after_state%3A+%7B%0A++++++person_id%3A+payload.person_id%2C%0A++++++type%3A+payload.type%2C%0A++++++materials_count%3A+merged.length%2C%0A++++++items%3A+merged%2C%0A++++++cautela_item_ids%3A+result%3F.cautela_item_ids+%3F%3F+%5B%5D%2C%0A++++%7D%2C%0A++%7D%29%0A%0A++%2F%2F+Disparar+notifica%C3%A7%C3%B5es+%28email+%2B+WhatsApp%29+sem+bloquear+o+retorno%0A++dispatchCautelaNotifications%28cautelaId%29.catch%28console.error%29%0A%0A++tagCautelaFlow%28%22cautela_create%22%2C+cautelaId%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A++return+%7B+success%3A+true%2C+cautelaId+%7D%0A%7D%0A%0Aasync+function+syncCautelaStatusFromItems%28%0A++supabase%3A+Awaited%3CReturnType%3Ctypeof+createClient%3E%3E%2C%0A++cautelaId%3A+string%2C%0A++operatorId%3A+string%2C%0A++now%3A+string%0A%29+%7B%0A++const+%7B+data%3A+updatedItems+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%22status%2C+quantity_delivered%2C+quantity_returned%22%29%0A++++.eq%28%22cautela_id%22%2C+cautelaId%29%0A%0A++const+rows+%3D+updatedItems+%7C%7C+%5B%5D%0A++const+cautelaStatus+%3D+computeCautelaStatus%28rows%29%0A++const+closedAt+%3D+cautelaStatus+%3D%3D%3D+%22closed%22+%7C%7C+cautelaStatus+%3D%3D%3D+%22divergent%22+%3F+now+%3A+null%0A%0A++await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.update%28%7B+status%3A+cautelaStatus%2C+closed_at%3A+closedAt+%7D%29%0A++++.eq%28%22id%22%2C+cautelaId%29%0A%0A++if+%28cautelaStatus+%3D%3D%3D+%22closed%22+%7C%7C+cautelaStatus+%3D%3D%3D+%22divergent%22%29+%7B%0A++++const+%7B+data%3A+operatorProfile+%7D+%3D+await+supabase%0A++++++.from%28%22profiles%22%29%0A++++++.select%28%22name%2C+email%22%29%0A++++++.eq%28%22id%22%2C+operatorId%29%0A++++++.single%28%29%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22cautela_closed%22%2C%0A++++++entity%3A+%22cautelas%22%2C%0A++++++entity_id%3A+cautelaId%2C%0A++++++after_state%3A+%7B%0A++++++++status%3A+cautelaStatus%2C%0A++++++++closed_at%3A+closedAt%2C%0A++++++++operator_id%3A+operatorId%2C%0A++++++++operator_name%3A+operatorProfile%3F.name+%7C%7C+operatorProfile%3F.email%2C%0A++++++++items_total%3A+rows.length%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+DEVOLVER+ITEM+%28com+suporte+a+quantidade%29+%3D%3D%3D%3D%3D%0Aexport+async+function+returnItem%28%0A++cautelaItemId%3A+string%2C%0A++status%3A+%22returned%22+%7C+%22damaged%22+%7C+%22missing%22%2C%0A++notes%3F%3A+string%2C%0A++quantityReturned%3F%3A+number%0A%29+%7B%0A++const+idParsed+%3D+uuidSchema.safeParse%28cautelaItemId%29%0A++if+%28%21idParsed.success%29+%7B%0A++++return+%7B+error%3A+%22Identificador+de+item+inv%C3%A1lido%22+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+operatorId+%3D+auth.user.id%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++%2F%2F+1.+Buscar+item+e+material_id%0A++const+%7B+data%3A+item%2C+error%3A+itemError+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%22id%2C+material_id%2C+cautela_id%2C+status%2C+quantity_delivered%2C+quantity_returned%22%29%0A++++.eq%28%22id%22%2C+cautelaItemId%29%0A++++.single%28%29%0A%0A++if+%28itemError+%7C%7C+%21item%29+return+%7B+error%3A+%22Item+n%C3%A3o+encontrado%22+%7D%0A++if+%28%21itemNeedsReturn%28item%29%29+%7B%0A++++return+%7B+error%3A+%22Este+item+j%C3%A1+foi+processado+ou+n%C3%A3o+possui+saldo+pendente%22+%7D%0A++%7D%0A%0A++const+delivered+%3D+qtyDelivered%28item%29%0A++const+now+%3D+new+Date%28%29.toISOString%28%29%0A%0A++let+itemStatus%3A+%22pending%22+%7C+%22returned%22+%7C+%22damaged%22+%7C+%22missing%22+%3D+status%0A++let+qtyReturn+%3D+0%0A%0A++if+%28status+%3D%3D%3D+%22damaged%22+%7C%7C+status+%3D%3D%3D+%22missing%22%29+%7B%0A++++qtyReturn+%3D+0%0A++%7D+else+%7B%0A++++qtyReturn+%3D+quantityReturned+%3F%3F+delivered%0A++++const+previousReturned+%3D+qtyReturned%28item%29%0A++++if+%28qtyReturn+%3C+previousReturned%29+%7B%0A++++++return+%7B%0A++++++++error%3A+%60Quantidade+devolvida+n%C3%A3o+pode+ser+menor+que+o+j%C3%A1+registrado+%28%24%7BpreviousReturned%7D%29%60%2C%0A++++++%7D%0A++++%7D%0A++++if+%28qtyReturn+%3C+0+%7C%7C+qtyReturn+%3E+delivered%29+%7B%0A++++++return+%7B+error%3A+%60Quantidade+inv%C3%A1lida.+Deve+estar+entre+0+e+%24%7Bdelivered%7D%60+%7D%0A++++%7D%0A++++itemStatus+%3D+resolveItemStatusAfterReturn%28qtyReturn%2C+delivered%29%0A++%7D%0A%0A++const+%7B+error%3A+updateItemError+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.update%28%7B%0A++++++status%3A+itemStatus%2C%0A++++++notes%3A+notes+%7C%7C+null%2C%0A++++++quantity_returned%3A+qtyReturn%2C%0A++++++returned_at%3A+now%2C%0A++++++returned_by%3A+operatorId%2C%0A++++%7D%29%0A++++.eq%28%22id%22%2C+cautelaItemId%29%0A%0A++if+%28updateItemError%29+return+%7B+error%3A+updateItemError.message+%7D%0A%0A++const+previousReturned+%3D+qtyReturned%28item%29%0A++await+restoreMaterialStockAfterReturn%28%0A++++supabase%2C%0A++++cautelaItemId%2C%0A++++previousReturned%2C%0A++++qtyReturn%2C%0A++++itemStatus%2C%0A++++delivered%0A++%29%0A%0A++await+syncCautelaStatusFromItems%28supabase%2C+item.cautela_id%2C+operatorId%2C+now%29%0A%0A++%2F%2F+Audit+log%0A++const+auditAction+%3D+status+%3D%3D%3D+%22returned%22+%3F+%22item_returned%22+%3A+status+%3D%3D%3D+%22damaged%22+%3F+%22item_damaged%22+%3A+%22item_missing%22%0A++await+logAudit%28%7B%0A++++action%3A+auditAction%2C%0A++++entity%3A+%22cautela_items%22%2C%0A++++entity_id%3A+cautelaItemId%2C%0A++++after_state%3A+%7B%0A++++++status%2C%0A++++++quantity_returned%3A+qtyReturn%2C%0A++++++quantity_delivered%3A+qtyDelivered%2C%0A++++++material_id%3A+item.material_id%2C%0A++++++cautela_id%3A+item.cautela_id%0A++++%7D%0A++%7D%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A++return+%7B+success%3A+true+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+PROCESSAR+DEVOLU%C3%87%C3%83O+EM+LOTE+%28NOVO+FLUXO+COM+TICK%29+%3D%3D%3D%3D%3D%0A%2F%2F+Tipos+de+dados+para+o+novo+fluxo%0Aexport+interface+DevolutionItemData+%7B%0A++cautelaItemId%3A+string%0A++confirmed%3F%3A+boolean%0A++quantityReturned%3F%3A+number%0A++notes%3F%3A+string%0A++disposition%3F%3A+%22return%22+%7C+%22damaged%22+%7C+%22missing%22%0A%7D%0A%0Aexport+interface+ProcessDevolutionResult+%7B%0A++success%3A+boolean%0A++error%3F%3A+string%0A++processedCount%3F%3A+number%0A++pendingItems%3F%3A+string%5B%5D%0A%7D%0A%0Aexport+async+function+processBulkDevolution%28%0A++cautelaId%3A+string%2C%0A++items%3A+DevolutionItemData%5B%5D%0A%29%3A+Promise%3CProcessDevolutionResult%3E+%7B%0A++const+parsed+%3D+processBulkDevolutionInputSchema.safeParse%28%7B+cautelaId%2C+items+%7D%29%0A++if+%28%21parsed.success%29+%7B%0A++++const+first+%3D+parsed.error.flatten%28%29.fieldErrors%0A++++const+msg+%3D+%28Object.values%28first%29%5B0%5D+as+string%5B%5D+%7C+undefined%29%3F.%5B0%5D+%7C%7C+%22Dados+inv%C3%A1lidos+para+devolu%C3%A7%C3%A3o%22%0A++++return+%7B+success%3A+false%2C+error%3A+msg+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+success%3A+false%2C+error%3A+auth.error+%7D%0A%0A++const+operatorId+%3D+auth.user.id%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+allCautelaItems%2C+error%3A+itemsError+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%60%0A++++++id%2C+material_id%2C+status%2C+quantity_delivered%2C+quantity_returned%2C%0A++++++materials%28name%2C+patrimony_number%29%0A++++%60%29%0A++++.eq%28%22cautela_id%22%2C+cautelaId%29%0A%0A++if+%28itemsError%29+return+%7B+success%3A+false%2C+error%3A+itemsError.message+%7D%0A%0A++const+actionableItems+%3D+%28allCautelaItems+%7C%7C+%5B%5D%29.filter%28%28i%29+%3D%3E+itemNeedsReturn%28i%29%29%0A++if+%28actionableItems.length+%3D%3D%3D+0%29+%7B%0A++++return+%7B+success%3A+false%2C+error%3A+%22Nenhum+item+com+saldo+pendente+nesta+cautela%22+%7D%0A++%7D%0A%0A++const+actionableIds+%3D+actionableItems.map%28%28i%29+%3D%3E+i.id%29%0A++const+processedIds+%3D+items.map%28%28i%29+%3D%3E+i.cautelaItemId%29%0A++const+unprocessedItems+%3D+actionableIds.filter%28%28id%29+%3D%3E+%21processedIds.includes%28id%29%29%0A%0A++if+%28unprocessedItems.length+%3E+0%29+%7B%0A++++const+unprocessedNames+%3D+actionableItems%0A++++++.filter%28%28i%29+%3D%3E+unprocessedItems.includes%28i.id%29%29%0A++++++.map%28%28i%29+%3D%3E+%7B%0A++++++++const+m+%3D+i.materials+as+%7B+name%3F%3A+string%3B+patrimony_number%3F%3A+string+%7D+%7C+null%0A++++++++return+m%3F.name+%7C%7C+m%3F.patrimony_number+%7C%7C+%22Item%22%0A++++++%7D%29%0A++++return+%7B%0A++++++success%3A+false%2C%0A++++++error%3A+%60Existem+itens+que+n%C3%A3o+foram+conferidos%3A+%24%7BunprocessedNames.join%28%22%2C+%22%29%7D%60%2C%0A++++++pendingItems%3A+unprocessedItems%2C%0A++++%7D%0A++%7D%0A%0A++const+materialName+%3D+%28ci%3A+%28typeof+allCautelaItems%29%5B0%5D%29+%3D%3E+%7B%0A++++const+m+%3D+ci%3F.materials+as+%7B+name%3F%3A+string%3B+patrimony_number%3F%3A+string+%7D+%7C+null%0A++++return+m%3F.name+%7C%7C+m%3F.patrimony_number+%7C%7C+%22Item%22%0A++%7D%0A%0A++for+%28const+item+of+items%29+%7B%0A++++const+cautelaItem+%3D+allCautelaItems%3F.find%28%28ci%29+%3D%3E+ci.id+%3D%3D%3D+item.cautelaItemId%29%0A++++if+%28%21cautelaItem%29+%7B%0A++++++return+%7B+success%3A+false%2C+error%3A+%60Item+%24%7Bitem.cautelaItemId%7D+n%C3%A3o+encontrado%60+%7D%0A++++%7D%0A%0A++++const+delivered+%3D+qtyDelivered%28cautelaItem%29%0A++++const+disposition+%3D+item.disposition+%3F%3F+%22return%22%0A%0A++++if+%28disposition+%3D%3D%3D+%22damaged%22+%7C%7C+disposition+%3D%3D%3D+%22missing%22%29+%7B%0A++++++if+%28%21item.notes%3F.trim%28%29%29+%7B%0A++++++++return+%7B%0A++++++++++success%3A+false%2C%0A++++++++++error%3A+%60Justificativa+obrigat%C3%B3ria+para+%22%24%7BmaterialName%28cautelaItem%29%7D%22%60%2C%0A++++++++%7D%0A++++++%7D%0A++++++continue%0A++++%7D%0A%0A++++if+%28%21item.confirmed+%26%26+%28item.quantityReturned+%3D%3D%3D+undefined+%7C%7C+item.quantityReturned+%3D%3D%3D+null%29%29+%7B%0A++++++return+%7B%0A++++++++success%3A+false%2C%0A++++++++error%3A+%60Item+%22%24%7BmaterialName%28cautelaItem%29%7D%22+n%C3%A3o+possui+devolu%C3%A7%C3%A3o+total+nem+quantidade+informada%60%2C%0A++++++%7D%0A++++%7D%0A%0A++++const+totalReturned+%3D+item.confirmed+%3F+delivered+%3A+%28item.quantityReturned+as+number%29%0A++++if+%28totalReturned+%3C+qtyReturned%28cautelaItem%29%29+%7B%0A++++++return+%7B%0A++++++++success%3A+false%2C%0A++++++++error%3A+%60Quantidade+devolvida+n%C3%A3o+pode+ser+menor+que+o+j%C3%A1+registrado+em+%22%24%7BmaterialName%28cautelaItem%29%7D%22%60%2C%0A++++++%7D%0A++++%7D%0A++++if+%28totalReturned+%3C+0+%7C%7C+totalReturned+%3E+delivered%29+%7B%0A++++++return+%7B%0A++++++++success%3A+false%2C%0A++++++++error%3A+%60Quantidade+inv%C3%A1lida+para+%22%24%7BmaterialName%28cautelaItem%29%7D%22+%280+a+%24%7Bdelivered%7D%29%60%2C%0A++++++%7D%0A++++%7D%0A++%7D%0A%0A++const+now+%3D+new+Date%28%29.toISOString%28%29%0A++let+processedCount+%3D+0%0A%0A++for+%28const+item+of+items%29+%7B%0A++++const+cautelaItem+%3D+allCautelaItems%21.find%28%28ci%29+%3D%3E+ci.id+%3D%3D%3D+item.cautelaItemId%29%21%0A++++const+delivered+%3D+qtyDelivered%28cautelaItem%29%0A++++const+disposition+%3D+item.disposition+%3F%3F+%22return%22%0A%0A++++if+%28disposition+%3D%3D%3D+%22damaged%22+%7C%7C+disposition+%3D%3D%3D+%22missing%22%29+%7B%0A++++++const+%7B+error%3A+updateError+%7D+%3D+await+supabase%0A++++++++.from%28%22cautela_items%22%29%0A++++++++.update%28%7B%0A++++++++++status%3A+disposition%2C%0A++++++++++quantity_returned%3A+0%2C%0A++++++++++returned_at%3A+now%2C%0A++++++++++returned_by%3A+operatorId%2C%0A++++++++++notes%3A+item.notes+%7C%7C+null%2C%0A++++++++%7D%29%0A++++++++.eq%28%22id%22%2C+item.cautelaItemId%29%0A%0A++++++if+%28updateError%29+%7B%0A++++++++return+%7B+success%3A+false%2C+error%3A+%60Erro+ao+processar+item%3A+%24%7BupdateError.message%7D%60+%7D%0A++++++%7D%0A%0A++++++await+restoreMaterialStockAfterReturn%28%0A++++++++supabase%2C%0A++++++++item.cautelaItemId%2C%0A++++++++qtyReturned%28cautelaItem%29%2C%0A++++++++0%2C%0A++++++++disposition%2C%0A++++++++delivered%0A++++++%29%0A%0A++++++await+logAudit%28%7B%0A++++++++action%3A+disposition+%3D%3D%3D+%22damaged%22+%3F+%22item_damaged%22+%3A+%22item_missing%22%2C%0A++++++++entity%3A+%22cautela_items%22%2C%0A++++++++entity_id%3A+item.cautelaItemId%2C%0A++++++++after_state%3A+%7B+status%3A+disposition%2C+cautela_id%3A+cautelaId+%7D%2C%0A++++++%7D%29%0A++++++processedCount%2B%2B%0A++++++continue%0A++++%7D%0A%0A++++const+totalReturned+%3D+item.confirmed+%3F+delivered+%3A+%28item.quantityReturned+as+number%29%0A++++const+newStatus+%3D+resolveItemStatusAfterReturn%28totalReturned%2C+delivered%29%0A++++const+prevReturned+%3D+qtyReturned%28cautelaItem%29%0A%0A++++const+%7B+error%3A+updateError+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.update%28%7B%0A++++++++status%3A+newStatus%2C%0A++++++++quantity_returned%3A+totalReturned%2C%0A++++++++returned_at%3A+now%2C%0A++++++++returned_by%3A+operatorId%2C%0A++++++++notes%3A+item.notes+%7C%7C+null%2C%0A++++++%7D%29%0A++++++.eq%28%22id%22%2C+item.cautelaItemId%29%0A%0A++++if+%28updateError%29+%7B%0A++++++return+%7B+success%3A+false%2C+error%3A+%60Erro+ao+processar+item%3A+%24%7BupdateError.message%7D%60+%7D%0A++++%7D%0A%0A++++await+restoreMaterialStockAfterReturn%28%0A++++++supabase%2C%0A++++++item.cautelaItemId%2C%0A++++++prevReturned%2C%0A++++++totalReturned%2C%0A++++++newStatus%2C%0A++++++delivered%0A++++%29%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22item_returned%22%2C%0A++++++entity%3A+%22cautela_items%22%2C%0A++++++entity_id%3A+item.cautelaItemId%2C%0A++++++after_state%3A+%7B%0A++++++++status%3A+newStatus%2C%0A++++++++quantity_delivered%3A+delivered%2C%0A++++++++quantity_returned%3A+totalReturned%2C%0A++++++++balance%3A+delivered+-+totalReturned%2C%0A++++++++material_id%3A+cautelaItem.material_id%2C%0A++++++++cautela_id%3A+cautelaId%2C%0A++++++%7D%2C%0A++++%7D%29%0A%0A++++processedCount%2B%2B%0A++%7D%0A%0A++await+syncCautelaStatusFromItems%28supabase%2C+cautelaId%2C+operatorId%2C+now%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A%0A++return+%7B+success%3A+true%2C+processedCount+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+BUSCAR+PESSOAS+%28para+autocomplete+no+wizard%29+%3D%3D%3D%3D%3D%0Aexport+async+function+searchPersons%28query%3A+string%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+q+%3D+sanitizeIlikeFragment%28query.trim%28%29%2C+80%29%0A++if+%28q.length+%3C+2%29+return+%5B%5D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+%7B+data%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22persons%22%29%0A++++.select%28%0A++++++%22id%2C+full_name%2C+rg%2C+registration_number%2C+function%2C+status%2C+rg_front_url%2C+rg_back_url%2C+face_descriptor%2C+pin_hash%22%0A++++%29%0A++++.eq%28%22status%22%2C+%22active%22%29%0A++++.or%28%60full_name.ilike.%25%24%7Bq%7D%25%2Crg.ilike.%25%24%7Bq%7D%25%2Cregistration_number.ilike.%25%24%7Bq%7D%25%60%29%0A++++.limit%2810%29%0A%0A++if+%28error%29+return+%5B%5D%0A++return+%28data+%3F%3F+%5B%5D%29.map%28%28%7B+pin_hash%2C+...person+%7D%29+%3D%3E+%28%7B%0A++++...person%2C%0A++++has_registered_pin%3A+typeof+pin_hash+%3D%3D%3D+%22string%22+%26%26+pin_hash.length+%3E+0%2C%0A++%7D%29%29%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+BUSCAR+MATERIAIS+DISPON%C3%8DVEIS+%3D%3D%3D%3D%3D%0Aexport+async+function+getAvailableMaterials%28categoryName%3F%3A+string%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A++let+query+%3D+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+patrimony_number%2C+serial_number%2C+internal_code%2C+category%2C+stock_quantity%2C+status%2C+status_atual%22%29%0A++++.eq%28%22status_atual%22%2C+%22DISPONIVEL%22%29%0A++++.order%28%22name%22%29%0A%0A++if+%28categoryName%29+%7B%0A++++query+%3D+query.eq%28%22category%22%2C+categoryName%29%0A++%7D%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+query%0A++if+%28error%29+return+%5B%5D%0A++return+filterReservableMaterials%28data+%3F%3F+%5B%5D%2C+undefined%29%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+BUSCAR+MATERIAIS+AGRUPADOS+POR+CATEGORIA+%3D%3D%3D%3D%3D%0Aexport+async+function+getAvailableMaterialsGrouped%28%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+materials+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+patrimony_number%2C+serial_number%2C+internal_code%2C+category%2C+stock_quantity%2C+status%2C+status_atual%22%29%0A++++.eq%28%22status_atual%22%2C+%22DISPONIVEL%22%29%0A++++.order%28%22name%22%29%0A%0A++const+reservable+%3D+filterReservableMaterials%28materials+%3F%3F+%5B%5D%2C+undefined%29%0A++if+%28%21reservable.length%29+return+%5B%5D%0A%0A++const+byName+%3D+new+Map%3Cstring%2C+typeof+reservable%3E%28%29%0A++for+%28const+m+of+reservable%29+%7B%0A++++const+key+%3D+m.category+%7C%7C+%22Geral%22%0A++++const+arr+%3D+byName.get%28key%29+%3F%3F+%5B%5D%0A++++arr.push%28m%29%0A++++byName.set%28key%2C+arr%29%0A++%7D%0A%0A++return+Array.from%28byName.entries%28%29%29%0A++++.sort%28%28%5Ba%5D%2C+%5Bb%5D%29+%3D%3E+a.localeCompare%28b%2C+%22pt-BR%22%29%29%0A++++.map%28%28%5Bname%2C+mats%5D%29+%3D%3E+%28%7B+name%2C+materials%3A+mats+%7D%29%29%0A%7D%0A%0Aexport+type+SearchableMaterial+%3D+%7B%0A++id%3A+string%0A++name%3A+string%0A++patrimony_number%3A+string%0A++serial_number%3A+string+%7C+null%0A++internal_code%3A+string%0A++category%3A+string%0A++stock_quantity%3F%3A+number%0A%7D%0A%0A%2F%2A%2A+Busca+materiais+dispon%C3%ADveis+por+nome%2C+patrim%C3%B4nio%2C+serial%2C+c%C3%B3digo+interno+ou+UUID.+%2A%2F%0Aexport+async+function+searchMaterials%28%0A++query%3A+string%2C%0A++categoryNames%3F%3A+string%5B%5D%0A%29%3A+Promise%3CSearchableMaterial%5B%5D%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++const+raw+%3D+query.trim%28%29%0A++if+%28raw.length+%3C+1%29+return+%5B%5D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+select+%3D+%22id%2C+name%2C+patrimony_number%2C+serial_number%2C+internal_code%2C+category%2C+stock_quantity%2C+status%2C+status_atual%22%0A%0A++const+uuidPattern+%3D%0A++++%2F%5E%5B0-9a-f%5D%7B8%7D-%5B0-9a-f%5D%7B4%7D-%5B1-5%5D%5B0-9a-f%5D%7B3%7D-%5B89ab%5D%5B0-9a-f%5D%7B3%7D-%5B0-9a-f%5D%7B12%7D%24%2Fi%0A%0A++if+%28uuidPattern.test%28raw%29%29+%7B%0A++++let+qUuid+%3D+supabase.from%28%22materials%22%29.select%28select%29.eq%28%22status_atual%22%2C+%22DISPONIVEL%22%29.eq%28%22id%22%2C+raw%29.limit%285%29%0A++++if+%28categoryNames+%26%26+categoryNames.length+%3E+0%29+%7B%0A++++++qUuid+%3D+qUuid.in%28%22category%22%2C+categoryNames%29%0A++++%7D%0A++++const+%7B+data+%7D+%3D+await+qUuid%0A++++return+filterReservableMaterials%28%28data+%3F%3F+%5B%5D%29+as+SearchableMaterial%5B%5D%2C+undefined%29%0A++%7D%0A%0A++const+q+%3D+sanitizeIlikeFragment%28raw%2C+80%29%0A++if+%28q.length+%3C+1%29+return+%5B%5D%0A%0A++let+qText+%3D+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28select%29%0A++++.eq%28%22status_atual%22%2C+%22DISPONIVEL%22%29%0A++++.or%28%60name.ilike.%25%24%7Bq%7D%25%2Cpatrimony_number.ilike.%25%24%7Bq%7D%25%2Cserial_number.ilike.%25%24%7Bq%7D%25%2Cinternal_code.ilike.%25%24%7Bq%7D%25%60%29%0A++++.limit%2825%29%0A%0A++if+%28categoryNames+%26%26+categoryNames.length+%3E+0%29+%7B%0A++++qText+%3D+qText.in%28%22category%22%2C+categoryNames%29%0A++%7D%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+qText%0A%0A++if+%28error%29+return+%5B%5D%0A++return+filterReservableMaterials%28%28data+%3F%3F+%5B%5D%29+as+SearchableMaterial%5B%5D%2C+undefined%29%0A%7D%0A%0A%2F%2A%2A+Resolve+carregador+ou+muni%C3%A7%C3%A3o+dispon%C3%ADvel+compat%C3%ADvel+com+a+arma+%28pacote+pistola%2Farma+longa%29.+%2A%2F%0Aexport+async+function+resolvePackAccessoryForWeapon%28%0A++weaponId%3A+string%2C%0A++kind%3A+%22charger%22+%7C+%22ammunition%22%0A%29%3A+Promise%3C%7B+material%3A+SearchableMaterial+%7C+null%3B+error%3F%3A+string+%7D%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++const+multi+%3D+await+resolvePackAccessoriesForWeapon%28weaponId%2C+kind%2C+1%29%0A++if+%28multi.error%29+return+%7B+material%3A+null%2C+error%3A+multi.error+%7D%0A++return+%7B+material%3A+multi.materials%5B0%5D+%3F%3F+null+%7D%0A%7D%0A%0Afunction+toSearchableMaterial%28m%3A+PackAccessoryCandidate%29%3A+SearchableMaterial+%7B%0A++return+%7B%0A++++id%3A+m.id%2C%0A++++name%3A+m.name%2C%0A++++patrimony_number%3A+m.patrimony_number+%3F%3F+%22%22%2C%0A++++serial_number%3A+m.serial_number%2C%0A++++internal_code%3A+m.internal_code+%3F%3F+%22%22%2C%0A++++category%3A+m.category+%3F%3F+%22%22%2C%0A++++stock_quantity%3A+m.stock_quantity+%3F%3F+1%2C%0A++%7D%0A%7D%0A%0A%2F%2A%2A+Valida+quantidade+pedida+contra+estoque+dispon%C3%ADvel+%28Nova+Cautela%2C+antes+de+gravar%29.+%2A%2F%0Aexport+async+function+validateMaterialQuantityForCautela%28%0A++materialId%3A+string%2C%0A++quantity%3A+number%0A%29%3A+Promise%3C%7B+ok%3A+true%3B+stock%3A+number+%7D+%7C+%7B+ok%3A+false%3B+error%3A+string+%7D%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++const+idParsed+%3D+uuidSchema.safeParse%28materialId%29%0A++if+%28%21idParsed.success%29+return+%7B+ok%3A+false%2C+error%3A+%22Material+inv%C3%A1lido%22+%7D%0A%0A++const+qty+%3D+Math.max%281%2C+Math.floor%28quantity%29%29%0A++const+supabase+%3D+await+createClient%28%29%0A++const+%7B+data%3A+material%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+status%2C+status_atual%2C+stock_quantity%22%29%0A++++.eq%28%22id%22%2C+materialId%29%0A++++.single%28%29%0A%0A++if+%28error+%7C%7C+%21material%29+return+%7B+ok%3A+false%2C+error%3A+%22Material+n%C3%A3o+encontrado%22+%7D%0A++if+%28%21canReserveStock%28material%2C+qty%29%29+%7B%0A++++return+%7B%0A++++++ok%3A+false%2C%0A++++++error%3A+formatInsufficientStockMessage%28material%2C+qty%2C+effectiveStock%28material%29%29%2C%0A++++%7D%0A++%7D%0A++return+%7B+ok%3A+true%2C+stock%3A+effectiveStock%28material%29+%7D%0A%7D%0A%0A%2F%2A%2A+Carregadores+Glock+9mm+do+pool+QA+com+status+available+%28qty+livre+na+Nova+Cautela%29.+%2A%2F%0Aexport+async+function+countAvailableGlock9mmChargers%28%29%3A+Promise%3Cnumber%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A++const+%7B+data%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+category%2C+calibre%2C+marca%2C+patrimony_number%2C+status%2C+status_atual%22%29%0A++++.eq%28%22status_atual%22%2C+%22DISPONIVEL%22%29%0A++++.or%28packAccessoryAvailabilityFilter%28%22charger%22%29%29%0A++++.limit%28500%29%0A%0A++if+%28error%29+return+0%0A++return+%28data+%3F%3F+%5B%5D%29.filter%28%28m%29+%3D%3E+isGlock9mmCharger%28m%29%29.length%0A%7D%0A%0Afunction+weaponCaliberLabel%28weapon%3A+%7B%0A++name%3A+string%0A++category%3A+string%0A++calibre%3F%3A+string+%7C+null%0A%7D%29%3A+string+%7C+null+%7B%0A++const+fromField+%3D+weapon.calibre%3F.trim%28%29%0A++if+%28fromField%29+return+fromField%0A++return+extractCaliber%28weapon.name%29+%7C%7C+extractCaliber%28weapon.category%29%0A%7D%0A%0A%2F%2A%2A%0A+%2A+Resolve+at%C3%A9+%60count%60+acess%C3%B3rios+distintos+do+estoque+available.%0A+%2A+Pool+Glock+9mm+s%C3%B3+para+pistola+Glock+9mm%3B+demais+armas+por+marca%2Fmodelo%2Fcalibre.%0A+%2A%2F%0Aexport+async+function+resolvePackAccessoriesForWeapon%28%0A++weaponId%3A+string%2C%0A++kind%3A+%22charger%22+%7C+%22ammunition%22%2C%0A++count%3A+number%0A%29%3A+Promise%3C%7B+materials%3A+SearchableMaterial%5B%5D%3B+error%3F%3A+string+%7D%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++if+%28count+%3C+1%29+return+%7B+materials%3A+%5B%5D+%7D%0A%0A++const+idParsed+%3D+uuidSchema.safeParse%28weaponId%29%0A++if+%28%21idParsed.success%29+%7B%0A++++return+%7B+materials%3A+%5B%5D%2C+error%3A+%22Arma+inv%C3%A1lida%22+%7D%0A++%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+%7B+data%3A+weapon%2C+error%3A+weaponError+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+category%2C+calibre%2C+marca%2C+modelo%22%29%0A++++.eq%28%22id%22%2C+weaponId%29%0A++++.single%28%29%0A%0A++if+%28weaponError+%7C%7C+%21weapon%29+%7B%0A++++return+%7B+materials%3A+%5B%5D%2C+error%3A+%22Arma+n%C3%A3o+encontrada%22+%7D%0A++%7D%0A%0A++let+candidates%3A+PackAccessoryCandidate%5B%5D%0A++try+%7B%0A++++candidates+%3D+await+fetchReservablePackAccessories%28supabase%2C+kind%29%0A++%7D+catch+%28listError%29+%7B%0A++++const+msg+%3D+listError+instanceof+Error+%3F+listError.message+%3A+%22Erro+ao+listar+acess%C3%B3rios%22%0A++++return+%7B+materials%3A+%5B%5D%2C+error%3A+msg+%7D%0A++%7D%0A%0A++const+useGlockPool+%3D+isGlock9mmPistol%28weapon%29+%26%26+kind+%3D%3D%3D+%22charger%22%0A++const+poolCandidates+%3D+buildPackAccessoryPool%28weapon%2C+candidates%2C+kind%29%0A%0A++const+resolved+%3D+resolveStockUnits%28poolCandidates%2C+count%2C+%28pool%29+%3D%3E%0A++++pickPackAccessoryForWeapon%28weapon%2C+pool%2C+kind%29%0A++%29%0A%0A++if+%28resolved.error+%7C%7C+resolved.items.length+%3C+count%29+%7B%0A++++const+label+%3D+kind+%3D%3D%3D+%22charger%22+%3F+%22carregador%22+%3A+%22muni%C3%A7%C3%A3o%22%0A++++const+cal+%3D+weaponCaliberLabel%28weapon%29%0A++++const+calPart+%3D+cal+%3F+%60+%28calibre+%24%7Bcal%7D%29%60+%3A+%22%22%0A++++if+%28resolved.error%29+%7B%0A++++++return+%7B+materials%3A+%5B%5D%2C+error%3A+resolved.error+%7D%0A++++%7D%0A++++if+%28kind+%3D%3D%3D+%22charger%22+%26%26+useGlockPool%29+%7B%0A++++++const+stats+%3D+countPoolChargersByStatus%28poolCandidates%29%0A++++++return+%7B%0A++++++++materials%3A+%5B%5D%2C%0A++++++++error%3A+%60Precisa+de+%24%7Bcount%7D+%24%7Blabel%7D%28es%29+no+pool%3B+encontrados+%24%7Bresolved.items.length%7D+%28pool%3A+%24%7Bstats.available%7D+livre%28s%29%29.%60%2C%0A++++++%7D%0A++++%7D%0A++++return+%7B%0A++++++materials%3A+%5B%5D%2C%0A++++++error%3A%0A++++++++resolved.items.length+%3D%3D%3D+0%0A++++++++++%3F+%60Nenhum+%24%7Blabel%7D+dispon%C3%ADvel+para+%24%7Bweapon.name%7D%24%7BcalPart%7D.%60%0A++++++++++%3A+%60Precisa+de+%24%7Bcount%7D+%24%7Blabel%7D%28es%29+compat%C3%ADvel%28is%29+com+%24%7Bweapon.name%7D%24%7BcalPart%7D%3B+em+estoque%3A+%24%7Bresolved.items%5B0%5D+%3F+effectiveStock%28resolved.items%5B0%5D%29+%3A+0%7D.%60%2C%0A++++%7D%0A++%7D%0A%0A++return+%7B+materials%3A+resolved.items.map%28toSearchableMaterial%29+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+BUSCAR+CAUTELA+DI%C3%81RIA+DE+ORIGEM+PARA+TRANSFER%C3%8ANCIA+%3D%3D%3D%3D%3D%0Aexport+async+function+getDailyCautelaForMaterial%28materialId%3A+string%29%3A+Promise%3C%7B%0A++origin%3A+TransferOriginCautela+%7C+null%0A++error%3F%3A+string%0A++permanentBlock%3F%3A+boolean%0A%7D%3E+%7B%0A++await+assertCautelaOperator%28%29%0A++const+idParsed+%3D+uuidSchema.safeParse%28materialId%29%0A++if+%28%21idParsed.success%29+return+%7B+origin%3A+null%2C+error%3A+%22Material+inv%C3%A1lido%22+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+material%2C+error%3A+matError+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+status%2C+status_atual%22%29%0A++++.eq%28%22id%22%2C+materialId%29%0A++++.single%28%29%0A%0A++if+%28matError+%7C%7C+%21material%29+return+%7B+origin%3A+null%2C+error%3A+%22Material+n%C3%A3o+encontrado%22+%7D%0A%0A++const+%7B+data%3A+activeItem%2C+error%3A+itemError+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%60%0A++++++id%2C+cautela_id%2C+material_id%2C+status%2C+quantity_delivered%2C+quantity_returned%2C%0A++++++materials%28id%2C+name%2C+patrimony_number%2C+category%29%0A++++%60%29%0A++++.eq%28%22material_id%22%2C+materialId%29%0A++++.in%28%22status%22%2C+%5B%22pending%22%5D%29%0A++++.order%28%22created_at%22%2C+%7B+ascending%3A+false+%7D%29%0A++++.limit%281%29%0A++++.maybeSingle%28%29%0A%0A++if+%28itemError+%7C%7C+%21activeItem%29+return+%7B+origin%3A+null+%7D%0A%0A++const+%7B+data%3A+cautela%2C+error%3A+cautelaError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%60id%2C+person_id%2C+type%2C+status%2C+persons%28id%2C+full_name%29%60%29%0A++++.eq%28%22id%22%2C+activeItem.cautela_id%29%0A++++.single%28%29%0A%0A++if+%28cautelaError+%7C%7C+%21cautela%29+return+%7B+origin%3A+null+%7D%0A%0A++if+%28cautela.type+%3D%3D%3D+%22permanent%22%29+%7B%0A++++return+%7B+origin%3A+null%2C+permanentBlock%3A+true+%7D%0A++%7D%0A%0A++if+%28cautela.type+%21%3D%3D+%22daily%22+%7C%7C+%21%5B%22open%22%2C+%22partial%22%5D.includes%28cautela.status%29%29+%7B%0A++++return+%7B+origin%3A+null+%7D%0A++%7D%0A%0A++const+%7B+data%3A+siblingItems+%7D+%3D+await+supabase%0A++++.from%28%22cautela_items%22%29%0A++++.select%28%60%0A++++++id%2C+material_id%2C+status%2C+quantity_delivered%2C+quantity_returned%2C%0A++++++materials%28id%2C+name%2C+patrimony_number%2C+category%29%0A++++%60%29%0A++++.eq%28%22cautela_id%22%2C+cautela.id%29%0A%0A++const+person+%3D+cautela.persons+as+any%0A++const+transferItems%3A+TransferOriginItem%5B%5D+%3D+%28siblingItems+%7C%7C+%5B%5D%29%0A++++.filter%28%28i%3A+any%29+%3D%3E+i.status+%3D%3D%3D+%22pending%22+%26%26+%28i.quantity_delivered+-+%28i.quantity_returned+%7C%7C+0%29%29+%3E+0%29%0A++++.map%28%28i%3A+any%29+%3D%3E+%28%7B%0A++++++cautela_item_id%3A+i.id%2C%0A++++++material_id%3A+i.material_id%2C%0A++++++material_name%3A+i.materials%3F.name+%3F%3F+%22%22%2C%0A++++++patrimony_number%3A+i.materials%3F.patrimony_number+%3F%3F+%22%22%2C%0A++++++quantity_delivered%3A+i.quantity_delivered+%3F%3F+1%2C%0A++++++quantity_returned%3A+i.quantity_returned+%3F%3F+0%2C%0A++++++quantity_available%3A+%28i.quantity_delivered+%3F%3F+1%29+-+%28i.quantity_returned+%3F%3F+0%29%2C%0A++++++category%3A+i.materials%3F.category+%3F%3F+%22%22%2C%0A++++%7D%29%29%0A%0A++return+%7B%0A++++origin%3A+%7B%0A++++++cautela_id%3A+cautela.id%2C%0A++++++person_id%3A+cautela.person_id%2C%0A++++++person_name%3A+person%3F.full_name+%3F%3F+%22%22%2C%0A++++++type%3A+cautela.type%2C%0A++++++status%3A+cautela.status%2C%0A++++++items%3A+transferItems%2C%0A++++%7D%2C%0A++%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+VERIFICAR+CAUTELAS+DI%C3%81RIAS+PENDENTES+DE+UMA+PESSOA+%3D%3D%3D%3D%3D%0A%2F%2F+Regra%3A+Apenas+cautelas+DI%C3%81RIAS+geram+alerta+de+pend%C3%AAncia%0A%2F%2F+Cautelas+Permanentes+N%C3%83O+geram+alerta+%28n%C3%A3o+possuem+prazo+de+devolu%C3%A7%C3%A3o%29%0Aexport+async+function+getPendingCautelasForPerson%28personId%3A+string%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+idParsed+%3D+uuidSchema.safeParse%28personId%29%0A++if+%28%21idParsed.success%29+return+%5B%5D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%60%0A++++++id%2C+type%2C+status%2C+created_at%2C+notes%2C%0A++++++profiles%28name%29%2C%0A++++++cautela_items%28%0A++++++++id%2C+cautela_id%2C+status%2C%0A++++++++materials%28name%2C+patrimony_number%29%0A++++++%29%0A++++%60%29%0A++++.eq%28%22person_id%22%2C+personId%29%0A++++.eq%28%22type%22%2C+%22daily%22%29%0A++++.in%28%22status%22%2C+%5B%22open%22%2C+%22partial%22%5D%29%0A++++.order%28%22created_at%22%2C+%7B+ascending%3A+false+%7D%29%0A%0A++if+%28error%29+return+%5B%5D%0A++if+%28%21data+%7C%7C+data.length+%3D%3D%3D+0%29+return+%5B%5D%0A%0A++const+vinteQuatroHorasAtras+%3D+new+Date%28Date.now%28%29+-+24+%2A+60+%2A+60+%2A+1000%29%0A%0A++return+data.map%28%28cautela%29+%3D%3E+%7B%0A++++const+rawItems+%3D+cautela.cautela_items+%7C%7C+%5B%5D%0A++++const+cautelaItems+%3D+rawItems.filter%28%28i%3A+%7B+status%3A+string+%7D%29+%3D%3E+i.status+%3D%3D%3D+%22pending%22%29%0A++++return+%7B%0A++++++id%3A+cautela.id%2C%0A++++++type%3A+cautela.type%2C%0A++++++status%3A+cautela.status%2C%0A++++++created_at%3A+cautela.created_at%2C%0A++++++notes%3A+cautela.notes%2C%0A++++++profiles%3A+cautela.profiles%2C%0A++++++is_overdue%3A+new+Date%28cautela.created_at%29+%3C+vinteQuatroHorasAtras%2C%0A++++++items%3A+cautelaItems%2C%0A++++++items_count%3A+cautelaItems.length%2C%0A++++%7D%0A++%7D%29%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+CRIAR+CAUTELA+COM+VERIFICA%C3%87%C3%83O+FACIAL+%28sem+PIN%29+%3D%3D%3D%3D%3D%0Aexport+async+function+createCautelaFaceAuth%28data%3A+%7B%0A++person_id%3A+string%0A++type%3A+%22daily%22+%7C+%22permanent%22%0A++items%3A+%7B+material_id%3A+string%3B+quantity%3F%3A+number+%7D%5B%5D%0A++notes%3F%3A+string%0A++review_date%3F%3A+string%0A%7D%29+%7B%0A++const+parsed+%3D+createCautelaFaceAuthInputSchema.safeParse%28data%29%0A++if+%28%21parsed.success%29+%7B%0A++++const+first+%3D+parsed.error.flatten%28%29.fieldErrors%0A++++const+msg+%3D%0A++++++%28Object.values%28first%29%5B0%5D+as+string%5B%5D+%7C+undefined%29%3F.%5B0%5D+%7C%7C%0A++++++%22Dados+inv%C3%A1lidos+para+abertura+da+cautela%22%0A++++return+%7B+error%3A+msg+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+payload+%3D+parsed.data%0A++const+merged+%3D+mergeCautelaItems%28payload.items%29%0A++const+distinctIds+%3D+merged.map%28%28m%29+%3D%3E+m.material_id%29%0A%0A++const+pinPolicyFace+%3D+await+assertPersonEligibleForCautela%28supabase%2C+payload.person_id%29%0A++if+%28pinPolicyFace.error%29+return+%7B+error%3A+pinPolicyFace.error+%7D%0A%0A++const+%7B+data%3A+materials%2C+error%3A+matError+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+status%2C+status_atual%2C+stock_quantity%22%29%0A++++.in%28%22id%22%2C+distinctIds%29%0A%0A++if+%28matError%29+return+%7B+error%3A+matError.message+%7D%0A++if+%28%21materials+%7C%7C+materials.length+%21%3D%3D+distinctIds.length%29+%7B%0A++++return+%7B+error%3A+%22Um+ou+mais+materiais+n%C3%A3o+foram+encontrados%22+%7D%0A++%7D%0A%0A++const+unavailable+%3D+materials.filter%28%28m%29+%3D%3E+m.status+%21%3D%3D+%22available%22%29%0A++if+%28unavailable.length+%3E+0%29+%7B%0A++++return+%7B+error%3A+formatUnavailableMaterialsMessage%28unavailable%29+%7D%0A++%7D%0A%0A++const+stockErrorFace+%3D+validateCautelaItemsStock%28merged%2C+materials%29%0A++if+%28stockErrorFace%29+return+%7B+error%3A+stockErrorFace+%7D%0A%0A++const+%7B+data%3A+rpcDataFace%2C+error%3A+rpcErrorFace+%7D+%3D+await+supabase.rpc%28%22create_cautela_atomic%22%2C+%7B%0A++++p_person_id%3A+payload.person_id%2C%0A++++p_type%3A+payload.type%2C%0A++++p_notes%3A+payload.notes+%3F%3F+null%2C%0A++++p_items%3A+merged%2C%0A++++p_review_date%3A+resolveReviewDateForRpc%28payload.type%2C+data.review_date%29%2C%0A++%7D%29%0A%0A++if+%28rpcErrorFace%29+%7B%0A++++return+%7B+error%3A+mapCreateCautelaRpcError%28rpcErrorFace.message%29+%7D%0A++%7D%0A%0A++const+resultFace+%3D+rpcDataFace+as+%7B+cautela_id%3A+string%3B+cautela_item_ids%3F%3A+string%5B%5D+%7D+%7C+null%0A++const+cautelaIdFace+%3D+resultFace%3F.cautela_id%0A++if+%28%21cautelaIdFace%29+%7B%0A++++return+%7B+error%3A+%22Falha+ao+criar+cautela%22+%7D%0A++%7D%0A%0A++await+logAudit%28%7B%0A++++action%3A+%22cautela_created%22%2C%0A++++entity%3A+%22cautelas%22%2C%0A++++entity_id%3A+cautelaIdFace%2C%0A++++after_state%3A+%7B%0A++++++person_id%3A+payload.person_id%2C%0A++++++type%3A+payload.type%2C%0A++++++materials_count%3A+merged.length%2C%0A++++++items%3A+merged%2C%0A++++++cautela_item_ids%3A+resultFace%3F.cautela_item_ids+%3F%3F+%5B%5D%2C%0A++++++auth%3A+%22face%22%2C%0A++++%7D%2C%0A++%7D%29%0A%0A++%2F%2F+Disparar+notifica%C3%A7%C3%B5es+%28email+%2B+WhatsApp%29+sem+bloquear+o+retorno%0A++dispatchCautelaNotifications%28cautelaIdFace%29.catch%28console.error%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A++return+%7B+success%3A+true%2C+cautelaId%3A+cautelaIdFace+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+CRIAR+CAUTELA+COM+TRANSFER%C3%8ANCIA+%28PIN%29+%3D%3D%3D%3D%3D%0Aexport+async+function+createCautelaWithTransfer%28data%3A+%7B%0A++person_id%3A+string%0A++type%3A+%22daily%22%0A++items%3A+%7B+material_id%3A+string%3B+quantity%3A+number%3B+transfer_from_cautela_item_id%3F%3A+string+%7D%5B%5D%0A++notes%3F%3A+string%0A++pin%3A+string%0A%7D%29+%7B%0A++const+parsed+%3D+createCautelaWithTransferInputSchema.safeParse%28data%29%0A++if+%28%21parsed.success%29+%7B%0A++++const+first+%3D+parsed.error.flatten%28%29.fieldErrors%0A++++const+msg+%3D%0A++++++%28Object.values%28first%29%5B0%5D+as+string%5B%5D+%7C+undefined%29%3F.%5B0%5D+%7C%7C%0A++++++%22Dados+inv%C3%A1lidos+para+abertura+da+cautela+com+transfer%C3%AAncia%22%0A++++return+%7B+error%3A+msg+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+payload+%3D+parsed.data%0A++const+operatorId+%3D+auth.user.id%0A%0A++const+pinPolicy+%3D+await+assertPersonEligibleForCautela%28supabase%2C+payload.person_id%29%0A++if+%28pinPolicy.error%29+return+%7B+error%3A+pinPolicy.error+%7D%0A%0A++const+pinResult+%3D+await+validatePin%28payload.person_id%2C+payload.pin%29%0A++if+%28%21pinResult.valid%29+return+%7B+error%3A+pinResult.error+%7D%0A%0A++const+transferItems+%3D+payload.items.filter%28%28i%29+%3D%3E+i.transfer_from_cautela_item_id%29%0A++const+availableItems+%3D+payload.items.filter%28%28i%29+%3D%3E+%21i.transfer_from_cautela_item_id%29%0A%0A++for+%28const+ti+of+transferItems%29+%7B%0A++++const+%7B+data%3A+originItem%2C+error%3A+originError+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%60id%2C+cautela_id%2C+material_id%2C+status%2C+quantity_delivered%2C+quantity_returned%2C+cautelas%28person_id%2C+type%29%60%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++.single%28%29%0A%0A++++if+%28originError+%7C%7C+%21originItem%29+return+%7B+error%3A+%22Item+de+origem+n%C3%A3o+encontrado%22+%7D%0A%0A++++const+originCautela+%3D+originItem.cautelas+as+any%0A++++if+%28originCautela%3F.type+%3D%3D%3D+%22permanent%22%29+%7B%0A++++++return+%7B+error%3A+%22Transfer%C3%AAncia+n%C3%A3o+permitida+para+materiais+em+cautela+Permanente%22+%7D%0A++++%7D%0A++++if+%28originCautela%3F.person_id+%3D%3D%3D+payload.person_id%29+%7B%0A++++++return+%7B+error%3A+%22Origem+e+destino+n%C3%A3o+podem+ser+a+mesma+pessoa%22+%7D%0A++++%7D%0A++++const+balance+%3D+%28originItem.quantity_delivered+%7C%7C+1%29+-+%28originItem.quantity_returned+%7C%7C+0%29%0A++++if+%28ti.quantity+%3E+balance%29+%7B%0A++++++return+%7B+error%3A+%60Quantidade+transferida+%28%24%7Bti.quantity%7D%29+excede+saldo+dispon%C3%ADvel+%28%24%7Bbalance%7D%29%60+%7D%0A++++%7D%0A++%7D%0A%0A++if+%28availableItems.length+%3E+0%29+%7B%0A++++const+distinctIds+%3D+availableItems.map%28%28m%29+%3D%3E+m.material_id%29%0A++++const+%7B+data%3A+materials%2C+error%3A+matError+%7D+%3D+await+supabase%0A++++++.from%28%22materials%22%29%0A++++++.select%28%22id%2C+name%2C+status%2C+status_atual%2C+stock_quantity%22%29%0A++++++.in%28%22id%22%2C+distinctIds%29%0A%0A++++if+%28matError%29+return+%7B+error%3A+matError.message+%7D%0A++++if+%28%21materials+%7C%7C+materials.length+%21%3D%3D+distinctIds.length%29+%7B%0A++++++return+%7B+error%3A+%22Um+ou+mais+materiais+n%C3%A3o+foram+encontrados%22+%7D%0A++++%7D%0A%0A++++const+unavailable+%3D+materials.filter%28%28m%29+%3D%3E+m.status+%21%3D%3D+%22available%22%29%0A++++if+%28unavailable.length+%3E+0%29+%7B%0A++++++return+%7B+error%3A+formatUnavailableMaterialsMessage%28unavailable%29+%7D%0A++++%7D%0A%0A++++const+merged+%3D+mergeCautelaItems%28availableItems%29%0A++++const+stockErr+%3D+validateCautelaItemsStock%28merged%2C+materials%29%0A++++if+%28stockErr%29+return+%7B+error%3A+stockErr+%7D%0A++%7D%0A%0A++const+now+%3D+new+Date%28%29.toISOString%28%29%0A++const+%7B+data%3A+deadlineData+%7D+%3D+await+supabase.rpc%28%22calc_daily_return_deadline%22%29%0A++const+deadline+%3D+deadlineData+as+string+%7C+null%0A%0A++const+%7B+data%3A+tenantData+%7D+%3D+await+supabase%0A++++.from%28%22usuarios%22%29%0A++++.select%28%22organization_id%2C+unit_id%2C+reserva_id%22%29%0A++++.eq%28%22auth_user_id%22%2C+operatorId%29%0A++++.eq%28%22is_active%22%2C+true%29%0A++++.limit%281%29%0A++++.maybeSingle%28%29%0A%0A++const+tenant+%3D+tenantData+as+%7B+organization_id%3A+string%3B+unit_id%3A+string%3B+reserva_id%3A+string+%7D+%7C+null%0A%0A++const+%7B+data%3A+newCautela%2C+error%3A+createError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.insert%28%7B%0A++++++person_id%3A+payload.person_id%2C%0A++++++operator_id%3A+operatorId%2C%0A++++++type%3A+%22daily%22%2C%0A++++++status%3A+%22open%22%2C%0A++++++notes%3A+payload.notes+%3F%3F+null%2C%0A++++++data_prevista_devolucao%3A+deadline%2C%0A++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++%7D%29%0A++++.select%28%22id%22%29%0A++++.single%28%29%0A%0A++if+%28createError%29+return+%7B+error%3A+createError.message+%7D%0A++const+newCautelaId+%3D+%28newCautela+as+any%29.id%0A%0A++for+%28const+ti+of+transferItems%29+%7B%0A++++const+%7B+data%3A+originItem+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%22id%2C+cautela_id%2C+material_id%2C+quantity_delivered%2C+quantity_returned%2C+status%22%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++.single%28%29%0A%0A++++if+%28%21originItem%29+continue%0A%0A++++const+prevReturned+%3D+originItem.quantity_returned+%7C%7C+0%0A++++const+newReturned+%3D+prevReturned+%2B+ti.quantity%0A++++const+delivered+%3D+originItem.quantity_delivered+%7C%7C+1%0A++++const+itemStatus%3A+%22pending%22+%7C+%22returned%22+%3D+newReturned+%3E%3D+delivered+%3F+%22returned%22+%3A+%22pending%22%0A%0A++++await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.update%28%7B%0A++++++++quantity_returned%3A+newReturned%2C%0A++++++++status%3A+itemStatus%2C%0A++++++++returned_at%3A+itemStatus+%3D%3D%3D+%22returned%22+%3F+now+%3A+null%2C%0A++++++++returned_by%3A+itemStatus+%3D%3D%3D+%22returned%22+%3F+operatorId+%3A+null%2C%0A++++++%7D%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A%0A++++await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.insert%28%7B%0A++++++++cautela_id%3A+newCautelaId%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+%22pending%22%2C%0A++++++++quantity_delivered%3A+ti.quantity%2C%0A++++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++++%7D%29%0A%0A++++await+syncCautelaStatusFromItems%28supabase%2C+originItem.cautela_id%2C+operatorId%2C+now%29%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22item_transferred%22%2C%0A++++++entity%3A+%22cautela_items%22%2C%0A++++++entity_id%3A+ti.transfer_from_cautela_item_id%21%2C%0A++++++before_state%3A+%7B%0A++++++++cautela_id%3A+originItem.cautela_id%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+originItem.status%2C%0A++++++++quantity_returned%3A+prevReturned%2C%0A++++++%7D%2C%0A++++++after_state%3A+%7B%0A++++++++cautela_id_destino%3A+newCautelaId%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+itemStatus%2C%0A++++++++quantity_returned%3A+newReturned%2C%0A++++++++quantity_transferred%3A+ti.quantity%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D%0A%0A++if+%28availableItems.length+%3D%3D%3D+0%29+%7B%0A++++await+logAudit%28%7B%0A++++++action%3A+%22cautela_created%22%2C%0A++++++entity%3A+%22cautelas%22%2C%0A++++++entity_id%3A+newCautelaId%2C%0A++++++after_state%3A+%7B%0A++++++++person_id%3A+payload.person_id%2C%0A++++++++type%3A+%22daily%22%2C%0A++++++++materials_count%3A+transferItems.length%2C%0A++++++++items%3A+transferItems.map%28%28ti%29+%3D%3E+%28%7B+material_id%3A+ti.material_id%2C+quantity%3A+ti.quantity+%7D%29%29%2C%0A++++++++transfer_count%3A+transferItems.length%2C%0A++++++++transfer_only%3A+true%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D+else+%7B%0A++++const+merged+%3D+mergeCautelaItems%28availableItems%29%0A%0A++++for+%28const+item+of+merged%29+%7B%0A++++++const+%7B+data%3A+matItem+%7D+%3D+await+supabase%0A++++++++.from%28%22materials%22%29%0A++++++++.select%28%22id%2C+name%2C+stock_quantity%22%29%0A++++++++.eq%28%22id%22%2C+item.material_id%29%0A++++++++.single%28%29%0A%0A++++++if+%28%21matItem%29+continue%0A%0A++++++await+supabase%0A++++++++.from%28%22cautela_items%22%29%0A++++++++.insert%28%7B%0A++++++++++cautela_id%3A+newCautelaId%2C%0A++++++++++material_id%3A+item.material_id%2C%0A++++++++++status%3A+%22pending%22%2C%0A++++++++++quantity_delivered%3A+item.quantity%2C%0A++++++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++++++%7D%29%0A%0A++++++const+newStock+%3D+Math.max%280%2C+%28matItem.stock_quantity+%3F%3F+1%29+-+item.quantity%29%0A++++++const+newMatStatus+%3D+newStock+%3C%3D+0+%3F+%22cautelado%22+%3A+%22available%22%0A++++++await+supabase%0A++++++++.from%28%22materials%22%29%0A++++++++.update%28%7B+stock_quantity%3A+newStock%2C+status%3A+newMatStatus%2C+updated_at%3A+now+%7D%29%0A++++++++.eq%28%22id%22%2C+item.material_id%29%0A++++%7D%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22cautela_created%22%2C%0A++++++entity%3A+%22cautelas%22%2C%0A++++++entity_id%3A+newCautelaId%2C%0A++++++after_state%3A+%7B%0A++++++++person_id%3A+payload.person_id%2C%0A++++++++type%3A+%22daily%22%2C%0A++++++++materials_count%3A+merged.length%2C%0A++++++++items%3A+merged%2C%0A++++++++transfer_count%3A+transferItems.length%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D%0A%0A++await+dispatchCautelaNotifications%28newCautelaId%29.catch%28console.error%29%0A++await+dispatchTransferNotifications%28newCautelaId%2C+transferItems%29.catch%28console.error%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A++return+%7B+success%3A+true%2C+cautelaId%3A+newCautelaId+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+CRIAR+CAUTELA+COM+TRANSFER%C3%8ANCIA+%28VERIFICA%C3%87%C3%83O+FACIAL%29+%3D%3D%3D%3D%3D%0Aexport+async+function+createCautelaWithTransferFaceAuth%28data%3A+%7B%0A++person_id%3A+string%0A++type%3A+%22daily%22%0A++items%3A+%7B+material_id%3A+string%3B+quantity%3A+number%3B+transfer_from_cautela_item_id%3F%3A+string+%7D%5B%5D%0A++notes%3F%3A+string%0A%7D%29+%7B%0A++const+parsed+%3D+createCautelaWithTransferFaceAuthInputSchema.safeParse%28data%29%0A++if+%28%21parsed.success%29+%7B%0A++++const+first+%3D+parsed.error.flatten%28%29.fieldErrors%0A++++const+msg+%3D%0A++++++%28Object.values%28first%29%5B0%5D+as+string%5B%5D+%7C+undefined%29%3F.%5B0%5D+%7C%7C%0A++++++%22Dados+inv%C3%A1lidos+para+abertura+da+cautela+com+transfer%C3%AAncia%22%0A++++return+%7B+error%3A+msg+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A++const+payload+%3D+parsed.data%0A++const+operatorId+%3D+auth.user.id%0A%0A++const+pinPolicy+%3D+await+assertPersonEligibleForCautela%28supabase%2C+payload.person_id%29%0A++if+%28pinPolicy.error%29+return+%7B+error%3A+pinPolicy.error+%7D%0A%0A++const+transferItems+%3D+payload.items.filter%28%28i%29+%3D%3E+i.transfer_from_cautela_item_id%29%0A++const+availableItems+%3D+payload.items.filter%28%28i%29+%3D%3E+%21i.transfer_from_cautela_item_id%29%0A%0A++for+%28const+ti+of+transferItems%29+%7B%0A++++const+%7B+data%3A+originItem%2C+error%3A+originError+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%60id%2C+cautela_id%2C+material_id%2C+status%2C+quantity_delivered%2C+quantity_returned%2C+cautelas%28person_id%2C+type%29%60%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++.single%28%29%0A%0A++++if+%28originError+%7C%7C+%21originItem%29+return+%7B+error%3A+%22Item+de+origem+n%C3%A3o+encontrado%22+%7D%0A%0A++++const+originCautela+%3D+originItem.cautelas+as+any%0A++++if+%28originCautela%3F.type+%3D%3D%3D+%22permanent%22%29+%7B%0A++++++return+%7B+error%3A+%22Transfer%C3%AAncia+n%C3%A3o+permitida+para+materiais+em+cautela+Permanente%22+%7D%0A++++%7D%0A++++if+%28originCautela%3F.person_id+%3D%3D%3D+payload.person_id%29+%7B%0A++++++return+%7B+error%3A+%22Origem+e+destino+n%C3%A3o+podem+ser+a+mesma+pessoa%22+%7D%0A++++%7D%0A++++const+balance+%3D+%28originItem.quantity_delivered+%7C%7C+1%29+-+%28originItem.quantity_returned+%7C%7C+0%29%0A++++if+%28ti.quantity+%3E+balance%29+%7B%0A++++++return+%7B+error%3A+%60Quantidade+transferida+%28%24%7Bti.quantity%7D%29+excede+saldo+dispon%C3%ADvel+%28%24%7Bbalance%7D%29%60+%7D%0A++++%7D%0A++%7D%0A%0A++if+%28availableItems.length+%3E+0%29+%7B%0A++++const+distinctIds+%3D+availableItems.map%28%28m%29+%3D%3E+m.material_id%29%0A++++const+%7B+data%3A+materials%2C+error%3A+matError+%7D+%3D+await+supabase%0A++++++.from%28%22materials%22%29%0A++++++.select%28%22id%2C+name%2C+status%2C+status_atual%2C+stock_quantity%22%29%0A++++++.in%28%22id%22%2C+distinctIds%29%0A%0A++++if+%28matError%29+return+%7B+error%3A+matError.message+%7D%0A++++if+%28%21materials+%7C%7C+materials.length+%21%3D%3D+distinctIds.length%29+%7B%0A++++++return+%7B+error%3A+%22Um+ou+mais+materiais+n%C3%A3o+foram+encontrados%22+%7D%0A++++%7D%0A%0A++++const+unavailable+%3D+materials.filter%28%28m%29+%3D%3E+m.status+%21%3D%3D+%22available%22%29%0A++++if+%28unavailable.length+%3E+0%29+%7B%0A++++++return+%7B+error%3A+formatUnavailableMaterialsMessage%28unavailable%29+%7D%0A++++%7D%0A%0A++++const+merged+%3D+mergeCautelaItems%28availableItems%29%0A++++const+stockErr+%3D+validateCautelaItemsStock%28merged%2C+materials%29%0A++++if+%28stockErr%29+return+%7B+error%3A+stockErr+%7D%0A++%7D%0A%0A++const+now+%3D+new+Date%28%29.toISOString%28%29%0A++const+%7B+data%3A+deadlineData+%7D+%3D+await+supabase.rpc%28%22calc_daily_return_deadline%22%29%0A++const+deadline+%3D+deadlineData+as+string+%7C+null%0A%0A++const+%7B+data%3A+tenantData+%7D+%3D+await+supabase%0A++++.from%28%22usuarios%22%29%0A++++.select%28%22organization_id%2C+unit_id%2C+reserva_id%22%29%0A++++.eq%28%22auth_user_id%22%2C+operatorId%29%0A++++.eq%28%22is_active%22%2C+true%29%0A++++.limit%281%29%0A++++.maybeSingle%28%29%0A%0A++const+tenant+%3D+tenantData+as+%7B+organization_id%3A+string%3B+unit_id%3A+string%3B+reserva_id%3A+string+%7D+%7C+null%0A%0A++const+%7B+data%3A+newCautela%2C+error%3A+createError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.insert%28%7B%0A++++++person_id%3A+payload.person_id%2C%0A++++++operator_id%3A+operatorId%2C%0A++++++type%3A+%22daily%22%2C%0A++++++status%3A+%22open%22%2C%0A++++++notes%3A+payload.notes+%3F%3F+null%2C%0A++++++data_prevista_devolucao%3A+deadline%2C%0A++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++%7D%29%0A++++.select%28%22id%22%29%0A++++.single%28%29%0A%0A++if+%28createError%29+return+%7B+error%3A+createError.message+%7D%0A++const+newCautelaId+%3D+%28newCautela+as+any%29.id%0A%0A++for+%28const+ti+of+transferItems%29+%7B%0A++++const+%7B+data%3A+originItem+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%22id%2C+cautela_id%2C+material_id%2C+quantity_delivered%2C+quantity_returned%2C+status%22%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++.single%28%29%0A%0A++++if+%28%21originItem%29+continue%0A%0A++++const+prevReturned+%3D+originItem.quantity_returned+%7C%7C+0%0A++++const+newReturned+%3D+prevReturned+%2B+ti.quantity%0A++++const+delivered+%3D+originItem.quantity_delivered+%7C%7C+1%0A++++const+itemStatus%3A+%22pending%22+%7C+%22returned%22+%3D+newReturned+%3E%3D+delivered+%3F+%22returned%22+%3A+%22pending%22%0A%0A++++await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.update%28%7B%0A++++++++quantity_returned%3A+newReturned%2C%0A++++++++status%3A+itemStatus%2C%0A++++++++returned_at%3A+itemStatus+%3D%3D%3D+%22returned%22+%3F+now+%3A+null%2C%0A++++++++returned_by%3A+itemStatus+%3D%3D%3D+%22returned%22+%3F+operatorId+%3A+null%2C%0A++++++%7D%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A%0A++++await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.insert%28%7B%0A++++++++cautela_id%3A+newCautelaId%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+%22pending%22%2C%0A++++++++quantity_delivered%3A+ti.quantity%2C%0A++++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++++%7D%29%0A%0A++++await+syncCautelaStatusFromItems%28supabase%2C+originItem.cautela_id%2C+operatorId%2C+now%29%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22item_transferred%22%2C%0A++++++entity%3A+%22cautela_items%22%2C%0A++++++entity_id%3A+ti.transfer_from_cautela_item_id%21%2C%0A++++++before_state%3A+%7B%0A++++++++cautela_id%3A+originItem.cautela_id%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+originItem.status%2C%0A++++++++quantity_returned%3A+prevReturned%2C%0A++++++%7D%2C%0A++++++after_state%3A+%7B%0A++++++++cautela_id_destino%3A+newCautelaId%2C%0A++++++++material_id%3A+ti.material_id%2C%0A++++++++status%3A+itemStatus%2C%0A++++++++quantity_returned%3A+newReturned%2C%0A++++++++quantity_transferred%3A+ti.quantity%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D%0A%0A++if+%28availableItems.length+%3D%3D%3D+0%29+%7B%0A++++await+logAudit%28%7B%0A++++++action%3A+%22cautela_created%22%2C%0A++++++entity%3A+%22cautelas%22%2C%0A++++++entity_id%3A+newCautelaId%2C%0A++++++after_state%3A+%7B%0A++++++++person_id%3A+payload.person_id%2C%0A++++++++type%3A+%22daily%22%2C%0A++++++++materials_count%3A+transferItems.length%2C%0A++++++++items%3A+transferItems.map%28%28ti%29+%3D%3E+%28%7B+material_id%3A+ti.material_id%2C+quantity%3A+ti.quantity+%7D%29%29%2C%0A++++++++transfer_count%3A+transferItems.length%2C%0A++++++++transfer_only%3A+true%2C%0A++++++++auth%3A+%22face%22%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D+else+%7B%0A++++const+merged+%3D+mergeCautelaItems%28availableItems%29%0A%0A++++for+%28const+item+of+merged%29+%7B%0A++++++const+%7B+data%3A+matItem+%7D+%3D+await+supabase%0A++++++++.from%28%22materials%22%29%0A++++++++.select%28%22id%2C+name%2C+stock_quantity%22%29%0A++++++++.eq%28%22id%22%2C+item.material_id%29%0A++++++++.single%28%29%0A%0A++++++if+%28%21matItem%29+continue%0A%0A++++++await+supabase%0A++++++++.from%28%22cautela_items%22%29%0A++++++++.insert%28%7B%0A++++++++++cautela_id%3A+newCautelaId%2C%0A++++++++++material_id%3A+item.material_id%2C%0A++++++++++status%3A+%22pending%22%2C%0A++++++++++quantity_delivered%3A+item.quantity%2C%0A++++++++++organization_id%3A+tenant%3F.organization_id+%3F%3F+null%2C%0A++++++++++unit_id%3A+tenant%3F.unit_id+%3F%3F+null%2C%0A++++++++++reserva_id%3A+tenant%3F.reserva_id+%3F%3F+null%2C%0A++++++++%7D%29%0A%0A++++++const+newStock+%3D+Math.max%280%2C+%28matItem.stock_quantity+%3F%3F+1%29+-+item.quantity%29%0A++++++const+newMatStatus+%3D+newStock+%3C%3D+0+%3F+%22cautelado%22+%3A+%22available%22%0A++++++await+supabase%0A++++++++.from%28%22materials%22%29%0A++++++++.update%28%7B+stock_quantity%3A+newStock%2C+status%3A+newMatStatus%2C+updated_at%3A+now+%7D%29%0A++++++++.eq%28%22id%22%2C+item.material_id%29%0A++++%7D%0A%0A++++await+logAudit%28%7B%0A++++++action%3A+%22cautela_created%22%2C%0A++++++entity%3A+%22cautelas%22%2C%0A++++++entity_id%3A+newCautelaId%2C%0A++++++after_state%3A+%7B%0A++++++++person_id%3A+payload.person_id%2C%0A++++++++type%3A+%22daily%22%2C%0A++++++++materials_count%3A+merged.length%2C%0A++++++++items%3A+merged%2C%0A++++++++transfer_count%3A+transferItems.length%2C%0A++++++++auth%3A+%22face%22%2C%0A++++++%7D%2C%0A++++%7D%29%0A++%7D%0A%0A++await+dispatchCautelaNotifications%28newCautelaId%29.catch%28console.error%29%0A++await+dispatchTransferNotifications%28newCautelaId%2C+transferItems%29.catch%28console.error%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Fmaterials%22%29%0A++return+%7B+success%3A+true%2C+cautelaId%3A+newCautelaId+%7D%0A%7D%0A%0Aasync+function+dispatchTransferNotifications%28%0A++newCautelaId%3A+string%2C%0A++transferItems%3A+%7B+material_id%3A+string%3B+quantity%3A+number%3B+transfer_from_cautela_item_id%3F%3A+string+%7D%5B%5D%0A%29+%7B%0A++if+%28transferItems.length+%3D%3D%3D+0%29+return%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+destCautela+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%60id%2C+persons%28id%2C+full_name%2C+rg%2C+email%2C+phone%29%60%29%0A++++.eq%28%22id%22%2C+newCautelaId%29%0A++++.single%28%29%0A%0A++if+%28%21destCautela%29+return%0A%0A++const+destPerson+%3D+destCautela.persons+as+any%0A++const+originCautelaIds+%3D+new+Set%3Cstring%3E%28%29%0A%0A++for+%28const+ti+of+transferItems%29+%7B%0A++++if+%28%21ti.transfer_from_cautela_item_id%29+continue%0A++++const+%7B+data%3A+originItem+%7D+%3D+await+supabase%0A++++++.from%28%22cautela_items%22%29%0A++++++.select%28%22cautela_id%22%29%0A++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++.single%28%29%0A++++if+%28originItem%29+originCautelaIds.add%28originItem.cautela_id%29%0A++%7D%0A%0A++const+resendKey+%3D+process.env.RESEND_API_KEY%0A++const+archiveEmail+%3D+process.env.ARCHIVE_EMAIL%0A++const+fromEmail+%3D+process.env.RESEND_FROM_EMAIL+%7C%7C+%22onboarding%40resend.dev%22%0A%0A++if+%28%21resendKey%29+return%0A%0A++const+resend+%3D+new+Resend%28resendKey%29%0A%0A++const+%7B+data%3A+materials+%7D+%3D+await+supabase%0A++++.from%28%22materials%22%29%0A++++.select%28%22id%2C+name%2C+patrimony_number%22%29%0A++++.in%28%22id%22%2C+transferItems.map%28%28ti%29+%3D%3E+ti.material_id%29%29%0A%0A++const+matMap+%3D+new+Map%3Cstring%2C+Record%3Cstring%2C+any%3E%3E%28%28materials+%3F%3F+%5B%5D+as+any%5B%5D%29.map%28%28m%3A+any%29+%3D%3E+%5Bm.id%2C+m%5D%29%29%0A%0A++for+%28const+originCautelaId+of+originCautelaIds%29+%7B%0A++++const+%7B+data%3A+originCautela+%7D+%3D+await+supabase%0A++++++.from%28%22cautelas%22%29%0A++++++.select%28%60id%2C+persons%28id%2C+full_name%2C+rg%2C+email%2C+phone%29%60%29%0A++++++.eq%28%22id%22%2C+originCautelaId%29%0A++++++.single%28%29%0A%0A++++if+%28%21originCautela%29+continue%0A++++const+originPerson+%3D+originCautela.persons+as+any%0A%0A++++const+transferredFromThisCautela%3A+typeof+transferItems+%3D+%5B%5D%0A++++for+%28const+ti+of+transferItems%29+%7B%0A++++++if+%28%21ti.transfer_from_cautela_item_id%29+continue%0A++++++const+%7B+data%3A+oi+%7D+%3D+await+supabase%0A++++++++.from%28%22cautela_items%22%29%0A++++++++.select%28%22cautela_id%22%29%0A++++++++.eq%28%22id%22%2C+ti.transfer_from_cautela_item_id%29%0A++++++++.single%28%29%0A++++++if+%28oi%3F.cautela_id+%3D%3D%3D+originCautelaId%29+transferredFromThisCautela.push%28ti%29%0A++++%7D%0A%0A++++const+itemsList+%3D+transferredFromThisCautela%0A++++++.map%28%28ti%29+%3D%3E+%7B%0A++++++++const+m+%3D+matMap.get%28ti.material_id%29%0A++++++++return+%60%E2%80%A2+%24%7Bm%3F.name+%7C%7C+%22Material%22%7D+%28Pat%3A+%24%7Bm%3F.patrimony_number+%7C%7C+%22%3F%22%7D%29+%E2%80%94+%24%7Bti.quantity%7D+un.%60%0A++++++%7D%29%0A++++++.join%28%22%5Cn%22%29%0A%0A++++if+%28originPerson%3F.email%29+%7B%0A++++++try+%7B%0A++++++++await+resend.emails.send%28%7B%0A++++++++++from%3A+fromEmail%2C%0A++++++++++to%3A+%5BoriginPerson.email%5D%2C%0A++++++++++subject%3A+%60Material+transferido+da+sua+cautela+%E2%80%94+%24%7Bnew+Date%28%29.toLocaleDateString%28%22pt-BR%22%29%7D%60%2C%0A++++++++++text%3A+%60Ol%C3%A1+%24%7BoriginPerson.full_name%7D%2C%5Cn%5CnOs+seguintes+materiais+foram+transferidos+da+sua+cautela+para+%24%7BdestPerson%3F.full_name+%7C%7C+%22outra+pessoa%22%7D%3A%5Cn%5Cn%24%7BitemsList%7D%5Cn%5CnSistema+RESERVA%60%2C%0A++++++++%7D%29%0A++++++%7D+catch+%7B%7D%0A++++%7D%0A++%7D%0A%0A++const+allRecipients%3A+string%5B%5D+%3D+%5B%5D%0A++if+%28destPerson%3F.email%29+allRecipients.push%28destPerson.email%29%0A++if+%28archiveEmail%29+allRecipients.push%28archiveEmail%29%0A%0A++if+%28allRecipients.length+%3E+0%29+%7B%0A++++const+itemsList+%3D+transferItems%0A++++++.map%28%28ti%29+%3D%3E+%7B%0A++++++++const+m+%3D+matMap.get%28ti.material_id%29%0A++++++++return+%60%E2%80%A2+%24%7Bm%3F.name+%7C%7C+%22Material%22%7D+%28Pat%3A+%24%7Bm%3F.patrimony_number+%7C%7C+%22%3F%22%7D%29+%E2%80%94+%24%7Bti.quantity%7D+un.+%5BTRANSFERIDO%5D%60%0A++++++%7D%29%0A++++++.join%28%22%5Cn%22%29%0A%0A++++try+%7B%0A++++++await+resend.emails.send%28%7B%0A++++++++from%3A+fromEmail%2C%0A++++++++to%3A+allRecipients%2C%0A++++++++subject%3A+%60Cautela+com+Transfer%C3%AAncia+-+%24%7Bnew+Date%28%29.toLocaleDateString%28%22pt-BR%22%29%7D%60%2C%0A++++++++text%3A+%60Ol%C3%A1+%24%7BdestPerson%3F.full_name+%7C%7C+%22%22%7D%2C%5Cn%5CnVoc%C3%AA+recebeu+materiais+em+cautela+Di%C3%A1ria+%28incluindo+itens+transferidos%29%3A%5Cn%5Cn%24%7BitemsList%7D%5Cn%5CnSistema+RESERVA%60%2C%0A++++++%7D%29%0A++++%7D+catch+%7B%7D%0A++%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+RENOVAR+CAUTELA+%3D%3D%3D%3D%3D%0Aexport+async+function+renewCautela%28%0A++cautelaId%3A+string%2C%0A++newExpirationDate%3F%3A+string%2C%0A++notes%3F%3A+string%0A%29+%7B%0A++const+idParsed+%3D+uuidSchema.safeParse%28cautelaId%29%0A++if+%28%21idParsed.success%29+%7B%0A++++return+%7B+error%3A+%22Identificador+de+cautela+inv%C3%A1lido%22+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+cautela%2C+error%3A+cautelaError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%22id%2C+status%2C+type%2C+person_id%22%29%0A++++.eq%28%22id%22%2C+cautelaId%29%0A++++.single%28%29%0A%0A++if+%28cautelaError+%7C%7C+%21cautela%29+%7B%0A++++return+%7B+error%3A+%22Cautela+n%C3%A3o+encontrada%22+%7D%0A++%7D%0A%0A++const+mod+%3D+validateCautelaModifiable%28cautela%29%0A++if+%28%21mod.valid%29+%7B%0A++++return+%7B+error%3A+mod.error+%7D%0A++%7D%0A%0A++const+user+%3D+auth.user%0A%0A++%2F%2F+3.+Calcular+nova+data+de+expira%C3%A7%C3%A3o+%28padr%C3%A3o%3A+%2B30+dias%29%0A++let+expiresAt+%3D+newExpirationDate%0A++if+%28%21expiresAt%29+%7B%0A++++const+newDate+%3D+new+Date%28%29%0A++++newDate.setDate%28newDate.getDate%28%29+%2B+30%29%0A++++expiresAt+%3D+newDate.toISOString%28%29%0A++%7D%0A%0A++%2F%2F+4.+Atualizar+a+cautela+com+nova+expira%C3%A7%C3%A3o%0A++const+%7B+error%3A+updateError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.update%28%7B%0A++++++expires_at%3A+expiresAt%2C%0A++++++renewed_at%3A+new+Date%28%29.toISOString%28%29%2C%0A++++++renewed_by%3A+user.id%2C%0A++++%7D%29%0A++++.eq%28%22id%22%2C+cautelaId%29%0A%0A++if+%28updateError%29+%7B%0A++++return+%7B+error%3A+%22Erro+ao+renovar+cautela%3A+%22+%2B+updateError.message+%7D%0A++%7D%0A%0A++%2F%2F+5.+Audit+log%0A++await+logAudit%28%7B%0A++++action%3A+%22cautela_renewed%22%2C%0A++++entity%3A+%22cautelas%22%2C%0A++++entity_id%3A+cautelaId%2C%0A++++after_state%3A+%7B%0A++++++expires_at%3A+expiresAt%2C%0A++++++renewed_by%3A+user.id%2C%0A++++++notes%3A+notes+%7C%7C+null%0A++++%7D%2C%0A++%7D%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++return+%7B+success%3A+true%2C+expiresAt+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+CRIAR+RENOVA%C3%87%C3%83O+SIMPLES+%28com+valida%C3%A7%C3%A3o+PIN%29+%3D%3D%3D%3D%3D%0Aexport+async+function+createSimpleCautelaRenewal%28%0A++cautelaId%3A+string%2C%0A++pin%3A+string%0A%29+%7B%0A++const+idParsed+%3D+uuidSchema.safeParse%28cautelaId%29%0A++if+%28%21idParsed.success%29+%7B%0A++++return+%7B+error%3A+%22Identificador+de+cautela+inv%C3%A1lido%22+%7D%0A++%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%3A+cautela%2C+error%3A+cautelaError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.select%28%22id%2C+status%2C+type%2C+person_id%2C+expires_at%22%29%0A++++.eq%28%22id%22%2C+cautelaId%29%0A++++.single%28%29%0A%0A++if+%28cautelaError+%7C%7C+%21cautela%29+%7B%0A++++return+%7B+error%3A+%22Cautela+n%C3%A3o+encontrada%22+%7D%0A++%7D%0A%0A++const+mod+%3D+validateCautelaModifiable%28cautela%29%0A++if+%28%21mod.valid%29+%7B%0A++++return+%7B+error%3A+mod.error+%7D%0A++%7D%0A%0A++const+pinResult+%3D+await+validatePin%28cautela.person_id%2C+pin%29%0A++if+%28%21pinResult.valid%29+%7B%0A++++return+%7B+error%3A+pinResult.error+%7D%0A++%7D%0A%0A++const+user+%3D+auth.user%0A%0A++%2F%2F+4.+Calcular+nova+expira%C3%A7%C3%A3o%0A++const+newExpiresAt+%3D+new+Date%28%29%0A++newExpiresAt.setDate%28newExpiresAt.getDate%28%29+%2B+30%29%0A%0A++%2F%2F+5.+Atualizar+cautela+com+nova+expira%C3%A7%C3%A3o%0A++const+%7B+error%3A+updateError+%7D+%3D+await+supabase%0A++++.from%28%22cautelas%22%29%0A++++.update%28%7B%0A++++++expires_at%3A+newExpiresAt.toISOString%28%29%2C%0A++++++renewed_at%3A+new+Date%28%29.toISOString%28%29%2C%0A++++++renewed_by%3A+user.id%2C%0A++++%7D%29%0A++++.eq%28%22id%22%2C+cautelaId%29%0A%0A++if+%28updateError%29+%7B%0A++++return+%7B+error%3A+%22Erro+ao+renovar+cautela%3A+%22+%2B+updateError.message+%7D%0A++%7D%0A%0A++%2F%2F+6.+Audit+log%0A++await+logAudit%28%7B%0A++++action%3A+%22cautela_renewed%22%2C%0A++++entity%3A+%22cautelas%22%2C%0A++++entity_id%3A+cautelaId%2C%0A++++after_state%3A+%7B%0A++++++expires_at%3A+newExpiresAt.toISOString%28%29%2C%0A++++++renewed_by%3A+user.id%2C%0A++++%7D%2C%0A++%7D%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++return+%7B+success%3A+true%2C+expiresAt%3A+newExpiresAt.toISOString%28%29+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+BUSCAR+HIST%C3%93RICO+DE+RENOVA%C3%87%C3%95ES+%3D%3D%3D%3D%3D%0Aexport+async+function+getCautelaRenewals%28cautelaId%3A+string%29+%7B%0A++await+assertCautelaOperator%28%29%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+supabase%0A++++.from%28%22cautela_renewals%22%29%0A++++.select%28%60%0A++++++%2A%2C%0A++++++profiles%28name%2C+email%29%0A++++%60%29%0A++++.eq%28%22cautela_id%22%2C+cautelaId%29%0A++++.order%28%22created_at%22%2C+%7B+ascending%3A+false+%7D%29%0A%0A++if+%28error%29+return+%7B+error%3A+error.message+%7D%0A++return+%7B+renewals%3A+data+%7C%7C+%5B%5D+%7D%0A%7D%0A%0A%2F%2F+%3D%3D%3D%3D%3D+REGISTRAR+VISTORIA+ANUAL+%28cautela+permanente%29+%3D%3D%3D%3D%3D%0Aexport+async+function+registrarVistoria%28cautelaId%3A+string%2C+observacao%3F%3A+string%29+%7B%0A++const+idParsed+%3D+uuidSchema.safeParse%28cautelaId%29%0A++if+%28%21idParsed.success%29+return+%7B+error%3A+%22ID+de+cautela+inv%C3%A1lido%22+%7D%0A%0A++const+auth+%3D+await+requireCautelaOperator%28%29%0A++if+%28%22error%22+in+auth%29+return+%7B+error%3A+auth.error+%7D%0A%0A++const+supabase+%3D+await+createClient%28%29%0A%0A++const+%7B+data%2C+error+%7D+%3D+await+supabase.rpc%28%22registrar_vistoria%22%2C+%7B%0A++++p_cautela_id%3A+cautelaId%2C%0A++++p_observacao%3A+observacao+%3F%3F+null%2C%0A++%7D%29%0A%0A++if+%28error%29+%7B%0A++++return+%7B+error%3A+mapVistoriaRpcError%28error.message%29+%7D%0A++%7D%0A%0A++const+result+%3D+data+as+%7B%0A++++cautela_id%3A+string%0A++++movimentacao_ids%3F%3A+string%5B%5D%0A++++next_review_date%3F%3A+string%0A++%7D+%7C+null%0A%0A++await+logAudit%28%7B%0A++++action%3A+%22vistoria_registrada%22%2C%0A++++entity%3A+%22cautelas%22%2C%0A++++entity_id%3A+cautelaId%2C%0A++++after_state%3A+%7B%0A++++++movimentacao_ids%3A+result%3F.movimentacao_ids+%3F%3F+%5B%5D%2C%0A++++++next_review_date%3A+result%3F.next_review_date%2C%0A++++++observacao%3A+observacao+%3F%3F+null%2C%0A++++%7D%2C%0A++%7D%29%0A%0A++revalidatePath%28%22%2Fcautelas%22%29%0A++revalidatePath%28%22%2Falerts%22%29%0A++revalidatePath%28%22%2F%22%29%0A++revalidatePath%28%22%2Fhistory%22%29%0A%0A++return+%7B%0A++++success%3A+true%2C%0A++++nextReviewDate%3A+result%3F.next_review_date+%3F%3F+null%2C%0A++%7D%0A%7D%0A
+"use server"
+
+import { createClient } from "@/lib/supabase-server"
+import { revalidatePath } from "next/cache"
+import bcrypt from "bcryptjs"
+import { logAudit } from "./audit"
+import { requireCautelaOperator } from "@/lib/auth-cautela"
+import {
+  PIN_CHANGE_REQUIRED_MESSAGE,
+  personRequiresPinChange,
+} from "@/lib/person-pin-policy"
+import {
+  formatUnavailableMaterialsMessage,
+  mergeCautelaItems,
+  validateCautelaModifiable,
+  type TransferOriginCautela,
+  type TransferOriginItem,
+} from "@/lib/cautela-helpers"
+import {
+  createCautelaFaceAuthInputSchema,
+  createCautelaInputSchema,
+  createCautelaWithTransferInputSchema,
+  createCautelaWithTransferFaceAuthInputSchema,
+  processBulkDevolutionInputSchema,
+  uuidSchema,
+} from "@/lib/cautela-schemas"
+import { sendCautelaSummary } from "@/lib/whatsapp"
+import {
+  computeCautelaStatus,
+  itemBalance,
+  itemIsFullyReturned,
+  itemNeedsReturn,
+  qtyDelivered,
+  qtyReturned,
+  resolveItemStatusAfterReturn,
+} from "@/lib/cautela-return-status"
+import { generateCautelaPDF } from "@/lib/pdf-cautela"
+import { extractCaliber } from "@/lib/cautela-caliber"
+import {
+  packAccessoryAvailabilityFilter,
+  pickPackAccessoryForWeapon,
+  type PackAccessoryCandidate,
+  buildPackAccessoryPool,
+  fetchReservablePackAccessories,
+} from "@/lib/cautela-pack-accessories"
+import { filterReservableMaterials } from "@/lib/cautela-reservable"
+import { tagCautelaFlow } from "@/lib/sentry-flow"
+import {
+  countPoolChargersByStatus,
+  isGlock9mmCharger,
+  isGlock9mmPistol,
+} from "@/lib/glock-9mm-inventory"
+import {
+  canReserveStock,
+  effectiveStock,
+  formatInsufficientStockMessage,
+  resolveStockUnits,
+} from "@/lib/material-stock"
+import { sanitizeIlikeFragment } from "@/lib/search-sanitize"
+import { Resend } from "resend"
+
+async function assertCautelaOperator() {
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) throw new Error(auth.error)
+  return auth
+}
+
+async function dispatchCautelaNotifications(cautelaId: string) {
+  try {
+    const supabase = await createClient()
+    const { data: cautela } = await supabase
+      .from("cautelas")
+      .select(`*, persons(full_name, rg, registration_number, function, phone, email), profiles(name, email), cautela_items(quantity_delivered, materials(name, patrimony_number, internal_code, category))`)
+      .eq("id", cautelaId)
+      .single()
+
+    if (!cautela) return
+
+    const person = cautela.persons as any
+    const operator = cautela.profiles as any
+    const items = (cautela.cautela_items as any[]) ?? []
+
+    // 1. Generate PDF
+    let pdfBuffer: Buffer | null = null
+    try {
+      pdfBuffer = await generateCautelaPDF({
+        cautela: { id: cautela.id, type: cautela.type, status: cautela.status, created_at: cautela.created_at, notes: cautela.notes },
+        person: { full_name: person?.full_name ?? "", rg: person?.rg ?? "", registration_number: person?.registration_number ?? "", function: person?.function },
+        operator: { name: operator?.name ?? "", email: operator?.email ?? "" },
+        items: items.map((i: any) => ({
+          name: i.materials?.name ?? "",
+          patrimony_number: i.materials?.patrimony_number ?? "",
+          internal_code: i.materials?.internal_code ?? "",
+          category: i.materials?.category,
+          quantity_delivered: i.quantity_delivered ?? 1,
+        })),
+      })
+    } catch (e) {
+      console.error("[PDF] Erro ao gerar PDF da cautela:", e)
+    }
+
+    // 2. Send email with PDF attachment
+    const resendKey = process.env.RESEND_API_KEY
+    const archiveEmail = process.env.ARCHIVE_EMAIL
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+    if (resendKey) {
+      try {
+        const resend = new Resend(resendKey)
+        const recipients: string[] = []
+        if (person?.email) recipients.push(person.email)
+        if (archiveEmail) recipients.push(archiveEmail)
+        if (recipients.length > 0) {
+          const itemsList = items.map((i: any) => `• ${i.materials?.name} (Pat: ${i.materials?.patrimony_number})`).join("\n")
+          const attachments = pdfBuffer
+            ? [{ filename: `cautela-${cautelaId.slice(0, 8)}.pdf`, content: pdfBuffer.toString("base64") }]
+            : []
+          await resend.emails.send({
+            from: fromEmail,
+            to: recipients,
+            subject: `Recibo de Cautela - ${new Date(cautela.created_at).toLocaleDateString("pt-BR")}`,
+            text: `Olá ${person?.full_name},\n\nSua cautela foi registrada.\n\nTipo: ${cautela.type === "daily" ? "Diária" : "Permanente"}\nData: ${new Date(cautela.created_at).toLocaleString("pt-BR")}\nOperador: ${operator?.name}\n\nMateriais:\n${itemsList}\n\n${cautela.notes ? `Observações: ${cautela.notes}\n\n` : ""}Sistema RESERVA`,
+            attachments,
+          })
+        }
+      } catch (e) {
+        console.error("[Email] Erro ao enviar email da cautela:", e)
+      }
+    }
+
+    // 3. Send WhatsApp summary
+    if (person?.phone) {
+      await sendCautelaSummary({
+        phone: person.phone,
+        personName: person.full_name,
+        operatorName: operator?.name ?? "Operador",
+        type: cautela.type,
+        date: cautela.created_at,
+        items: items.map((i: any) => ({ name: i.materials?.name ?? "", quantity_delivered: i.quantity_delivered ?? 1 })),
+      })
+    }
+  } catch (e) {
+    console.error("[Notify] Erro nas notificações pós-cautela:", e)
+  }
+}
+
+function mapCreateCautelaRpcError(message: string): string {
+  if (message.includes("EMPTY_MATERIALS")) {
+    return "Selecione pelo menos um material"
+  }
+  if (message.includes("MATERIALS_NOT_ALL_AVAILABLE")) {
+    return "Um ou mais materiais não estão mais disponíveis. Atualize a lista e tente novamente."
+  }
+  if (message.includes("INSUFFICIENT_STOCK")) {
+    return "Estoque insuficiente para um ou mais materiais. Reduza a quantidade ou atualize o cadastro."
+  }
+  if (message.includes("NOT_AUTHENTICATED")) {
+    return "Sessão inválida. Faça login novamente."
+  }
+  return message
+}
+
+function resolveReviewDateForRpc(
+  type: "daily" | "permanent",
+  reviewDate?: string
+): string | null {
+  if (type !== "permanent") return null
+  if (reviewDate) return new Date(reviewDate).toISOString()
+  return null
+}
+
+function mapVistoriaRpcError(message: string): string {
+  if (message.includes("NOT_PERMANENT_CAUTELA")) {
+    return "Vistoria anual só se aplica a cautelas permanentes."
+  }
+  if (message.includes("CAUTELA_NOT_OPEN")) {
+    return "A cautela não está aberta para vistoria."
+  }
+  if (message.includes("NO_PENDING_ITEMS")) {
+    return "Não há itens pendentes para registrar vistoria."
+  }
+  if (message.includes("NOT_AUTHENTICATED")) {
+    return "Sessão inválida. Faça login novamente."
+  }
+  return message
+}
+
+function validateCautelaItemsStock(
+  merged: { material_id: string; quantity: number }[],
+  materials: { id: string; name: string; status: string; stock_quantity: number | null }[]
+): string | null {
+  const byId = new Map(materials.map((m) => [m.id, m]))
+  for (const item of merged) {
+    const m = byId.get(item.material_id)
+    if (!m) continue
+    if (!canReserveStock(m, item.quantity)) {
+      return formatInsufficientStockMessage(m, item.quantity, effectiveStock(m))
+    }
+  }
+  return null
+}
+
+async function restoreMaterialStockAfterReturn(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  cautelaItemId: string,
+  previousReturned: number,
+  newReturned: number,
+  itemStatus: "pending" | "returned" | "damaged" | "missing",
+  qtyDelivered: number
+) {
+  const { error } = await supabase.rpc("registrar_movimentacao_devolucao", {
+    p_cautela_item_id: cautelaItemId,
+    p_previous_returned: previousReturned,
+    p_new_returned: newReturned,
+    p_item_status: itemStatus,
+    p_qty_delivered: qtyDelivered,
+  })
+
+  if (error) throw new Error(error.message)
+}
+
+// ===== LISTAR CAUTELAS =====
+export async function getCautelas(filters?: { status?: string; search?: string }) {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+  let query = supabase
+    .from("cautelas")
+    .select(`
+      *,
+      persons!inner(full_name, rg, registration_number, rg_front_url, rg_back_url),
+      profiles!inner(name, email)
+    `)
+    .order("created_at", { ascending: false })
+
+  if (filters?.status) {
+    query = query.eq("status", filters.status)
+  }
+  if (filters?.search) {
+    query = query.ilike("persons.full_name", `%${filters.search}%`)
+  }
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+
+  // Buscar contagem de itens para cada cautela
+  if (data && data.length > 0) {
+    const cautelaIds = data.map(c => c.id)
+    const { data: items } = await supabase
+      .from("cautela_items")
+      .select("cautela_id, status")
+      .in("cautela_id", cautelaIds)
+
+    return data.map(cautela => {
+      const cautelaItems = items?.filter(i => i.cautela_id === cautela.id) || []
+      const withBalance = cautelaItems.filter((i) => itemNeedsReturn(i))
+      return {
+        ...cautela,
+        items_count: cautelaItems.length,
+        items_returned: cautelaItems.filter((i) => itemIsFullyReturned(i)).length,
+        items_pending: cautelaItems.filter((i) => i.status === "pending").length,
+        items_with_balance: withBalance.length,
+      }
+    })
+  }
+
+  return data || []
+}
+
+// ===== DETALHES DE UMA CAUTELA =====
+export async function getCautelaById(id: string) {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+
+  const { data: cautela, error } = await supabase
+    .from("cautelas")
+    .select(`
+      *,
+      persons(id, full_name, rg, registration_number, function, rg_front_url, rg_back_url),
+      profiles(name, email)
+    `)
+    .eq("id", id)
+    .single()
+
+  if (error) return { error: error.message }
+
+  // Buscar itens com dados do material
+  const { data: items } = await supabase
+    .from("cautela_items")
+    .select(`
+      *,
+      materials(id, name, patrimony_number, serial_number, internal_code, category)
+    `)
+    .eq("cautela_id", id)
+
+  return { cautela, items: items || [] }
+}
+
+async function assertPersonEligibleForCautela(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  personId: string
+): Promise<{ error?: string }> {
+  const { data: person, error } = await supabase
+    .from("persons")
+    .select("pin_hash, must_change_pin")
+    .eq("id", personId)
+    .single()
+
+  if (error || !person) return { error: "Pessoa não encontrada" }
+  if (await personRequiresPinChange(person)) {
+    return { error: PIN_CHANGE_REQUIRED_MESSAGE }
+  }
+  return {}
+}
+
+// ===== VALIDAR PIN =====
+export async function validatePin(personId: string, pin: string) {
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { valid: false, error: auth.error }
+
+  const supabase = await createClient()
+
+  const { data: person, error } = await supabase
+    .from("persons")
+    .select("id, pin_hash, must_change_pin, failed_pin_attempts, pin_locked_until")
+    .eq("id", personId)
+    .single()
+
+  if (error || !person) return { valid: false, error: "Pessoa não encontrada" }
+
+  if (await personRequiresPinChange(person)) {
+    return { valid: false, error: PIN_CHANGE_REQUIRED_MESSAGE }
+  }
+
+  // Verificar bloqueio
+  if (person.pin_locked_until) {
+    const lockUntil = new Date(person.pin_locked_until)
+    if (lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((lockUntil.getTime() - Date.now()) / 60000)
+      return { valid: false, error: `PIN bloqueado. Tente novamente em ${minutesLeft} minuto(s).` }
+    }
+    // Desbloqueio automático
+    await supabase.from("persons").update({ failed_pin_attempts: 0, pin_locked_until: null }).eq("id", personId)
+  }
+
+  // Verificar PIN
+  const isValid = await bcrypt.compare(pin, person.pin_hash)
+
+  if (!isValid) {
+    const attempts = (person.failed_pin_attempts || 0) + 1
+    const update: Record<string, any> = { failed_pin_attempts: attempts }
+
+    if (attempts >= 3) {
+      const lockUntil = new Date(Date.now() + 15 * 60 * 1000) // 15 min
+      update.pin_locked_until = lockUntil.toISOString()
+    }
+
+    await supabase.from("persons").update(update).eq("id", personId)
+    return {
+      valid: false,
+      error: attempts >= 3
+        ? "PIN bloqueado por 15 minutos após 3 tentativas."
+        : `PIN incorreto. ${3 - attempts} tentativa(s) restante(s).`
+    }
+  }
+
+  // Resetar tentativas
+  await supabase.from("persons").update({ failed_pin_attempts: 0, pin_locked_until: null }).eq("id", personId)
+  return { valid: true }
+}
+
+// ===== CRIAR CAUTELA =====
+export async function createCautela(data: {
+  person_id: string
+  type: "daily" | "permanent"
+  items: { material_id: string; quantity?: number }[]
+  notes?: string
+  pin: string
+  review_date?: string
+}) {
+  const parsed = createCautelaInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const merged = mergeCautelaItems(payload.items)
+  const distinctIds = merged.map((m) => m.material_id)
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
+
+  const pinResult = await validatePin(payload.person_id, payload.pin)
+  if (!pinResult.valid) return { error: pinResult.error }
+
+  const { data: materials, error: matError } = await supabase
+    .from("materials")
+    .select("id, name, status, status_atual, stock_quantity")
+    .in("id", distinctIds)
+
+  if (matError) return { error: matError.message }
+  if (!materials || materials.length !== distinctIds.length) {
+    return { error: "Um ou mais materiais não foram encontrados" }
+  }
+
+  const unavailable = materials.filter((m) => m.status !== "available")
+  if (unavailable.length > 0) {
+    return { error: formatUnavailableMaterialsMessage(unavailable) }
+  }
+
+  const stockError = validateCautelaItemsStock(merged, materials)
+  if (stockError) return { error: stockError }
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc("create_cautela_atomic", {
+    p_person_id: payload.person_id,
+    p_type: payload.type,
+    p_notes: payload.notes ?? null,
+    p_items: merged,
+    p_review_date: resolveReviewDateForRpc(payload.type, data.review_date),
+  })
+
+  if (rpcError) {
+    return { error: mapCreateCautelaRpcError(rpcError.message) }
+  }
+
+  const result = rpcData as { cautela_id: string; cautela_item_ids?: string[] } | null
+  const cautelaId = result?.cautela_id
+  if (!cautelaId) {
+    return { error: "Falha ao criar cautela" }
+  }
+
+  await logAudit({
+    action: "cautela_created",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      person_id: payload.person_id,
+      type: payload.type,
+      materials_count: merged.length,
+      items: merged,
+      cautela_item_ids: result?.cautela_item_ids ?? [],
+    },
+  })
+
+  // Disparar notificações (email + WhatsApp) sem bloquear o retorno
+  dispatchCautelaNotifications(cautelaId).catch(console.error)
+
+  tagCautelaFlow("cautela_create", cautelaId)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId }
+}
+
+async function syncCautelaStatusFromItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  cautelaId: string,
+  operatorId: string,
+  now: string
+) {
+  const { data: updatedItems } = await supabase
+    .from("cautela_items")
+    .select("status, quantity_delivered, quantity_returned")
+    .eq("cautela_id", cautelaId)
+
+  const rows = updatedItems || []
+  const cautelaStatus = computeCautelaStatus(rows)
+  const closedAt = cautelaStatus === "closed" || cautelaStatus === "divergent" ? now : null
+
+  await supabase
+    .from("cautelas")
+    .update({ status: cautelaStatus, closed_at: closedAt })
+    .eq("id", cautelaId)
+
+  if (cautelaStatus === "closed" || cautelaStatus === "divergent") {
+    const { data: operatorProfile } = await supabase
+      .from("profiles")
+      .select("name, email")
+      .eq("id", operatorId)
+      .single()
+
+    await logAudit({
+      action: "cautela_closed",
+      entity: "cautelas",
+      entity_id: cautelaId,
+      after_state: {
+        status: cautelaStatus,
+        closed_at: closedAt,
+        operator_id: operatorId,
+        operator_name: operatorProfile?.name || operatorProfile?.email,
+        items_total: rows.length,
+      },
+    })
+  }
+}
+
+// ===== DEVOLVER ITEM (com suporte a quantidade) =====
+export async function returnItem(
+  cautelaItemId: string,
+  status: "returned" | "damaged" | "missing",
+  notes?: string,
+  quantityReturned?: number
+) {
+  const idParsed = uuidSchema.safeParse(cautelaItemId)
+  if (!idParsed.success) {
+    return { error: "Identificador de item inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const operatorId = auth.user.id
+  const supabase = await createClient()
+
+  // 1. Buscar item e material_id
+  const { data: item, error: itemError } = await supabase
+    .from("cautela_items")
+    .select("id, material_id, cautela_id, status, quantity_delivered, quantity_returned")
+    .eq("id", cautelaItemId)
+    .single()
+
+  if (itemError || !item) return { error: "Item não encontrado" }
+  if (!itemNeedsReturn(item)) {
+    return { error: "Este item já foi processado ou não possui saldo pendente" }
+  }
+
+  const delivered = qtyDelivered(item)
+  const now = new Date().toISOString()
+
+  let itemStatus: "pending" | "returned" | "damaged" | "missing" = status
+  let qtyReturn = 0
+
+  if (status === "damaged" || status === "missing") {
+    qtyReturn = 0
+  } else {
+    qtyReturn = quantityReturned ?? delivered
+    const previousReturned = qtyReturned(item)
+    if (qtyReturn < previousReturned) {
+      return {
+        error: `Quantidade devolvida não pode ser menor que o já registrado (${previousReturned})`,
+      }
+    }
+    if (qtyReturn < 0 || qtyReturn > delivered) {
+      return { error: `Quantidade inválida. Deve estar entre 0 e ${delivered}` }
+    }
+    itemStatus = resolveItemStatusAfterReturn(qtyReturn, delivered)
+  }
+
+  const { error: updateItemError } = await supabase
+    .from("cautela_items")
+    .update({
+      status: itemStatus,
+      notes: notes || null,
+      quantity_returned: qtyReturn,
+      returned_at: now,
+      returned_by: operatorId,
+    })
+    .eq("id", cautelaItemId)
+
+  if (updateItemError) return { error: updateItemError.message }
+
+  const previousReturned = qtyReturned(item)
+  await restoreMaterialStockAfterReturn(
+    supabase,
+    cautelaItemId,
+    previousReturned,
+    qtyReturn,
+    itemStatus,
+    delivered
+  )
+
+  await syncCautelaStatusFromItems(supabase, item.cautela_id, operatorId, now)
+
+  // Audit log
+  const auditAction = status === "returned" ? "item_returned" : status === "damaged" ? "item_damaged" : "item_missing"
+  await logAudit({
+    action: auditAction,
+    entity: "cautela_items",
+    entity_id: cautelaItemId,
+    after_state: {
+      status,
+      quantity_returned: qtyReturn,
+      quantity_delivered: qtyDelivered,
+      material_id: item.material_id,
+      cautela_id: item.cautela_id
+    }
+  })
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true }
+}
+
+// ===== PROCESSAR DEVOLUÇÃO EM LOTE (NOVO FLUXO COM TICK) =====
+// Tipos de dados para o novo fluxo
+export interface DevolutionItemData {
+  cautelaItemId: string
+  confirmed?: boolean
+  quantityReturned?: number
+  notes?: string
+  disposition?: "return" | "damaged" | "missing"
+}
+
+export interface ProcessDevolutionResult {
+  success: boolean
+  error?: string
+  processedCount?: number
+  pendingItems?: string[]
+}
+
+export async function processBulkDevolution(
+  cautelaId: string,
+  items: DevolutionItemData[]
+): Promise<ProcessDevolutionResult> {
+  const parsed = processBulkDevolutionInputSchema.safeParse({ cautelaId, items })
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg = (Object.values(first)[0] as string[] | undefined)?.[0] || "Dados inválidos para devolução"
+    return { success: false, error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { success: false, error: auth.error }
+
+  const operatorId = auth.user.id
+  const supabase = await createClient()
+
+  const { data: allCautelaItems, error: itemsError } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, material_id, status, quantity_delivered, quantity_returned,
+      materials(name, patrimony_number)
+    `)
+    .eq("cautela_id", cautelaId)
+
+  if (itemsError) return { success: false, error: itemsError.message }
+
+  const actionableItems = (allCautelaItems || []).filter((i) => itemNeedsReturn(i))
+  if (actionableItems.length === 0) {
+    return { success: false, error: "Nenhum item com saldo pendente nesta cautela" }
+  }
+
+  const actionableIds = actionableItems.map((i) => i.id)
+  const processedIds = items.map((i) => i.cautelaItemId)
+  const unprocessedItems = actionableIds.filter((id) => !processedIds.includes(id))
+
+  if (unprocessedItems.length > 0) {
+    const unprocessedNames = actionableItems
+      .filter((i) => unprocessedItems.includes(i.id))
+      .map((i) => {
+        const m = i.materials as { name?: string; patrimony_number?: string } | null
+        return m?.name || m?.patrimony_number || "Item"
+      })
+    return {
+      success: false,
+      error: `Existem itens que não foram conferidos: ${unprocessedNames.join(", ")}`,
+      pendingItems: unprocessedItems,
+    }
+  }
+
+  const materialName = (ci: (typeof allCautelaItems)[0]) => {
+    const m = ci?.materials as { name?: string; patrimony_number?: string } | null
+    return m?.name || m?.patrimony_number || "Item"
+  }
+
+  for (const item of items) {
+    const cautelaItem = allCautelaItems?.find((ci) => ci.id === item.cautelaItemId)
+    if (!cautelaItem) {
+      return { success: false, error: `Item ${item.cautelaItemId} não encontrado` }
+    }
+
+    const delivered = qtyDelivered(cautelaItem)
+    const disposition = item.disposition ?? "return"
+
+    if (disposition === "damaged" || disposition === "missing") {
+      if (!item.notes?.trim()) {
+        return {
+          success: false,
+          error: `Justificativa obrigatória para "${materialName(cautelaItem)}"`,
+        }
+      }
+      continue
+    }
+
+    if (!item.confirmed && (item.quantityReturned === undefined || item.quantityReturned === null)) {
+      return {
+        success: false,
+        error: `Item "${materialName(cautelaItem)}" não possui devolução total nem quantidade informada`,
+      }
+    }
+
+    const totalReturned = item.confirmed ? delivered : (item.quantityReturned as number)
+    if (totalReturned < qtyReturned(cautelaItem)) {
+      return {
+        success: false,
+        error: `Quantidade devolvida não pode ser menor que o já registrado em "${materialName(cautelaItem)}"`,
+      }
+    }
+    if (totalReturned < 0 || totalReturned > delivered) {
+      return {
+        success: false,
+        error: `Quantidade inválida para "${materialName(cautelaItem)}" (0 a ${delivered})`,
+      }
+    }
+  }
+
+  const now = new Date().toISOString()
+  let processedCount = 0
+
+  for (const item of items) {
+    const cautelaItem = allCautelaItems!.find((ci) => ci.id === item.cautelaItemId)!
+    const delivered = qtyDelivered(cautelaItem)
+    const disposition = item.disposition ?? "return"
+
+    if (disposition === "damaged" || disposition === "missing") {
+      const { error: updateError } = await supabase
+        .from("cautela_items")
+        .update({
+          status: disposition,
+          quantity_returned: 0,
+          returned_at: now,
+          returned_by: operatorId,
+          notes: item.notes || null,
+        })
+        .eq("id", item.cautelaItemId)
+
+      if (updateError) {
+        return { success: false, error: `Erro ao processar item: ${updateError.message}` }
+      }
+
+      await restoreMaterialStockAfterReturn(
+        supabase,
+        item.cautelaItemId,
+        qtyReturned(cautelaItem),
+        0,
+        disposition,
+        delivered
+      )
+
+      await logAudit({
+        action: disposition === "damaged" ? "item_damaged" : "item_missing",
+        entity: "cautela_items",
+        entity_id: item.cautelaItemId,
+        after_state: { status: disposition, cautela_id: cautelaId },
+      })
+      processedCount++
+      continue
+    }
+
+    const totalReturned = item.confirmed ? delivered : (item.quantityReturned as number)
+    const newStatus = resolveItemStatusAfterReturn(totalReturned, delivered)
+    const prevReturned = qtyReturned(cautelaItem)
+
+    const { error: updateError } = await supabase
+      .from("cautela_items")
+      .update({
+        status: newStatus,
+        quantity_returned: totalReturned,
+        returned_at: now,
+        returned_by: operatorId,
+        notes: item.notes || null,
+      })
+      .eq("id", item.cautelaItemId)
+
+    if (updateError) {
+      return { success: false, error: `Erro ao processar item: ${updateError.message}` }
+    }
+
+    await restoreMaterialStockAfterReturn(
+      supabase,
+      item.cautelaItemId,
+      prevReturned,
+      totalReturned,
+      newStatus,
+      delivered
+    )
+
+    await logAudit({
+      action: "item_returned",
+      entity: "cautela_items",
+      entity_id: item.cautelaItemId,
+      after_state: {
+        status: newStatus,
+        quantity_delivered: delivered,
+        quantity_returned: totalReturned,
+        balance: delivered - totalReturned,
+        material_id: cautelaItem.material_id,
+        cautela_id: cautelaId,
+      },
+    })
+
+    processedCount++
+  }
+
+  await syncCautelaStatusFromItems(supabase, cautelaId, operatorId, now)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+
+  return { success: true, processedCount }
+}
+
+// ===== BUSCAR PESSOAS (para autocomplete no wizard) =====
+export async function searchPersons(query: string) {
+  await assertCautelaOperator()
+  const q = sanitizeIlikeFragment(query.trim(), 80)
+  if (q.length < 2) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("persons")
+    .select(
+      "id, full_name, rg, registration_number, function, status, rg_front_url, rg_back_url, face_descriptor, pin_hash"
+    )
+    .eq("status", "active")
+    .or(`full_name.ilike.%${q}%,rg.ilike.%${q}%,registration_number.ilike.%${q}%`)
+    .limit(10)
+
+  if (error) return []
+  return (data ?? []).map(({ pin_hash, ...person }) => ({
+    ...person,
+    has_registered_pin: typeof pin_hash === "string" && pin_hash.length > 0,
+  }))
+}
+
+// ===== BUSCAR MATERIAIS DISPONÍVEIS =====
+export async function getAvailableMaterials(categoryName?: string) {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+  let query = supabase
+    .from("materials")
+    .select("id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
+    .order("name")
+
+  if (categoryName) {
+    query = query.eq("category", categoryName)
+  }
+
+  const { data, error } = await query
+  if (error) return []
+  return filterReservableMaterials(data ?? [], undefined)
+}
+
+// ===== BUSCAR MATERIAIS AGRUPADOS POR CATEGORIA =====
+export async function getAvailableMaterialsGrouped() {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+
+  const { data: materials } = await supabase
+    .from("materials")
+    .select("id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
+    .order("name")
+
+  const reservable = filterReservableMaterials(materials ?? [], undefined)
+  if (!reservable.length) return []
+
+  const byName = new Map<string, typeof reservable>()
+  for (const m of reservable) {
+    const key = m.category || "Geral"
+    const arr = byName.get(key) ?? []
+    arr.push(m)
+    byName.set(key, arr)
+  }
+
+  return Array.from(byName.entries())
+    .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
+    .map(([name, mats]) => ({ name, materials: mats }))
+}
+
+export type SearchableMaterial = {
+  id: string
+  name: string
+  patrimony_number: string
+  serial_number: string | null
+  internal_code: string
+  category: string
+  stock_quantity?: number
+}
+
+/** Busca materiais disponíveis por nome, patrimônio, serial, código interno ou UUID. */
+export async function searchMaterials(
+  query: string,
+  categoryNames?: string[]
+): Promise<SearchableMaterial[]> {
+  await assertCautelaOperator()
+  const raw = query.trim()
+  if (raw.length < 1) return []
+
+  const supabase = await createClient()
+  const select = "id, name, patrimony_number, serial_number, internal_code, category, stock_quantity, status, status_atual"
+
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+  if (uuidPattern.test(raw)) {
+    let qUuid = supabase.from("materials").select(select).eq("status_atual", "DISPONIVEL").eq("id", raw).limit(5)
+    if (categoryNames && categoryNames.length > 0) {
+      qUuid = qUuid.in("category", categoryNames)
+    }
+    const { data } = await qUuid
+    return filterReservableMaterials((data ?? []) as SearchableMaterial[], undefined)
+  }
+
+  const q = sanitizeIlikeFragment(raw, 80)
+  if (q.length < 1) return []
+
+  let qText = supabase
+    .from("materials")
+    .select(select)
+    .eq("status_atual", "DISPONIVEL")
+    .or(`name.ilike.%${q}%,patrimony_number.ilike.%${q}%,serial_number.ilike.%${q}%,internal_code.ilike.%${q}%`)
+    .limit(25)
+
+  if (categoryNames && categoryNames.length > 0) {
+    qText = qText.in("category", categoryNames)
+  }
+
+  const { data, error } = await qText
+
+  if (error) return []
+  return filterReservableMaterials((data ?? []) as SearchableMaterial[], undefined)
+}
+
+/** Resolve carregador ou munição disponível compatível com a arma (pacote pistola/arma longa). */
+export async function resolvePackAccessoryForWeapon(
+  weaponId: string,
+  kind: "charger" | "ammunition"
+): Promise<{ material: SearchableMaterial | null; error?: string }> {
+  await assertCautelaOperator()
+  const multi = await resolvePackAccessoriesForWeapon(weaponId, kind, 1)
+  if (multi.error) return { material: null, error: multi.error }
+  return { material: multi.materials[0] ?? null }
+}
+
+function toSearchableMaterial(m: PackAccessoryCandidate): SearchableMaterial {
+  return {
+    id: m.id,
+    name: m.name,
+    patrimony_number: m.patrimony_number ?? "",
+    serial_number: m.serial_number,
+    internal_code: m.internal_code ?? "",
+    category: m.category ?? "",
+    stock_quantity: m.stock_quantity ?? 1,
+  }
+}
+
+/** Valida quantidade pedida contra estoque disponível (Nova Cautela, antes de gravar). */
+export async function validateMaterialQuantityForCautela(
+  materialId: string,
+  quantity: number
+): Promise<{ ok: true; stock: number } | { ok: false; error: string }> {
+  await assertCautelaOperator()
+  const idParsed = uuidSchema.safeParse(materialId)
+  if (!idParsed.success) return { ok: false, error: "Material inválido" }
+
+  const qty = Math.max(1, Math.floor(quantity))
+  const supabase = await createClient()
+  const { data: material, error } = await supabase
+    .from("materials")
+    .select("id, name, status, status_atual, stock_quantity")
+    .eq("id", materialId)
+    .single()
+
+  if (error || !material) return { ok: false, error: "Material não encontrado" }
+  if (!canReserveStock(material, qty)) {
+    return {
+      ok: false,
+      error: formatInsufficientStockMessage(material, qty, effectiveStock(material)),
+    }
+  }
+  return { ok: true, stock: effectiveStock(material) }
+}
+
+/** Carregadores Glock 9mm do pool QA com status available (qty livre na Nova Cautela). */
+export async function countAvailableGlock9mmChargers(): Promise<number> {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("materials")
+    .select("id, name, category, calibre, marca, patrimony_number, status, status_atual")
+    .eq("status_atual", "DISPONIVEL")
+    .or(packAccessoryAvailabilityFilter("charger"))
+    .limit(500)
+
+  if (error) return 0
+  return (data ?? []).filter((m) => isGlock9mmCharger(m)).length
+}
+
+function weaponCaliberLabel(weapon: {
+  name: string
+  category: string
+  calibre?: string | null
+}): string | null {
+  const fromField = weapon.calibre?.trim()
+  if (fromField) return fromField
+  return extractCaliber(weapon.name) || extractCaliber(weapon.category)
+}
+
+/**
+ * Resolve até `count` acessórios distintos do estoque available.
+ * Pool Glock 9mm só para pistola Glock 9mm; demais armas por marca/modelo/calibre.
+ */
+export async function resolvePackAccessoriesForWeapon(
+  weaponId: string,
+  kind: "charger" | "ammunition",
+  count: number
+): Promise<{ materials: SearchableMaterial[]; error?: string }> {
+  await assertCautelaOperator()
+  if (count < 1) return { materials: [] }
+
+  const idParsed = uuidSchema.safeParse(weaponId)
+  if (!idParsed.success) {
+    return { materials: [], error: "Arma inválida" }
+  }
+
+  const supabase = await createClient()
+  const { data: weapon, error: weaponError } = await supabase
+    .from("materials")
+    .select("id, name, category, calibre, marca, modelo")
+    .eq("id", weaponId)
+    .single()
+
+  if (weaponError || !weapon) {
+    return { materials: [], error: "Arma não encontrada" }
+  }
+
+  let candidates: PackAccessoryCandidate[]
+  try {
+    candidates = await fetchReservablePackAccessories(supabase, kind)
+  } catch (listError) {
+    const msg = listError instanceof Error ? listError.message : "Erro ao listar acessórios"
+    return { materials: [], error: msg }
+  }
+
+  const useGlockPool = isGlock9mmPistol(weapon) && kind === "charger"
+  const poolCandidates = buildPackAccessoryPool(weapon, candidates, kind)
+
+  const resolved = resolveStockUnits(poolCandidates, count, (pool) =>
+    pickPackAccessoryForWeapon(weapon, pool, kind)
+  )
+
+  if (resolved.error || resolved.items.length < count) {
+    const label = kind === "charger" ? "carregador" : "munição"
+    const cal = weaponCaliberLabel(weapon)
+    const calPart = cal ? ` (calibre ${cal})` : ""
+    if (resolved.error) {
+      return { materials: [], error: resolved.error }
+    }
+    if (kind === "charger" && useGlockPool) {
+      const stats = countPoolChargersByStatus(poolCandidates)
+      return {
+        materials: [],
+        error: `Precisa de ${count} ${label}(es) no pool; encontrados ${resolved.items.length} (pool: ${stats.available} livre(s)).`,
+      }
+    }
+    return {
+      materials: [],
+      error:
+        resolved.items.length === 0
+          ? `Nenhum ${label} disponível para ${weapon.name}${calPart}.`
+          : `Precisa de ${count} ${label}(es) compatível(is) com ${weapon.name}${calPart}; em estoque: ${resolved.items[0] ? effectiveStock(resolved.items[0]) : 0}.`,
+    }
+  }
+
+  return { materials: resolved.items.map(toSearchableMaterial) }
+}
+
+// ===== BUSCAR CAUTELA DIÁRIA DE ORIGEM PARA TRANSFERÊNCIA =====
+export async function getDailyCautelaForMaterial(materialId: string): Promise<{
+  origin: TransferOriginCautela | null
+  error?: string
+  permanentBlock?: boolean
+}> {
+  await assertCautelaOperator()
+  const idParsed = uuidSchema.safeParse(materialId)
+  if (!idParsed.success) return { origin: null, error: "Material inválido" }
+
+  const supabase = await createClient()
+
+  const { data: material, error: matError } = await supabase
+    .from("materials")
+    .select("id, status, status_atual")
+    .eq("id", materialId)
+    .single()
+
+  if (matError || !material) return { origin: null, error: "Material não encontrado" }
+
+  const { data: activeItem, error: itemError } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, cautela_id, material_id, status, quantity_delivered, quantity_returned,
+      materials(id, name, patrimony_number, category)
+    `)
+    .eq("material_id", materialId)
+    .in("status", ["pending"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (itemError || !activeItem) return { origin: null }
+
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select(`id, person_id, type, status, persons(id, full_name)`)
+    .eq("id", activeItem.cautela_id)
+    .single()
+
+  if (cautelaError || !cautela) return { origin: null }
+
+  if (cautela.type === "permanent") {
+    return { origin: null, permanentBlock: true }
+  }
+
+  if (cautela.type !== "daily" || !["open", "partial"].includes(cautela.status)) {
+    return { origin: null }
+  }
+
+  const { data: siblingItems } = await supabase
+    .from("cautela_items")
+    .select(`
+      id, material_id, status, quantity_delivered, quantity_returned,
+      materials(id, name, patrimony_number, category)
+    `)
+    .eq("cautela_id", cautela.id)
+
+  const person = cautela.persons as any
+  const transferItems: TransferOriginItem[] = (siblingItems || [])
+    .filter((i: any) => i.status === "pending" && (i.quantity_delivered - (i.quantity_returned || 0)) > 0)
+    .map((i: any) => ({
+      cautela_item_id: i.id,
+      material_id: i.material_id,
+      material_name: i.materials?.name ?? "",
+      patrimony_number: i.materials?.patrimony_number ?? "",
+      quantity_delivered: i.quantity_delivered ?? 1,
+      quantity_returned: i.quantity_returned ?? 0,
+      quantity_available: (i.quantity_delivered ?? 1) - (i.quantity_returned ?? 0),
+      category: i.materials?.category ?? "",
+    }))
+
+  return {
+    origin: {
+      cautela_id: cautela.id,
+      person_id: cautela.person_id,
+      person_name: person?.full_name ?? "",
+      type: cautela.type,
+      status: cautela.status,
+      items: transferItems,
+    },
+  }
+}
+
+// ===== VERIFICAR CAUTELAS DIÁRIAS PENDENTES DE UMA PESSOA =====
+// Regra: Apenas cautelas DIÁRIAS geram alerta de pendência
+// Cautelas Permanentes NÃO geram alerta (não possuem prazo de devolução)
+export async function getPendingCautelasForPerson(personId: string) {
+  await assertCautelaOperator()
+  const idParsed = uuidSchema.safeParse(personId)
+  if (!idParsed.success) return []
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("cautelas")
+    .select(`
+      id, type, status, created_at, notes,
+      profiles(name),
+      cautela_items(
+        id, cautela_id, status,
+        materials(name, patrimony_number)
+      )
+    `)
+    .eq("person_id", personId)
+    .eq("type", "daily")
+    .in("status", ["open", "partial"])
+    .order("created_at", { ascending: false })
+
+  if (error) return []
+  if (!data || data.length === 0) return []
+
+  const vinteQuatroHorasAtras = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+  return data.map((cautela) => {
+    const rawItems = cautela.cautela_items || []
+    const cautelaItems = rawItems.filter((i: { status: string }) => i.status === "pending")
+    return {
+      id: cautela.id,
+      type: cautela.type,
+      status: cautela.status,
+      created_at: cautela.created_at,
+      notes: cautela.notes,
+      profiles: cautela.profiles,
+      is_overdue: new Date(cautela.created_at) < vinteQuatroHorasAtras,
+      items: cautelaItems,
+      items_count: cautelaItems.length,
+    }
+  })
+}
+
+// ===== CRIAR CAUTELA COM VERIFICAÇÃO FACIAL (sem PIN) =====
+export async function createCautelaFaceAuth(data: {
+  person_id: string
+  type: "daily" | "permanent"
+  items: { material_id: string; quantity?: number }[]
+  notes?: string
+  review_date?: string
+}) {
+  const parsed = createCautelaFaceAuthInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const merged = mergeCautelaItems(payload.items)
+  const distinctIds = merged.map((m) => m.material_id)
+
+  const pinPolicyFace = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicyFace.error) return { error: pinPolicyFace.error }
+
+  const { data: materials, error: matError } = await supabase
+    .from("materials")
+    .select("id, name, status, status_atual, stock_quantity")
+    .in("id", distinctIds)
+
+  if (matError) return { error: matError.message }
+  if (!materials || materials.length !== distinctIds.length) {
+    return { error: "Um ou mais materiais não foram encontrados" }
+  }
+
+  const unavailable = materials.filter((m) => m.status !== "available")
+  if (unavailable.length > 0) {
+    return { error: formatUnavailableMaterialsMessage(unavailable) }
+  }
+
+  const stockErrorFace = validateCautelaItemsStock(merged, materials)
+  if (stockErrorFace) return { error: stockErrorFace }
+
+  const { data: rpcDataFace, error: rpcErrorFace } = await supabase.rpc("create_cautela_atomic", {
+    p_person_id: payload.person_id,
+    p_type: payload.type,
+    p_notes: payload.notes ?? null,
+    p_items: merged,
+    p_review_date: resolveReviewDateForRpc(payload.type, data.review_date),
+  })
+
+  if (rpcErrorFace) {
+    return { error: mapCreateCautelaRpcError(rpcErrorFace.message) }
+  }
+
+  const resultFace = rpcDataFace as { cautela_id: string; cautela_item_ids?: string[] } | null
+  const cautelaIdFace = resultFace?.cautela_id
+  if (!cautelaIdFace) {
+    return { error: "Falha ao criar cautela" }
+  }
+
+  await logAudit({
+    action: "cautela_created",
+    entity: "cautelas",
+    entity_id: cautelaIdFace,
+    after_state: {
+      person_id: payload.person_id,
+      type: payload.type,
+      materials_count: merged.length,
+      items: merged,
+      cautela_item_ids: resultFace?.cautela_item_ids ?? [],
+      auth: "face",
+    },
+  })
+
+  // Disparar notificações (email + WhatsApp) sem bloquear o retorno
+  dispatchCautelaNotifications(cautelaIdFace).catch(console.error)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId: cautelaIdFace }
+}
+
+// ===== CRIAR CAUTELA COM TRANSFERÊNCIA (PIN) =====
+export async function createCautelaWithTransfer(data: {
+  person_id: string
+  type: "daily"
+  items: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+  notes?: string
+  pin: string
+}) {
+  const parsed = createCautelaWithTransferInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela com transferência"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const operatorId = auth.user.id
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
+
+  const pinResult = await validatePin(payload.person_id, payload.pin)
+  if (!pinResult.valid) return { error: pinResult.error }
+
+  const transferItems = payload.items.filter((i) => i.transfer_from_cautela_item_id)
+  const availableItems = payload.items.filter((i) => !i.transfer_from_cautela_item_id)
+
+  for (const ti of transferItems) {
+    const { data: originItem, error: originError } = await supabase
+      .from("cautela_items")
+      .select(`id, cautela_id, material_id, status, quantity_delivered, quantity_returned, cautelas(person_id, type)`)
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (originError || !originItem) return { error: "Item de origem não encontrado" }
+
+    const originCautela = originItem.cautelas as any
+    if (originCautela?.type === "permanent") {
+      return { error: "Transferência não permitida para materiais em cautela Permanente" }
+    }
+    if (originCautela?.person_id === payload.person_id) {
+      return { error: "Origem e destino não podem ser a mesma pessoa" }
+    }
+    const balance = (originItem.quantity_delivered || 1) - (originItem.quantity_returned || 0)
+    if (ti.quantity > balance) {
+      return { error: `Quantidade transferida (${ti.quantity}) excede saldo disponível (${balance})` }
+    }
+  }
+
+  if (availableItems.length > 0) {
+    const distinctIds = availableItems.map((m) => m.material_id)
+    const { data: materials, error: matError } = await supabase
+      .from("materials")
+      .select("id, name, status, status_atual, stock_quantity")
+      .in("id", distinctIds)
+
+    if (matError) return { error: matError.message }
+    if (!materials || materials.length !== distinctIds.length) {
+      return { error: "Um ou mais materiais não foram encontrados" }
+    }
+
+    const unavailable = materials.filter((m) => m.status !== "available")
+    if (unavailable.length > 0) {
+      return { error: formatUnavailableMaterialsMessage(unavailable) }
+    }
+
+    const merged = mergeCautelaItems(availableItems)
+    const stockErr = validateCautelaItemsStock(merged, materials)
+    if (stockErr) return { error: stockErr }
+  }
+
+  const now = new Date().toISOString()
+  const { data: deadlineData } = await supabase.rpc("calc_daily_return_deadline")
+  const deadline = deadlineData as string | null
+
+  const { data: tenantData } = await supabase
+    .from("usuarios")
+    .select("organization_id, unit_id, reserva_id")
+    .eq("auth_user_id", operatorId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+
+  const tenant = tenantData as { organization_id: string; unit_id: string; reserva_id: string } | null
+
+  const { data: newCautela, error: createError } = await supabase
+    .from("cautelas")
+    .insert({
+      person_id: payload.person_id,
+      operator_id: operatorId,
+      type: "daily",
+      status: "open",
+      notes: payload.notes ?? null,
+      data_prevista_devolucao: deadline,
+      organization_id: tenant?.organization_id ?? null,
+      unit_id: tenant?.unit_id ?? null,
+      reserva_id: tenant?.reserva_id ?? null,
+    })
+    .select("id")
+    .single()
+
+  if (createError) return { error: createError.message }
+  const newCautelaId = (newCautela as any).id
+
+  for (const ti of transferItems) {
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("id, cautela_id, material_id, quantity_delivered, quantity_returned, status")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (!originItem) continue
+
+    const prevReturned = originItem.quantity_returned || 0
+    const newReturned = prevReturned + ti.quantity
+    const delivered = originItem.quantity_delivered || 1
+    const itemStatus: "pending" | "returned" = newReturned >= delivered ? "returned" : "pending"
+
+    await supabase
+      .from("cautela_items")
+      .update({
+        quantity_returned: newReturned,
+        status: itemStatus,
+        returned_at: itemStatus === "returned" ? now : null,
+        returned_by: itemStatus === "returned" ? operatorId : null,
+      })
+      .eq("id", ti.transfer_from_cautela_item_id)
+
+    await supabase
+      .from("cautela_items")
+      .insert({
+        cautela_id: newCautelaId,
+        material_id: ti.material_id,
+        status: "pending",
+        quantity_delivered: ti.quantity,
+        organization_id: tenant?.organization_id ?? null,
+        unit_id: tenant?.unit_id ?? null,
+        reserva_id: tenant?.reserva_id ?? null,
+      })
+
+    await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
+
+    await logAudit({
+      action: "item_transferred",
+      entity: "cautela_items",
+      entity_id: ti.transfer_from_cautela_item_id!,
+      before_state: {
+        cautela_id: originItem.cautela_id,
+        material_id: ti.material_id,
+        status: originItem.status,
+        quantity_returned: prevReturned,
+      },
+      after_state: {
+        cautela_id_destino: newCautelaId,
+        material_id: ti.material_id,
+        status: itemStatus,
+        quantity_returned: newReturned,
+        quantity_transferred: ti.quantity,
+      },
+    })
+  }
+
+  if (availableItems.length === 0) {
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: transferItems.length,
+        items: transferItems.map((ti) => ({ material_id: ti.material_id, quantity: ti.quantity })),
+        transfer_count: transferItems.length,
+        transfer_only: true,
+      },
+    })
+  } else {
+    const merged = mergeCautelaItems(availableItems)
+
+    for (const item of merged) {
+      const { data: matItem } = await supabase
+        .from("materials")
+        .select("id, name, stock_quantity")
+        .eq("id", item.material_id)
+        .single()
+
+      if (!matItem) continue
+
+      await supabase
+        .from("cautela_items")
+        .insert({
+          cautela_id: newCautelaId,
+          material_id: item.material_id,
+          status: "pending",
+          quantity_delivered: item.quantity,
+          organization_id: tenant?.organization_id ?? null,
+          unit_id: tenant?.unit_id ?? null,
+          reserva_id: tenant?.reserva_id ?? null,
+        })
+
+      const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
+      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
+      await supabase
+        .from("materials")
+        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
+        .eq("id", item.material_id)
+    }
+
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: merged.length,
+        items: merged,
+        transfer_count: transferItems.length,
+      },
+    })
+  }
+
+  await dispatchCautelaNotifications(newCautelaId).catch(console.error)
+  await dispatchTransferNotifications(newCautelaId, transferItems).catch(console.error)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId: newCautelaId }
+}
+
+// ===== CRIAR CAUTELA COM TRANSFERÊNCIA (VERIFICAÇÃO FACIAL) =====
+export async function createCautelaWithTransferFaceAuth(data: {
+  person_id: string
+  type: "daily"
+  items: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+  notes?: string
+}) {
+  const parsed = createCautelaWithTransferFaceAuthInputSchema.safeParse(data)
+  if (!parsed.success) {
+    const first = parsed.error.flatten().fieldErrors
+    const msg =
+      (Object.values(first)[0] as string[] | undefined)?.[0] ||
+      "Dados inválidos para abertura da cautela com transferência"
+    return { error: msg }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+  const payload = parsed.data
+  const operatorId = auth.user.id
+
+  const pinPolicy = await assertPersonEligibleForCautela(supabase, payload.person_id)
+  if (pinPolicy.error) return { error: pinPolicy.error }
+
+  const transferItems = payload.items.filter((i) => i.transfer_from_cautela_item_id)
+  const availableItems = payload.items.filter((i) => !i.transfer_from_cautela_item_id)
+
+  for (const ti of transferItems) {
+    const { data: originItem, error: originError } = await supabase
+      .from("cautela_items")
+      .select(`id, cautela_id, material_id, status, quantity_delivered, quantity_returned, cautelas(person_id, type)`)
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (originError || !originItem) return { error: "Item de origem não encontrado" }
+
+    const originCautela = originItem.cautelas as any
+    if (originCautela?.type === "permanent") {
+      return { error: "Transferência não permitida para materiais em cautela Permanente" }
+    }
+    if (originCautela?.person_id === payload.person_id) {
+      return { error: "Origem e destino não podem ser a mesma pessoa" }
+    }
+    const balance = (originItem.quantity_delivered || 1) - (originItem.quantity_returned || 0)
+    if (ti.quantity > balance) {
+      return { error: `Quantidade transferida (${ti.quantity}) excede saldo disponível (${balance})` }
+    }
+  }
+
+  if (availableItems.length > 0) {
+    const distinctIds = availableItems.map((m) => m.material_id)
+    const { data: materials, error: matError } = await supabase
+      .from("materials")
+      .select("id, name, status, status_atual, stock_quantity")
+      .in("id", distinctIds)
+
+    if (matError) return { error: matError.message }
+    if (!materials || materials.length !== distinctIds.length) {
+      return { error: "Um ou mais materiais não foram encontrados" }
+    }
+
+    const unavailable = materials.filter((m) => m.status !== "available")
+    if (unavailable.length > 0) {
+      return { error: formatUnavailableMaterialsMessage(unavailable) }
+    }
+
+    const merged = mergeCautelaItems(availableItems)
+    const stockErr = validateCautelaItemsStock(merged, materials)
+    if (stockErr) return { error: stockErr }
+  }
+
+  const now = new Date().toISOString()
+  const { data: deadlineData } = await supabase.rpc("calc_daily_return_deadline")
+  const deadline = deadlineData as string | null
+
+  const { data: tenantData } = await supabase
+    .from("usuarios")
+    .select("organization_id, unit_id, reserva_id")
+    .eq("auth_user_id", operatorId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+
+  const tenant = tenantData as { organization_id: string; unit_id: string; reserva_id: string } | null
+
+  const { data: newCautela, error: createError } = await supabase
+    .from("cautelas")
+    .insert({
+      person_id: payload.person_id,
+      operator_id: operatorId,
+      type: "daily",
+      status: "open",
+      notes: payload.notes ?? null,
+      data_prevista_devolucao: deadline,
+      organization_id: tenant?.organization_id ?? null,
+      unit_id: tenant?.unit_id ?? null,
+      reserva_id: tenant?.reserva_id ?? null,
+    })
+    .select("id")
+    .single()
+
+  if (createError) return { error: createError.message }
+  const newCautelaId = (newCautela as any).id
+
+  for (const ti of transferItems) {
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("id, cautela_id, material_id, quantity_delivered, quantity_returned, status")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+
+    if (!originItem) continue
+
+    const prevReturned = originItem.quantity_returned || 0
+    const newReturned = prevReturned + ti.quantity
+    const delivered = originItem.quantity_delivered || 1
+    const itemStatus: "pending" | "returned" = newReturned >= delivered ? "returned" : "pending"
+
+    await supabase
+      .from("cautela_items")
+      .update({
+        quantity_returned: newReturned,
+        status: itemStatus,
+        returned_at: itemStatus === "returned" ? now : null,
+        returned_by: itemStatus === "returned" ? operatorId : null,
+      })
+      .eq("id", ti.transfer_from_cautela_item_id)
+
+    await supabase
+      .from("cautela_items")
+      .insert({
+        cautela_id: newCautelaId,
+        material_id: ti.material_id,
+        status: "pending",
+        quantity_delivered: ti.quantity,
+        organization_id: tenant?.organization_id ?? null,
+        unit_id: tenant?.unit_id ?? null,
+        reserva_id: tenant?.reserva_id ?? null,
+      })
+
+    await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
+
+    await logAudit({
+      action: "item_transferred",
+      entity: "cautela_items",
+      entity_id: ti.transfer_from_cautela_item_id!,
+      before_state: {
+        cautela_id: originItem.cautela_id,
+        material_id: ti.material_id,
+        status: originItem.status,
+        quantity_returned: prevReturned,
+      },
+      after_state: {
+        cautela_id_destino: newCautelaId,
+        material_id: ti.material_id,
+        status: itemStatus,
+        quantity_returned: newReturned,
+        quantity_transferred: ti.quantity,
+      },
+    })
+  }
+
+  if (availableItems.length === 0) {
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: transferItems.length,
+        items: transferItems.map((ti) => ({ material_id: ti.material_id, quantity: ti.quantity })),
+        transfer_count: transferItems.length,
+        transfer_only: true,
+        auth: "face",
+      },
+    })
+  } else {
+    const merged = mergeCautelaItems(availableItems)
+
+    for (const item of merged) {
+      const { data: matItem } = await supabase
+        .from("materials")
+        .select("id, name, stock_quantity")
+        .eq("id", item.material_id)
+        .single()
+
+      if (!matItem) continue
+
+      await supabase
+        .from("cautela_items")
+        .insert({
+          cautela_id: newCautelaId,
+          material_id: item.material_id,
+          status: "pending",
+          quantity_delivered: item.quantity,
+          organization_id: tenant?.organization_id ?? null,
+          unit_id: tenant?.unit_id ?? null,
+          reserva_id: tenant?.reserva_id ?? null,
+        })
+
+      const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
+      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
+      await supabase
+        .from("materials")
+        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
+        .eq("id", item.material_id)
+    }
+
+    await logAudit({
+      action: "cautela_created",
+      entity: "cautelas",
+      entity_id: newCautelaId,
+      after_state: {
+        person_id: payload.person_id,
+        type: "daily",
+        materials_count: merged.length,
+        items: merged,
+        transfer_count: transferItems.length,
+        auth: "face",
+      },
+    })
+  }
+
+  await dispatchCautelaNotifications(newCautelaId).catch(console.error)
+  await dispatchTransferNotifications(newCautelaId, transferItems).catch(console.error)
+
+  revalidatePath("/cautelas")
+  revalidatePath("/materials")
+  return { success: true, cautelaId: newCautelaId }
+}
+
+async function dispatchTransferNotifications(
+  newCautelaId: string,
+  transferItems: { material_id: string; quantity: number; transfer_from_cautela_item_id?: string }[]
+) {
+  if (transferItems.length === 0) return
+
+  const supabase = await createClient()
+
+  const { data: destCautela } = await supabase
+    .from("cautelas")
+    .select(`id, persons(id, full_name, rg, email, phone)`)
+    .eq("id", newCautelaId)
+    .single()
+
+  if (!destCautela) return
+
+  const destPerson = destCautela.persons as any
+  const originCautelaIds = new Set<string>()
+
+  for (const ti of transferItems) {
+    if (!ti.transfer_from_cautela_item_id) continue
+    const { data: originItem } = await supabase
+      .from("cautela_items")
+      .select("cautela_id")
+      .eq("id", ti.transfer_from_cautela_item_id)
+      .single()
+    if (originItem) originCautelaIds.add(originItem.cautela_id)
+  }
+
+  const resendKey = process.env.RESEND_API_KEY
+  const archiveEmail = process.env.ARCHIVE_EMAIL
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev"
+
+  if (!resendKey) return
+
+  const resend = new Resend(resendKey)
+
+  const { data: materials } = await supabase
+    .from("materials")
+    .select("id, name, patrimony_number")
+    .in("id", transferItems.map((ti) => ti.material_id))
+
+  const matMap = new Map<string, Record<string, any>>((materials ?? [] as any[]).map((m: any) => [m.id, m]))
+
+  for (const originCautelaId of originCautelaIds) {
+    const { data: originCautela } = await supabase
+      .from("cautelas")
+      .select(`id, persons(id, full_name, rg, email, phone)`)
+      .eq("id", originCautelaId)
+      .single()
+
+    if (!originCautela) continue
+    const originPerson = originCautela.persons as any
+
+    const transferredFromThisCautela: typeof transferItems = []
+    for (const ti of transferItems) {
+      if (!ti.transfer_from_cautela_item_id) continue
+      const { data: oi } = await supabase
+        .from("cautela_items")
+        .select("cautela_id")
+        .eq("id", ti.transfer_from_cautela_item_id)
+        .single()
+      if (oi?.cautela_id === originCautelaId) transferredFromThisCautela.push(ti)
+    }
+
+    const itemsList = transferredFromThisCautela
+      .map((ti) => {
+        const m = matMap.get(ti.material_id)
+        return `• ${m?.name || "Material"} (Pat: ${m?.patrimony_number || "?"}) — ${ti.quantity} un.`
+      })
+      .join("\n")
+
+    if (originPerson?.email) {
+      try {
+        await resend.emails.send({
+          from: fromEmail,
+          to: [originPerson.email],
+          subject: `Material transferido da sua cautela — ${new Date().toLocaleDateString("pt-BR")}`,
+          text: `Olá ${originPerson.full_name},\n\nOs seguintes materiais foram transferidos da sua cautela para ${destPerson?.full_name || "outra pessoa"}:\n\n${itemsList}\n\nSistema RESERVA`,
+        })
+      } catch {}
+    }
+  }
+
+  const allRecipients: string[] = []
+  if (destPerson?.email) allRecipients.push(destPerson.email)
+  if (archiveEmail) allRecipients.push(archiveEmail)
+
+  if (allRecipients.length > 0) {
+    const itemsList = transferItems
+      .map((ti) => {
+        const m = matMap.get(ti.material_id)
+        return `• ${m?.name || "Material"} (Pat: ${m?.patrimony_number || "?"}) — ${ti.quantity} un. [TRANSFERIDO]`
+      })
+      .join("\n")
+
+    try {
+      await resend.emails.send({
+        from: fromEmail,
+        to: allRecipients,
+        subject: `Cautela com Transferência - ${new Date().toLocaleDateString("pt-BR")}`,
+        text: `Olá ${destPerson?.full_name || ""},\n\nVocê recebeu materiais em cautela Diária (incluindo itens transferidos):\n\n${itemsList}\n\nSistema RESERVA`,
+      })
+    } catch {}
+  }
+}
+
+// ===== RENOVAR CAUTELA =====
+export async function renewCautela(
+  cautelaId: string,
+  newExpirationDate?: string,
+  notes?: string
+) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) {
+    return { error: "Identificador de cautela inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select("id, status, type, person_id")
+    .eq("id", cautelaId)
+    .single()
+
+  if (cautelaError || !cautela) {
+    return { error: "Cautela não encontrada" }
+  }
+
+  const mod = validateCautelaModifiable(cautela)
+  if (!mod.valid) {
+    return { error: mod.error }
+  }
+
+  const user = auth.user
+
+  // 3. Calcular nova data de expiração (padrão: +30 dias)
+  let expiresAt = newExpirationDate
+  if (!expiresAt) {
+    const newDate = new Date()
+    newDate.setDate(newDate.getDate() + 30)
+    expiresAt = newDate.toISOString()
+  }
+
+  // 4. Atualizar a cautela com nova expiração
+  const { error: updateError } = await supabase
+    .from("cautelas")
+    .update({
+      expires_at: expiresAt,
+      renewed_at: new Date().toISOString(),
+      renewed_by: user.id,
+    })
+    .eq("id", cautelaId)
+
+  if (updateError) {
+    return { error: "Erro ao renovar cautela: " + updateError.message }
+  }
+
+  // 5. Audit log
+  await logAudit({
+    action: "cautela_renewed",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      expires_at: expiresAt,
+      renewed_by: user.id,
+      notes: notes || null
+    },
+  })
+
+  revalidatePath("/cautelas")
+  return { success: true, expiresAt }
+}
+
+// ===== CRIAR RENOVAÇÃO SIMPLES (com validação PIN) =====
+export async function createSimpleCautelaRenewal(
+  cautelaId: string,
+  pin: string
+) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) {
+    return { error: "Identificador de cautela inválido" }
+  }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+
+  const { data: cautela, error: cautelaError } = await supabase
+    .from("cautelas")
+    .select("id, status, type, person_id, expires_at")
+    .eq("id", cautelaId)
+    .single()
+
+  if (cautelaError || !cautela) {
+    return { error: "Cautela não encontrada" }
+  }
+
+  const mod = validateCautelaModifiable(cautela)
+  if (!mod.valid) {
+    return { error: mod.error }
+  }
+
+  const pinResult = await validatePin(cautela.person_id, pin)
+  if (!pinResult.valid) {
+    return { error: pinResult.error }
+  }
+
+  const user = auth.user
+
+  // 4. Calcular nova expiração
+  const newExpiresAt = new Date()
+  newExpiresAt.setDate(newExpiresAt.getDate() + 30)
+
+  // 5. Atualizar cautela com nova expiração
+  const { error: updateError } = await supabase
+    .from("cautelas")
+    .update({
+      expires_at: newExpiresAt.toISOString(),
+      renewed_at: new Date().toISOString(),
+      renewed_by: user.id,
+    })
+    .eq("id", cautelaId)
+
+  if (updateError) {
+    return { error: "Erro ao renovar cautela: " + updateError.message }
+  }
+
+  // 6. Audit log
+  await logAudit({
+    action: "cautela_renewed",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      expires_at: newExpiresAt.toISOString(),
+      renewed_by: user.id,
+    },
+  })
+
+  revalidatePath("/cautelas")
+  return { success: true, expiresAt: newExpiresAt.toISOString() }
+}
+
+// ===== BUSCAR HISTÓRICO DE RENOVAÇÕES =====
+export async function getCautelaRenewals(cautelaId: string) {
+  await assertCautelaOperator()
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("cautela_renewals")
+    .select(`
+      *,
+      profiles(name, email)
+    `)
+    .eq("cautela_id", cautelaId)
+    .order("created_at", { ascending: false })
+
+  if (error) return { error: error.message }
+  return { renewals: data || [] }
+}
+
+// ===== REGISTRAR VISTORIA ANUAL (cautela permanente) =====
+export async function registrarVistoria(cautelaId: string, observacao?: string) {
+  const idParsed = uuidSchema.safeParse(cautelaId)
+  if (!idParsed.success) return { error: "ID de cautela inválido" }
+
+  const auth = await requireCautelaOperator()
+  if ("error" in auth) return { error: auth.error }
+
+  const supabase = await createClient()
+
+  const { data, error } = await supabase.rpc("registrar_vistoria", {
+    p_cautela_id: cautelaId,
+    p_observacao: observacao ?? null,
+  })
+
+  if (error) {
+    return { error: mapVistoriaRpcError(error.message) }
+  }
+
+  const result = data as {
+    cautela_id: string
+    movimentacao_ids?: string[]
+    next_review_date?: string
+  } | null
+
+  await logAudit({
+    action: "vistoria_registrada",
+    entity: "cautelas",
+    entity_id: cautelaId,
+    after_state: {
+      movimentacao_ids: result?.movimentacao_ids ?? [],
+      next_review_date: result?.next_review_date,
+      observacao: observacao ?? null,
+    },
+  })
+
+  revalidatePath("/cautelas")
+  revalidatePath("/alerts")
+  revalidatePath("/")
+  revalidatePath("/history")
+
+  return {
+    success: true,
+    nextReviewDate: result?.next_review_date ?? null,
+  }
+}
