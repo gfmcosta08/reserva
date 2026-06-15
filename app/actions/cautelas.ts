@@ -1043,9 +1043,10 @@ export async function resolvePackAccessoriesForWeapon(
   const useGlockPool = isGlock9mmPistol(weapon) && kind === "charger"
   const poolCandidates = buildPackAccessoryPool(weapon, candidates, kind)
 
-  const resolved = resolveStockUnits(poolCandidates, count, (pool) =>
-    pickPackAccessoryForWeapon(weapon, pool, kind)
-  )
+  const resolved = resolveStockUnits(poolCandidates, count, (pool) => {
+    const picked = pickPackAccessoryForWeapon(weapon, pool, kind)
+    return picked[0] ?? null
+  })
 
   if (resolved.error || resolved.items.length < count) {
     const label = kind === "charger" ? "carregador" : "munição"
