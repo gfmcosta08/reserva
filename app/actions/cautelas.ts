@@ -870,7 +870,7 @@ export async function getAvailableMaterialsGrouped() {
     byName.set(key, arr)
   }
 
-  return [...byName.entries()]
+  return Array.from(byName.entries())
     .sort(([a], [b]) => a.localeCompare(b, "pt-BR"))
     .map(([name, mats]) => ({ name, materials: mats }))
 }
@@ -1824,7 +1824,7 @@ async function dispatchTransferNotifications(
     .select("id, name, patrimony_number")
     .in("id", transferItems.map((ti) => ti.material_id))
 
-  const matMap = new Map((materials ?? []).map((m: any) => [m.id, m]))
+  const matMap = new Map<string, Record<string, any>>((materials ?? [] as any[]).map((m: any) => [m.id, m]))
 
   for (const originCautelaId of originCautelaIds) {
     const { data: originCautela } = await supabase
