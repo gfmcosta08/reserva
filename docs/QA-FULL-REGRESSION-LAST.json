@@ -1,0 +1,110 @@
+{
+  "startedAt": "2026-06-07T01:19:41.770Z",
+  "finishedAt": "2026-06-07T01:31:07.906Z",
+  "baseUrl": "https://reserva-teste.vercel.app",
+  "version": null,
+  "runs": 3,
+  "browserOnly": false,
+  "gate": "playwright-chromium",
+  "allOk": true,
+  "e2eSpecs": [
+    {
+      "file": "e2e-01-login.spec.ts",
+      "covers": "Login supervisor e navegação para Cautelas"
+    },
+    {
+      "file": "e2e-02-nova-cautela.spec.ts",
+      "covers": "Nova cautela diária (mat. 999888 + PIN)"
+    },
+    {
+      "file": "e2e-03-devolucao-total.spec.ts",
+      "covers": "Devolução total de item da cautela demo"
+    },
+    {
+      "file": "e2e-04-devolucao-parcial.spec.ts",
+      "covers": "Devolução parcial mantém status Parcial"
+    },
+    {
+      "file": "e2e-05-divergencias.spec.ts",
+      "covers": "Página /reports/divergencias"
+    },
+    {
+      "file": "e2e-06-stock.spec.ts",
+      "covers": "Devolução restaura Disponível em /materials"
+    },
+    {
+      "file": "e2e-07-etapa5-smoke.spec.ts",
+      "covers": "Logout, relatórios, alerts, ammo-batches, deep links, exports autenticados"
+    },
+    {
+      "file": "e2e-08-full-coverage.spec.ts",
+      "covers": "Dashboard, CRUD material, estoque fungível, cautela permanente, pessoa, /api/version, exports 401"
+    },
+    {
+      "file": "e2e-lists.spec.ts",
+      "covers": "Listagens /materials e /persons"
+    }
+  ],
+  "manualOnly": [
+    "OCR de documentos / reconhecimento facial",
+    "Layout e gestos em dispositivos móveis",
+    "Bloqueio por tentativas de PIN incorretas",
+    "Impressão física de comprovantes",
+    "Performance sob carga concorrente",
+    "Integração e-mail (Resend) em produção"
+  ],
+  "results": [
+    {
+      "label": "vitest",
+      "round": null,
+      "ok": true,
+      "exitCode": 0,
+      "ms": 1584,
+      "summary": null
+    },
+    {
+      "label": "validate-stock-etapa3",
+      "round": null,
+      "ok": true,
+      "exitCode": 0,
+      "ms": 835,
+      "summary": null
+    },
+    {
+      "label": "e2e-run-1",
+      "round": 1,
+      "ok": true,
+      "exitCode": 0,
+      "ms": 228400,
+      "summary": {
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "label": "e2e-run-2",
+      "round": 2,
+      "ok": true,
+      "exitCode": 0,
+      "ms": 227376,
+      "summary": {
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "label": "e2e-run-3",
+      "round": 3,
+      "ok": true,
+      "exitCode": 0,
+      "ms": 227744,
+      "summary": {
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0
+      }
+    }
+  ]
+}
