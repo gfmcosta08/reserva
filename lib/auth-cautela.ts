@@ -11,6 +11,12 @@ export type CautelaOperatorProfile = {
   is_active: boolean
 }
 
+export async function requireCautelaOperatorOrThrow(): Promise<{ user: User; profile: CautelaOperatorProfile }> {
+  const result = await requireCautelaOperator()
+  if ("error" in result) throw new Error(result.error)
+  return result
+}
+
 export function cautelaAuthHttpStatus(error: string): 401 | 403 {
   return error === "Operador não autenticado" ? 401 : 403
 }
@@ -31,28 +37,19 @@ export async function requireCautelaOperator(): Promise<
     .from("profiles")
     .select("role, name, email, is_active")
     .eq("id", user.id)
-    .maybeSingle()
+    .single()
 
-  // 🔒 SEGURANÇA: fail-closed — sem linha em profiles não concedemos papel de operador (evita bypass se RLS/policy falhar)
-  if (!profile) {
-    return { error: "Perfil operacional não encontrado. Peça a um supervisor para vincular seu usuário em profiles." }
+  if (error || !profile) {
+    return { error: "Perfil não encontrado" }
   }
 
-  if (profile.is_active === false) {
-    return { error: "Conta desativada. Contate um supervisor." }
+  if (!profile.is_active) {
+    return { error: "Operador inativo" }
   }
 
-  if (!ALLOWED_CAUTELA_ROLES.includes(profile.role as (typeof ALLOWED_CAUTELA_ROLES)[number])) {
-    return { error: "Apenas operadores autorizados podem realizar esta ação" }
+  if (!ALLOWED_CAUTELA_ROLES.includes(profile.role as any)) {
+    return { error: "Acesso negado: perfil sem permissão" }
   }
 
-  return {
-    user,
-    profile: {
-      role: profile.role,
-      name: profile.name,
-      email: profile.email,
-      is_active: profile.is_active !== false,
-    },
-  }
+  return { user, profile }
 }

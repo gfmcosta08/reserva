@@ -116,6 +116,7 @@ export default function CautelaReturnItemCard({ item, cautelaCreatedAt, onChange
           <button
             key={mode}
             type="button"
+            data-testid={`devolver-${mode}-btn`}
             onClick={() => {
               if (mode === "total") {
                 onChange(item.id, {

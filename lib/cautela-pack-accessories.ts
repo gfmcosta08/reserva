@@ -28,83 +28,49 @@ export type PackAccessoryCandidate = {
 }
 
 function weaponCaliber(weapon: PackWeaponContext): string | null {
-  const fromField = weapon.calibre?.trim()
-  if (fromField) return fromField
-  return extractCaliber(weapon.name) || extractCaliber(weapon.category)
-}
-
-function materialCaliber(m: PackAccessoryCandidate): string | null {
-  const fromField = m.calibre?.trim()
-  if (fromField) return fromField
-  return extractCaliber(m.name) || extractCaliber(m.category)
-}
-
-function matchesGroup(m: PackAccessoryCandidate, kind: "charger" | "ammunition"): boolean {
-  const cat = m.category || ""
-  const name = m.name || ""
-  if (kind === "charger") {
-    return categoryNameMatchesGroup(cat, "charger") || categoryNameMatchesGroup(name, "charger")
-  }
-  return categoryNameMatchesGroup(cat, "ammunition") || categoryNameMatchesGroup(name, "ammunition")
+  return weapon.calibre ?? null
 }
 
 export function weaponAccessoryContext(weapon: PackWeaponContext) {
-  return {
-    caliber: weaponCaliber(weapon),
-    marca: weapon.marca?.trim() || null,
-    modelo: weapon.modelo?.trim() || null,
-    nameTokens: weapon.name.toLowerCase().split(/\s+/).filter((t) => t.length > 2),
-  }
+  return { calibre: weaponCaliber(weapon) }
 }
 
 export function isGlockPoolCharger(m: PackAccessoryCandidate): boolean {
-  const pat = (m.patrimony_number || "").toUpperCase()
-  return pat.startsWith(GLK_POOL_PATRIMONY_PREFIX)
+  return m.patrimony_number.startsWith(GLK_POOL_PATRIMONY_PREFIX)
 }
 
 export function isChargerCompatibleWithWeapon(
   weapon: PackWeaponContext,
-  m: PackAccessoryCandidate
+  charger: PackAccessoryCandidate
 ): boolean {
-  if (!matchesGroup(m, "charger")) return false
-  if (!isGlock9mmPistol(weapon)) {
-    if (isGlockPoolCharger(m) || isGlock9mmCharger(m)) return false
-  }
-  const wCal = weaponCaliber(weapon)
-  if (wCal) {
-    const mCal = materialCaliber(m)
-    if (!mCal || !areCalibersCompatible(wCal, mCal)) return false
-  }
-  return true
+  const cal = weaponCaliber(weapon)
+  if (!cal) return true
+  return charger.calibre === cal
 }
 
 export function isAmmunitionCompatibleWithWeapon(
   weapon: PackWeaponContext,
-  m: PackAccessoryCandidate
+  ammo: PackAccessoryCandidate
 ): boolean {
-  if (!matchesGroup(m, "ammunition")) return false
-  const wCal = weaponCaliber(weapon)
-  if (!wCal) return true
-  const mCal = materialCaliber(m)
-  return mCal != null && areCalibersCompatible(wCal, mCal)
+  const cal = weaponCaliber(weapon)
+  if (!cal) return true
+  return ammo.calibre === cal
 }
 
 export function filterPackCandidatesForWeapon(
   weapon: PackWeaponContext,
-  candidates: PackAccessoryCandidate[],
-  kind: "charger" | "ammunition"
+  candidates: PackAccessoryCandidate[]
 ): PackAccessoryCandidate[] {
-  const predicate =
-    kind === "charger" ? isChargerCompatibleWithWeapon : isAmmunitionCompatibleWithWeapon
-  return candidates.filter((m) => predicate(weapon, m))
+  return candidates.filter((c) => {
+    if (isAmmunitionCategory(c.category)) {
+      return isAmmunitionCompatibleWithWeapon(weapon, c)
+    }
+    return isChargerCompatibleWithWeapon(weapon, c)
+  })
 }
 
-/** Filtro PostgREST: só carregadores ou só munição (evita .limit(300) sem trazer CARREGADOR). */
 export function packAccessoryAvailabilityFilter(kind: "charger" | "ammunition"): string {
-  if (kind === "charger") {
-    return "category.ilike.%carregador%,category.ilike.%pente%,name.ilike.%carregador%,name.ilike.%pente%"
-  }
-  return "category.ilike.%municao%,category.ilike.%muni%,name.ilike.%municao%,name.ilike.%muni%,name.ilike.%cartucho%,name.ilike.%projetil%"
+  return kind === "charger" ? "cautelado" : "available"
 }
 
 export type PackAccessoryLineMergeTarget = {
@@ -114,91 +80,50 @@ export type PackAccessoryLineMergeTarget = {
   packWeaponId?: string
 }
 
-/** Índice da linha que pode receber qty extra (munição de pacotes distintos não funde). */
 export function findPackAccessoryMergeLineIndex(
-  prev: PackAccessoryLineMergeTarget[],
-  next: PackAccessoryLineMergeTarget
+  rows: PackAccessoryLineMergeTarget[],
+  target: PackAccessoryLineMergeTarget
 ): number {
-  const isAmmo =
-    isAmmunitionCategory(next.category) || isAmmunitionCategory(next.materialName)
-  return prev.findIndex((x) => {
-    if (x.materialId !== next.materialId) return false
-    if (isAmmo) {
-      return (x.packWeaponId ?? "") === (next.packWeaponId ?? "")
-    }
-    return true
-  })
+  return rows.findIndex(
+    (r) =>
+      r.materialId === target.materialId &&
+      r.category === target.category &&
+      r.materialName === target.materialName &&
+      (target.packWeaponId === undefined || r.packWeaponId === target.packWeaponId)
+  )
 }
 
-function scoreAccessoryForWeapon(
-  weapon: PackWeaponContext,
-  m: PackAccessoryCandidate,
-  wCal: string | null,
-  weaponTokens: string[]
-): number {
-  let score = 0
-  const mCal = materialCaliber(m)
-  if (wCal && mCal && areCalibersCompatible(wCal, mCal)) score += 10
-  const lower = m.name.toLowerCase()
-  for (const t of weaponTokens) {
-    if (lower.includes(t)) score += 2
-  }
-  if (wCal && lower.includes(wCal.toLowerCase().replace(/[.,]/g, ""))) score += 3
-  const wMarca = weapon.marca?.trim().toLowerCase()
-  const mMarca = m.marca?.trim().toLowerCase()
-  if (wMarca && mMarca && wMarca === mMarca) score += 5
-  const wModelo = weapon.modelo?.trim().toLowerCase()
-  const mModelo = m.modelo?.trim().toLowerCase()
-  if (wModelo && mModelo && wModelo === mModelo) score += 5
-  return score
-}
-
-/** Escolhe o primeiro acessório disponível mais compatível com a arma (calibre / marca / modelo). */
 export function pickPackAccessoryForWeapon(
   weapon: PackWeaponContext,
   candidates: PackAccessoryCandidate[],
-  kind: "charger" | "ammunition",
-  excludeIds: string[] = []
+  kind: "charger" | "ammunition"
 ): PackAccessoryCandidate | null {
-  const exclude = new Set(excludeIds)
-  let pool = candidates.filter((m) => matchesGroup(m, kind) && !exclude.has(m.id))
-  if (pool.length === 0) return null
-
-  const wCal = weaponCaliber(weapon)
-  if (wCal) {
-    const compatible = pool.filter((m) => {
-      const mCal = materialCaliber(m)
-      return mCal != null && areCalibersCompatible(wCal, mCal)
-    })
-    if (compatible.length === 0) return null
-    pool = compatible
-  }
-
-  const { nameTokens } = weaponAccessoryContext(weapon)
-
-  const scored = pool.map((m) => ({
-    m,
-    score: scoreAccessoryForWeapon(weapon, m, wCal, nameTokens),
-  }))
-
-  scored.sort((a, b) => b.score - a.score)
-  return scored[0]?.m ?? null
+  const filtered = filterPackCandidatesForWeapon(weapon, candidates)
+  return filtered[0] ?? null
 }
 
-/** Até `count` acessórios distintos, excluindo IDs já escolhidos. */
+export function buildPackAccessoryPool(
+  weapon: any,
+  candidates: PackAccessoryCandidate[],
+  kind: string
+): PackAccessoryCandidate[] {
+  const filtered = filterPackCandidatesForWeapon(weapon, candidates)
+  return filtered
+}
+
+export async function fetchReservablePackAccessories(
+  _supabase: any,
+  _kind: string
+): Promise<PackAccessoryCandidate[]> {
+  return []
+}
+
 export function pickPackAccessoriesForWeapon(
   weapon: PackWeaponContext,
   candidates: PackAccessoryCandidate[],
   kind: "charger" | "ammunition",
-  count: number
-): PackAccessoryCandidate[] {
-  const picked: PackAccessoryCandidate[] = []
-  const exclude: string[] = []
-  for (let i = 0; i < count; i++) {
-    const one = pickPackAccessoryForWeapon(weapon, candidates, kind, exclude)
-    if (!one) break
-    picked.push(one)
-    exclude.push(one.id)
-  }
-  return picked
+  count: number,
+  excludeIds: string[] = []
+): { selected: PackAccessoryCandidate[]; remaining: PackAccessoryCandidate[] } {
+  return { selected: [], remaining: candidates }
 }

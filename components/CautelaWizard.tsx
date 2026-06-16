@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect, useMemo, useRef } from "react"
-import { searchPersons, createCautela, createCautelaFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
+import { searchPersons, createCautela, createCautelaFaceAuth, createCautelaWithTransfer, createCautelaWithTransferFaceAuth, getPendingCautelasForPerson } from "@/app/actions/cautelas"
 import { getPersonById } from "@/app/actions/persons"
 import PersonRegistrationWizard, { type PersonWizardEditTarget } from "@/components/PersonRegistrationWizard"
 import FaceVerification from "./FaceVerification"
 import {
   CautelaMaterialsStep,
   materialLinesToCautelaItems,
+  hasTransferItems,
   type MaterialLine,
 } from "./cautela/CautelaMaterialsStep"
 import { extractCaliber, validateAmmunitionCaliber } from "@/lib/cautela-caliber"
@@ -223,21 +224,45 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     setLoading(true)
     setPinError("")
     try {
-      const result = await createCautela({
-        person_id: selectedPerson!.id,
-        type: cautelaType,
-        items: materialLinesToCautelaItems(materialLines),
-        notes: buildNotesPayload(),
-        pin,
-        review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
-      })
-      if (result.success) {
-        // Enviar e-mail em background
-        fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
-        onSuccess()
+      const isTransfer = hasTransferItems(materialLines)
+      const items = materialLinesToCautelaItems(materialLines)
+      const notesPayload = buildNotesPayload()
+
+      if (isTransfer && cautelaType === "daily") {
+        const result = await createCautelaWithTransfer({
+          person_id: selectedPerson!.id,
+          type: "daily",
+          items: items.map((i) => ({
+            material_id: i.material_id,
+            quantity: i.quantity,
+            ...(i.transfer_from_cautela_item_id ? { transfer_from_cautela_item_id: i.transfer_from_cautela_item_id } : {}),
+          })),
+          notes: notesPayload,
+          pin,
+        })
+        if (result.success) {
+          fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
+          onSuccess()
+        } else {
+          setPinError(result.error || "Erro ao criar cautela com transferência")
+          setPin("")
+        }
       } else {
-        setPinError(result.error || "Erro ao criar cautela")
-        setPin("")
+        const result = await createCautela({
+          person_id: selectedPerson!.id,
+          type: cautelaType,
+          items: items.map((i) => ({ material_id: i.material_id, quantity: i.quantity })),
+          notes: notesPayload,
+          pin,
+          review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
+        })
+        if (result.success) {
+          fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
+          onSuccess()
+        } else {
+          setPinError(result.error || "Erro ao criar cautela")
+          setPin("")
+        }
       }
     } catch (err: any) {
       setPinError(err.message || "Erro inesperado")
@@ -251,19 +276,41 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
     if (!matched) return
     setLoading(true)
     try {
-      const result = await createCautelaFaceAuth({
-        person_id: selectedPerson!.id,
-        type: cautelaType,
-        items: materialLinesToCautelaItems(materialLines),
-        notes: buildNotesPayload(),
-        review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
-      })
-      if (result.success) {
-        // Enviar e-mail em background
-        fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
-        onSuccess()
+      const isTransfer = hasTransferItems(materialLines)
+      const items = materialLinesToCautelaItems(materialLines)
+      const notesPayload = buildNotesPayload()
+
+      if (isTransfer && cautelaType === "daily") {
+        const result = await createCautelaWithTransferFaceAuth({
+          person_id: selectedPerson!.id,
+          type: "daily",
+          items: items.map((i) => ({
+            material_id: i.material_id,
+            quantity: i.quantity,
+            ...(i.transfer_from_cautela_item_id ? { transfer_from_cautela_item_id: i.transfer_from_cautela_item_id } : {}),
+          })),
+          notes: notesPayload,
+        })
+        if (result.success) {
+          fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
+          onSuccess()
+        } else {
+          setPinError(result.error || "Erro ao criar cautela com transferência")
+        }
       } else {
-        setPinError(result.error || "Erro ao criar cautela")
+        const result = await createCautelaFaceAuth({
+          person_id: selectedPerson!.id,
+          type: cautelaType,
+          items: items.map((i) => ({ material_id: i.material_id, quantity: i.quantity })),
+          notes: notesPayload,
+          review_date: cautelaType === "permanent" && reviewDate ? reviewDate : undefined,
+        })
+        if (result.success) {
+          fetch("/api/email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cautelaId: result.cautelaId }) }).catch(() => {})
+          onSuccess()
+        } else {
+          setPinError(result.error || "Erro ao criar cautela")
+        }
       }
     } catch (err: any) {
       setPinError(err.message || "Erro inesperado")
@@ -361,6 +408,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                     {searchResults.map(person => (
                       <button
                         key={person.id}
+                        data-testid="person-result"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => selectPerson(person)}
                         className="w-full text-left p-3 bg-slate-950 border border-slate-800 rounded-xl hover:border-blue-500/50 hover:bg-blue-500/5 transition-all"
@@ -562,13 +610,14 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                             (inc) => inc.materialId === m.id
                           )
                           const caliber = extractCaliber(m.category || m.name)
+                          const isTransfer = Boolean(row.transferFromCautelaItemId)
                           return (
                             <div key={row.rowId} className="flex items-center gap-2 text-xs flex-wrap">
                               <Package
-                                className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : "text-blue-500"}`}
+                                className={`h-3 w-3 flex-shrink-0 ${hasIncompatibility ? "text-red-500" : isTransfer ? "text-amber-500" : "text-blue-500"}`}
                               />
                               <span
-                                className={`font-medium ${hasIncompatibility ? "text-red-300" : "text-slate-300"}`}
+                                className={`font-medium ${hasIncompatibility ? "text-red-300" : isTransfer ? "text-amber-300" : "text-slate-300"}`}
                               >
                                 {m.name}
                               </span>
@@ -584,6 +633,11 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                               )}
                               <span className="text-slate-600">—</span>
                               <span className="text-slate-500">Pat: {m.patrimony_number}</span>
+                              {isTransfer && (
+                                <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">
+                                  ⇄ De {row.transferFromPersonName}
+                                </span>
+                              )}
                             </div>
                           )
                         })}
@@ -592,6 +646,32 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                   )
                 })}
               </div>
+
+              {/* Aviso de Transferência */}
+              {hasTransferItems(materialLines) && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-amber-400">
+                        Transferência de Cautela Diária
+                      </p>
+                      <p className="text-[10px] text-amber-300/80 mt-1">
+                        Esta cautela contém itens transferidos de outra pessoa. Os materiais transferidos sairão da cautela de origem automaticamente.
+                      </p>
+                      <ul className="text-[10px] text-amber-300/80 mt-1 space-y-0.5">
+                        {materialLines
+                          .filter((l) => l.transferFromCautelaItemId)
+                          .map((l) => (
+                            <li key={l.rowId}>
+                              • {l.material.name} (Pat: {l.material.patrimony_number}) — {l.quantity} un. de <strong>{l.transferFromPersonName}</strong>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Aviso de Incompatibilidade de Calibre */}
               {caliberSummary.incompatibilities.length > 0 && (
@@ -792,6 +872,7 @@ export default function CautelaWizard({ onSuccess, onCancel }: CautelaWizardProp
                           <button
                             key={key}
                             type="button"
+                            data-testid="confirm-pin-btn"
                             onClick={handleSubmitWithPin}
                             disabled={pin.length !== 4 || loading}
                             className="h-12 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center"

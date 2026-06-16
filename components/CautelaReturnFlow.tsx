@@ -371,6 +371,7 @@ export default function CautelaReturnFlow({
           </button>
           <button
             type="button"
+            data-testid="finalizar-dev-btn"
             onClick={handleSubmit}
             disabled={submitting}
             className="flex-[2] py-3 rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 flex items-center justify-center gap-2"

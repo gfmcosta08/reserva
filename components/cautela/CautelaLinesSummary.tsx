@@ -44,7 +44,12 @@ export function CautelaLinesSummary({ lines, onQtyChange, onRemove }: Props) {
                   className="flex items-center gap-2 text-xs bg-slate-950/80 rounded-lg px-2 py-1.5 border border-slate-800"
                 >
                   <div className="flex-1 min-w-0">
-                    <span className="text-slate-200 truncate block">{row.material.name}</span>
+                    <span className="text-slate-200 truncate block">
+                      {row.material.name}
+                      {row.transferFromPersonName && (
+                        <span className="ml-1 text-[9px] text-amber-400 font-semibold">⇄ {row.transferFromPersonName}</span>
+                      )}
+                    </span>
                     <span className="text-[10px] text-slate-500">
                       Pat {row.material.patrimony_number}
                       {row.material.category ? ` • ${row.material.category}` : ""}

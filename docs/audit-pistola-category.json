@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-06-08T16:35:49.414Z",
+  "database": "teste_db",
+  "totals": {
+    "materials": 882,
+    "pistola_category": 4,
+    "arma_curta_category": 278,
+    "pistol_like_category_labels": [
+      "PISTOLA"
+    ]
+  },
+  "conflicts": {
+    "patrimony_number": [],
+    "serial_number": [],
+    "internal_code": []
+  },
+  "conflict_counts": {
+    "patrimony_number": 0,
+    "serial_number": 0,
+    "internal_code": 0
+  },
+  "open_cautela_items_on_pistola": 3,
+  "open_cautela_items_sample": [
+    {
+      "id": "7ef9fbdf-3f52-4f47-89bd-81c2346317bd",
+      "material_id": "42cf4567-6099-4a87-9d11-50c350dba156",
+      "cautela_id": "6df6ee7e-c01a-4c1d-90e2-2734ae356aaf",
+      "status": "pending",
+      "cautelas": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "e9300ad9-d33c-4248-8daf-cfc75a76eaae",
+      "material_id": "32fe6dc8-e626-44b7-bffe-93df512db3e8",
+      "cautela_id": "ddb85510-79d2-4184-b68d-a272265981ba",
+      "status": "pending",
+      "cautelas": {
+        "status": "open"
+      }
+    },
+    {
+      "id": "8f9f8f9a-02a5-4062-9cc7-bc0fcc26d51c",
+      "material_id": "136fe8fe-a78d-4726-8250-9ac0d88b18cd",
+      "cautela_id": "f3906836-3b41-4d73-93f8-e1fd5d9a8ca4",
+      "status": "pending",
+      "cautelas": {
+        "status": "open"
+      }
+    }
+  ],
+  "migrate_preview": 4,
+  "delete_preview": 0
+}

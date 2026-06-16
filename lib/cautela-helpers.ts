@@ -1,5 +1,25 @@
 /** Helpers compartilhados do domínio de cautelas (validação de estado, mensagens). */
 
+export type TransferOriginItem = {
+  cautela_item_id: string
+  material_id: string
+  material_name: string
+  patrimony_number: string
+  quantity_delivered: number
+  quantity_returned: number
+  quantity_available: number
+  category: string
+}
+
+export type TransferOriginCautela = {
+  cautela_id: string
+  person_id: string
+  person_name: string
+  type: string
+  status: string
+  items: TransferOriginItem[]
+}
+
 export function canModifyCautela(status: string | null | undefined): boolean {
   return status === "open" || status === "partial"
 }

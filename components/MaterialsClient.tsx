@@ -295,6 +295,7 @@ export default function MaterialsClient({
             Exportar Filtrados
           </button>
           <button 
+            data-testid="novo-material-btn"
             onClick={() => {
               setEditingMaterial(null);
               setShowMaterialForm(true);

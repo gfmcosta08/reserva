@@ -1,0 +1,194 @@
+{
+  "generated_at": "2026-06-08T16:55:02.902Z",
+  "database": "teste_db",
+  "tables": {
+    "profiles": {
+      "exists": true,
+      "row_count": 2,
+      "columns": [
+        "created_at",
+        "email",
+        "id",
+        "is_active",
+        "name",
+        "role",
+        "updated_at"
+      ]
+    },
+    "persons": {
+      "exists": true,
+      "row_count": 121,
+      "columns": [
+        "created_at",
+        "email",
+        "face_descriptor",
+        "failed_pin_attempts",
+        "full_name",
+        "function",
+        "id",
+        "must_change_pin",
+        "organization_id",
+        "phone",
+        "pin_hash",
+        "pin_locked_until",
+        "registration_number",
+        "rg",
+        "rg_back_url",
+        "rg_front_url",
+        "status",
+        "unit_id",
+        "updated_at"
+      ]
+    },
+    "materials": {
+      "exists": true,
+      "row_count": 882,
+      "columns": [
+        "calibre",
+        "category",
+        "created_at",
+        "id",
+        "internal_code",
+        "marca",
+        "modelo",
+        "name",
+        "notes",
+        "organization_id",
+        "patrimony_number",
+        "reservation_id",
+        "serial_number",
+        "status",
+        "stock_quantity",
+        "tamanho",
+        "unit_id",
+        "updated_at"
+      ]
+    },
+    "cautelas": {
+      "exists": true,
+      "row_count": 198,
+      "columns": [
+        "closed_at",
+        "created_at",
+        "destino",
+        "id",
+        "notes",
+        "operator_id",
+        "organization_id",
+        "person_id",
+        "review_date",
+        "situacao_legado",
+        "status",
+        "type",
+        "unit_id"
+      ]
+    },
+    "cautela_items": {
+      "exists": true,
+      "row_count": 395,
+      "columns": [
+        "carregadores",
+        "cautela_id",
+        "id",
+        "material_id",
+        "notes",
+        "organization_id",
+        "quantity_delivered",
+        "quantity_returned",
+        "returned_at",
+        "returned_by",
+        "status",
+        "unit_id"
+      ]
+    },
+    "divergences": {
+      "exists": true,
+      "row_count": 0,
+      "columns": []
+    },
+    "audit_logs": {
+      "exists": true,
+      "row_count": 20,
+      "columns": [
+        "action",
+        "after_state",
+        "before_state",
+        "entity",
+        "entity_id",
+        "id",
+        "ip_address",
+        "organization_id",
+        "timestamp",
+        "unit_id",
+        "user_id"
+      ]
+    },
+    "corrections": {
+      "exists": true,
+      "row_count": 0,
+      "columns": []
+    },
+    "ammo_batches": {
+      "exists": true,
+      "row_count": 4,
+      "columns": [
+        "acquisition_date",
+        "calibre",
+        "created_at",
+        "created_by",
+        "expiry_date",
+        "id",
+        "lot_number",
+        "marca",
+        "notes",
+        "organization_id",
+        "quantity_available",
+        "quantity_total",
+        "unit_id",
+        "updated_at"
+      ]
+    },
+    "organizations": {
+      "exists": true,
+      "row_count": 1,
+      "columns": [
+        "created_at",
+        "id",
+        "name",
+        "slug",
+        "updated_at"
+      ]
+    },
+    "units": {
+      "exists": true,
+      "row_count": 2,
+      "columns": [
+        "code",
+        "created_at",
+        "id",
+        "name",
+        "organization_id",
+        "updated_at"
+      ]
+    },
+    "usuarios": {
+      "exists": true,
+      "row_count": 2,
+      "columns": [
+        "auth_user_id",
+        "created_at",
+        "id",
+        "is_active",
+        "organization_id",
+        "role",
+        "unit_id",
+        "updated_at"
+      ]
+    },
+    "categories": {
+      "exists": true,
+      "row_count": 0,
+      "columns": []
+    }
+  }
+}

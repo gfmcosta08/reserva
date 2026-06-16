@@ -80,6 +80,7 @@ export function MaterialSearchField({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-500" />
         <input
           type="text"
+          data-testid="material-search-input"
           value={q}
           disabled={disabled}
           onChange={(e) => {
@@ -98,6 +99,7 @@ export function MaterialSearchField({
             <li key={m.id}>
               <button
                 type="button"
+                data-testid="material-result"
                 onClick={() => pick(m)}
                 className="w-full text-left px-3 py-2 text-xs hover:bg-slate-800 border-b border-slate-800/50 last:border-0"
               >
