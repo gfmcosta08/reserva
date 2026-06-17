@@ -1424,7 +1424,16 @@ export async function createCautelaWithTransfer(data: {
       })
       .eq("id", ti.transfer_from_cautela_item_id)
 
-    await supabase
+    await restoreMaterialStockAfterReturn(
+      supabase,
+      ti.transfer_from_cautela_item_id!,
+      prevReturned,
+      newReturned,
+      itemStatus,
+      delivered
+    )
+
+    const { data: newItem } = await supabase
       .from("cautela_items")
       .insert({
         cautela_id: newCautelaId,
@@ -1435,6 +1444,30 @@ export async function createCautelaWithTransfer(data: {
         unit_id: tenant?.unit_id ?? null,
         reserva_id: tenant?.reserva_id ?? null,
       })
+      .select("id")
+      .single()
+
+    const { data: transferMaterial } = await supabase
+      .from("materials")
+      .select("id, stock_quantity, status_atual")
+      .eq("id", ti.material_id)
+      .single()
+
+    if (transferMaterial) {
+      await supabase.rpc("aplicar_movimentacao_material", {
+        p_material_id: ti.material_id,
+        p_tipo: "TRANSFERENCIA",
+        p_stock_novo: transferMaterial.stock_quantity ?? 1,
+        p_status_novo: transferMaterial.status_atual ?? "CAUTELADO_TEMPORARIO",
+        p_quantidade: ti.quantity,
+        p_person_responsavel_id: payload.person_id,
+        p_localizacao_nova: "EM_CAUTELA",
+        p_cautela_id: newCautelaId,
+        p_cautela_item_id: newItem?.id ?? null,
+        p_operador_id: operatorId,
+        p_observacao: "Transferência direta",
+      })
+    }
 
     await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
 
@@ -1478,13 +1511,13 @@ export async function createCautelaWithTransfer(data: {
     for (const item of merged) {
       const { data: matItem } = await supabase
         .from("materials")
-        .select("id, name, stock_quantity")
+        .select("id, name, stock_quantity, status_atual")
         .eq("id", item.material_id)
         .single()
 
       if (!matItem) continue
 
-      await supabase
+      const { data: newItem } = await supabase
         .from("cautela_items")
         .insert({
           cautela_id: newCautelaId,
@@ -1495,13 +1528,25 @@ export async function createCautelaWithTransfer(data: {
           unit_id: tenant?.unit_id ?? null,
           reserva_id: tenant?.reserva_id ?? null,
         })
+        .select("id")
+        .single()
 
       const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
-      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
-      await supabase
-        .from("materials")
-        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
-        .eq("id", item.material_id)
+      const newStatusAtual = newStock <= 0 ? "CAUTELADO_TEMPORARIO" : "PENDENTE_DEVOLUCAO"
+
+      await supabase.rpc("aplicar_movimentacao_material", {
+        p_material_id: item.material_id,
+        p_tipo: "CAUTELA_SAIDA",
+        p_stock_novo: newStock,
+        p_status_novo: newStatusAtual,
+        p_quantidade: item.quantity,
+        p_person_responsavel_id: payload.person_id,
+        p_localizacao_nova: "EM_CAUTELA",
+        p_cautela_id: newCautelaId,
+        p_cautela_item_id: newItem?.id ?? null,
+        p_operador_id: operatorId,
+        p_observacao: null,
+      })
     }
 
     await logAudit({
@@ -1656,7 +1701,16 @@ export async function createCautelaWithTransferFaceAuth(data: {
       })
       .eq("id", ti.transfer_from_cautela_item_id)
 
-    await supabase
+    await restoreMaterialStockAfterReturn(
+      supabase,
+      ti.transfer_from_cautela_item_id!,
+      prevReturned,
+      newReturned,
+      itemStatus,
+      delivered
+    )
+
+    const { data: newItem } = await supabase
       .from("cautela_items")
       .insert({
         cautela_id: newCautelaId,
@@ -1667,6 +1721,30 @@ export async function createCautelaWithTransferFaceAuth(data: {
         unit_id: tenant?.unit_id ?? null,
         reserva_id: tenant?.reserva_id ?? null,
       })
+      .select("id")
+      .single()
+
+    const { data: transferMaterial } = await supabase
+      .from("materials")
+      .select("id, stock_quantity, status_atual")
+      .eq("id", ti.material_id)
+      .single()
+
+    if (transferMaterial) {
+      await supabase.rpc("aplicar_movimentacao_material", {
+        p_material_id: ti.material_id,
+        p_tipo: "TRANSFERENCIA",
+        p_stock_novo: transferMaterial.stock_quantity ?? 1,
+        p_status_novo: transferMaterial.status_atual ?? "CAUTELADO_TEMPORARIO",
+        p_quantidade: ti.quantity,
+        p_person_responsavel_id: payload.person_id,
+        p_localizacao_nova: "EM_CAUTELA",
+        p_cautela_id: newCautelaId,
+        p_cautela_item_id: newItem?.id ?? null,
+        p_operador_id: operatorId,
+        p_observacao: "Transferência direta (facial)",
+      })
+    }
 
     await syncCautelaStatusFromItems(supabase, originItem.cautela_id, operatorId, now)
 
@@ -1711,13 +1789,13 @@ export async function createCautelaWithTransferFaceAuth(data: {
     for (const item of merged) {
       const { data: matItem } = await supabase
         .from("materials")
-        .select("id, name, stock_quantity")
+        .select("id, name, stock_quantity, status_atual")
         .eq("id", item.material_id)
         .single()
 
       if (!matItem) continue
 
-      await supabase
+      const { data: newItem } = await supabase
         .from("cautela_items")
         .insert({
           cautela_id: newCautelaId,
@@ -1728,13 +1806,25 @@ export async function createCautelaWithTransferFaceAuth(data: {
           unit_id: tenant?.unit_id ?? null,
           reserva_id: tenant?.reserva_id ?? null,
         })
+        .select("id")
+        .single()
 
       const newStock = Math.max(0, (matItem.stock_quantity ?? 1) - item.quantity)
-      const newMatStatus = newStock <= 0 ? "cautelado" : "available"
-      await supabase
-        .from("materials")
-        .update({ stock_quantity: newStock, status: newMatStatus, updated_at: now })
-        .eq("id", item.material_id)
+      const newStatusAtual = newStock <= 0 ? "CAUTELADO_TEMPORARIO" : "PENDENTE_DEVOLUCAO"
+
+      await supabase.rpc("aplicar_movimentacao_material", {
+        p_material_id: item.material_id,
+        p_tipo: "CAUTELA_SAIDA",
+        p_stock_novo: newStock,
+        p_status_novo: newStatusAtual,
+        p_quantidade: item.quantity,
+        p_person_responsavel_id: payload.person_id,
+        p_localizacao_nova: "EM_CAUTELA",
+        p_cautela_id: newCautelaId,
+        p_cautela_item_id: newItem?.id ?? null,
+        p_operador_id: operatorId,
+        p_observacao: null,
+      })
     }
 
     await logAudit({
