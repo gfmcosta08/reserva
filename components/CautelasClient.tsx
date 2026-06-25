@@ -43,7 +43,10 @@ export default function CautelasClient() {
 
   useEffect(() => {
     const id = searchParams.get("id")
-    if (id) setSelectedCautelaId(id)
+    if (id) {
+      setSelectedCautelaId(id)
+      setShowWizard(false) // Fecha o wizard qdo navega pra ver detalhes
+    }
   }, [searchParams])
 
   const loadCautelas = useCallback(async () => {
@@ -76,18 +79,18 @@ export default function CautelasClient() {
     loadCautelas()
   }
 
-  if (showWizard) {
-    return (
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <CautelaWizard onSuccess={handleWizardSuccess} onCancel={() => setShowWizard(false)} />
-      </div>
-    )
-  }
-
   if (selectedCautelaId) {
     return (
       <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <CautelaDetail cautelaId={selectedCautelaId} onClose={() => setSelectedCautelaId(null)} onUpdate={loadCautelas} />
+      </div>
+    )
+  }
+
+  if (showWizard) {
+    return (
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <CautelaWizard onSuccess={handleWizardSuccess} onCancel={() => setShowWizard(false)} />
       </div>
     )
   }
