@@ -174,7 +174,7 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
 
   const handleNextStep = () => {
     if (step === 1) setStep(2)
-    else if (step === 2 && validateData()) setStep(isRegularize ? 4 : 3)
+    else if (step === 2 && validateData()) setStep(3)
     else if (step === 3 && formData.pin.length === 4) setStep(4)
   }
 
@@ -374,7 +374,7 @@ export default function PersonRegistrationWizard({ onSuccess, onCancel, initialD
         )}
 
         {/* STEP 3: PIN (somente cadastro novo) */}
-        {step === 3 && !isRegularize && (
+        {step === 3 && (
           <div className="space-y-6 text-center max-w-xs mx-auto">
             <div className="flex justify-center">
               <div className="h-14 w-14 rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500/20">
