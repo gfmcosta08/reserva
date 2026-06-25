@@ -172,13 +172,15 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
               <RefreshCw className="h-4 w-4" />
               Renovar
             </button>
-            <button
-              onClick={() => { setShowCloseConfirm(true); setCloseError("") }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-500 rounded-xl font-bold transition-colors"
-            >
-              <X className="h-4 w-4" />
-              Fechar Cautela
-            </button>
+            {items.length === 0 && (
+              <button
+                onClick={() => { setShowCloseConfirm(true); setCloseError("") }}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-500 rounded-xl font-bold transition-colors"
+              >
+                <X className="h-4 w-4" />
+                Fechar Cautela
+              </button>
+            )}
           </div>
         )}
 
