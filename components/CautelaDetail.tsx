@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { getCautelaById } from "@/app/actions/cautelas"
+import { getCautelaById, closeCautela } from "@/app/actions/cautelas"
 import CautelaReturnFlow from "./CautelaReturnFlow"
 import RenewalModal from "./RenewalModal"
 import {
-  X, Loader2,
-  RotateCcw, User, ArrowRight, RefreshCw
+  X, Loader2, AlertCircle,
+  RotateCcw, User, ArrowRight, RefreshCw, AlertTriangle, CheckCircle
 } from "lucide-react"
 import { CautelaDetailItemByBucket, type CautelaItemLineBase } from "@/components/cautela/CautelaItemBucketList"
 import { formatPendingBucketSummary, hasOnlyWeaponInventory } from "@/lib/cautela-summary-buckets"
@@ -24,6 +24,9 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
   const [loading, setLoading] = useState(true)
   const [showReturnFlow, setShowReturnFlow] = useState(false)
   const [showRenewal, setShowRenewal] = useState(false)
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [closeError, setCloseError] = useState("")
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -161,13 +164,22 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
         )}
 
         {(cautela.status === "open" || cautela.status === "partial") && (
-          <button
-            onClick={() => setShowRenewal(true)}
-            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-500 rounded-xl font-bold transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Renovar Cautela
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowRenewal(true)}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-500 rounded-xl font-bold transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Renovar
+            </button>
+            <button
+              onClick={() => { setShowCloseConfirm(true); setCloseError("") }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-500 rounded-xl font-bold transition-colors"
+            >
+              <X className="h-4 w-4" />
+              Fechar Cautela
+            </button>
+          </div>
         )}
 
         <div>
@@ -226,6 +238,66 @@ export default function CautelaDetail({ cautelaId, onClose, onUpdate }: CautelaD
             onUpdate()
           }}
         />
+      )}
+
+      {/* Confirmação de Fechar Cautela */}
+      {showCloseConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCloseConfirm(false)} />
+          <div className="relative bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-full max-w-sm mx-auto p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Fechar Cautela</h3>
+                <p className="text-sm text-slate-400">
+                  Tem certeza? Esta ação não pode ser desfeita.
+                </p>
+              </div>
+            </div>
+
+            {closeError && (
+              <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {closeError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCloseConfirm(false)}
+                disabled={closing}
+                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={async () => {
+                  setClosing(true)
+                  setCloseError("")
+                  const result = await closeCautela(cautelaId)
+                  if (result.error) {
+                    setCloseError(result.error)
+                    setClosing(false)
+                  } else {
+                    setShowCloseConfirm(false)
+                    loadData()
+                    onUpdate()
+                  }
+                }}
+                disabled={closing}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white px-4 py-3 rounded-xl font-bold transition-colors"
+              >
+                {closing ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Fechando...</>
+                ) : (
+                  <><CheckCircle className="h-4 w-4" /> Sim, Fechar</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
