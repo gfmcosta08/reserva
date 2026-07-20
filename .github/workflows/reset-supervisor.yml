@@ -16,6 +16,8 @@ jobs:
         env:
           SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
           SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          QA_SUPERVISOR_PASSWORD: "ReservaSupervisor2026!"
         run: node scripts/qa/create-supervisor-test.mjs
-      - name: Output new password
-        run: cat scripts/.env.qa
+      - name: Confirm password
+        run: |
+          echo "Nova senha: ReservaSupervisor2026!"
